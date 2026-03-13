@@ -12,7 +12,6 @@ import {
   Phone,
   CheckCircle2,
   XCircle,
-  BarChart3,
   Building2
 } from 'lucide-react';
 import { UserProfile } from '../types';
@@ -66,7 +65,6 @@ export default function AdminDashboard({
     { label: 'Total Dokter', value: institutionDoctors.length.toString(), icon: Users, color: 'blue' },
     { label: 'Aktif Hari Ini', value: institutionDoctors.filter(d => d.status === 'active').length.toString(), icon: Activity, color: 'emerald' },
     { label: 'Sesi Selesai', value: '142', icon: CheckCircle2, color: 'indigo' },
-    { label: 'Kapasitas Disk', value: '64%', icon: BarChart3, color: 'amber' },
   ];
 
   return (
