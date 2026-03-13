@@ -14,6 +14,7 @@ import {
   Key, 
   Smartphone, 
   CheckCircle2, 
+  CheckCircle,
   Lock,
   Plus,
   Trash2,
@@ -25,7 +26,9 @@ import {
   Calendar,
   FileArchive,
   AlertTriangle,
-  HardDrive
+  HardDrive,
+  Loader2,
+  X
 } from 'lucide-react';
 import { UserProfile, HospitalSettings, Session } from '../types';
 import { useToast } from './ToastProvider';
@@ -37,12 +40,20 @@ interface SettingsProps {
   hospitalSettingsList: HospitalSettings[];
   onUpdateUser: (profile: UserProfile) => void;
   onUpdateHospitalList: (settings: HospitalSettings[]) => void;
+  onUpdateSessions: (sessions: Session[]) => void;
   onCancelSubscription: () => void;
   plan: 'subscription' | 'enterprise' | null;
   sessions: Session[];
 }
 
-export default function Settings({ userProfile, hospitalSettingsList, onUpdateUser, onUpdateHospitalList, onCancelSubscription, plan, sessions }: SettingsProps) {
+interface RestoreConflict {
+  backupSession: Session;
+  existingSession: Session;
+}
+
+type ConflictAction = 'skip' | 'overwrite';
+
+export default function Settings({ userProfile, hospitalSettingsList, onUpdateUser, onUpdateHospitalList, onUpdateSessions, onCancelSubscription, plan, sessions }: SettingsProps) {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'profile' | 'hospital' | 'billing' | 'security' | 'notifications' | 'enterprise' | 'accessibility' | 'storage' | 'backup'>('profile');
   
@@ -53,6 +64,14 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
   const [backupDateFrom, setBackupDateFrom] = useState('');
   const [backupDateTo, setBackupDateTo] = useState('');
+  const [restoreConflicts, setRestoreConflicts] = useState<RestoreConflict[]>([]);
+  const [restoreNewSessions, setRestoreNewSessions] = useState<Session[]>([]);
+  const [currentConflictIdx, setCurrentConflictIdx] = useState(0);
+  const [conflictResults, setConflictResults] = useState<Map<string, ConflictAction>>(new Map());
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [showMismatchModal, setShowMismatchModal] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [applyToAll, setApplyToAll] = useState(false);
 
   const [storageSettings, setStorageSettings] = useState({
     photoDir: 'C:/Aexon/Captures/Photos',
@@ -145,7 +164,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const handleExportBackup = () => {
+  const handleExportBackup = async () => {
     let filteredSessions = sessions;
     
     if (backupDateFrom || backupDateTo) {
@@ -162,20 +181,26 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       return;
     }
 
-    const backupData = {
-      version: '2.5.0',
-      exportedAt: new Date().toISOString(),
-      userId: userProfile.id,
-      userName: userProfile.name,
-      sessionsCount: filteredSessions.length,
-      sessions: filteredSessions
-    };
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const folderName = `Aexon_Backup_${userProfile.id}_${dateStr}`;
+    const folder = zip.folder(folderName)!;
 
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    folder.file('sessions.json', JSON.stringify(filteredSessions, null, 2));
+    folder.file('manifest.json', JSON.stringify({
+      userId: userProfile.id,
+      exportDate: new Date().toISOString(),
+      appVersion: '2.5.0',
+      sessionCount: filteredSessions.length,
+      note: 'Foto dan video tidak termasuk backup, tersimpan lokal di perangkat'
+    }, null, 2));
+
+    const blob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `aexon_backup_${userProfile.id}_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `Aexon_Backup_${userProfile.id}_${dateStr}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -187,35 +212,129 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const handleImportBackup = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e: any) => {
+    input.accept = '.zip';
+    input.onchange = async (e: any) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        try {
-          const data = JSON.parse(ev.target?.result as string);
-          
-          if (!data.version || !data.userId || !Array.isArray(data.sessions)) {
-            showToast('Format file backup tidak valid.', 'error');
-            return;
-          }
+      setRestoreLoading(true);
 
-          if (data.userId !== userProfile.id) {
-            showToast('File backup ini milik pengguna lain dan tidak dapat di-restore ke akun Anda.', 'error', 6000);
-            return;
-          }
+      try {
+        const JSZip = (await import('jszip')).default;
+        const zip = await JSZip.loadAsync(file);
 
-          saveUserData(userProfile.id, 'sessions', data.sessions);
-          showToast(`Restore berhasil! ${data.sessions.length} sesi telah dipulihkan. Refresh halaman untuk melihat data.`, 'success', 8000);
-        } catch {
-          showToast('Gagal membaca file backup. File mungkin rusak.', 'error');
+        let manifestFile: any = null;
+        let sessionsFile: any = null;
+        zip.forEach((path, entry) => {
+          if (path.endsWith('manifest.json')) manifestFile = entry;
+          if (path.endsWith('sessions.json')) sessionsFile = entry;
+        });
+
+        if (!manifestFile || !sessionsFile) {
+          showToast('Format file backup tidak valid. File manifest.json atau sessions.json tidak ditemukan.', 'error');
+          setRestoreLoading(false);
+          return;
         }
-      };
-      reader.readAsText(file);
+
+        const manifestText = await manifestFile.async('text');
+        const manifest = JSON.parse(manifestText);
+
+        if (manifest.userId !== userProfile.id) {
+          setShowMismatchModal(true);
+          setRestoreLoading(false);
+          return;
+        }
+
+        const sessionsText = await sessionsFile.async('text');
+        const backupSessions: Session[] = JSON.parse(sessionsText);
+
+        if (!Array.isArray(backupSessions) || backupSessions.length === 0) {
+          showToast('File backup tidak berisi data sesi.', 'error');
+          setRestoreLoading(false);
+          return;
+        }
+
+        const existingIds = new Set(sessions.map(s => s.id));
+        const newSessions: Session[] = [];
+        const conflicts: RestoreConflict[] = [];
+
+        for (const bs of backupSessions) {
+          if (existingIds.has(bs.id)) {
+            const existing = sessions.find(s => s.id === bs.id)!;
+            conflicts.push({ backupSession: bs, existingSession: existing });
+          } else {
+            newSessions.push(bs);
+          }
+        }
+
+        setRestoreNewSessions(newSessions);
+
+        if (conflicts.length > 0) {
+          setRestoreConflicts(conflicts);
+          setCurrentConflictIdx(0);
+          setConflictResults(new Map());
+          setApplyToAll(false);
+          setShowConflictModal(true);
+        } else {
+          finalizeRestore(newSessions, new Map());
+        }
+      } catch {
+        showToast('Gagal membaca file backup. File mungkin rusak.', 'error');
+      }
+      setRestoreLoading(false);
     };
     input.click();
+  };
+
+  const handleConflictAction = (action: ConflictAction) => {
+    const conflict = restoreConflicts[currentConflictIdx];
+    const newResults = new Map(conflictResults);
+
+    if (applyToAll) {
+      for (let i = currentConflictIdx; i < restoreConflicts.length; i++) {
+        newResults.set(restoreConflicts[i].backupSession.id, action);
+      }
+      setConflictResults(newResults);
+      setShowConflictModal(false);
+      finalizeRestore(restoreNewSessions, newResults);
+    } else {
+      newResults.set(conflict.backupSession.id, action);
+      setConflictResults(newResults);
+
+      if (currentConflictIdx + 1 < restoreConflicts.length) {
+        setCurrentConflictIdx(currentConflictIdx + 1);
+      } else {
+        setShowConflictModal(false);
+        finalizeRestore(restoreNewSessions, newResults);
+      }
+    }
+  };
+
+  const finalizeRestore = (newSessions: Session[], results: Map<string, ConflictAction>) => {
+    let added = newSessions.length;
+    let skipped = 0;
+    let overwritten = 0;
+
+    let merged = [...sessions];
+
+    for (const conflict of restoreConflicts) {
+      const action = results.get(conflict.backupSession.id) || 'skip';
+      if (action === 'overwrite') {
+        merged = merged.map(s => s.id === conflict.backupSession.id ? conflict.backupSession : s);
+        overwritten++;
+      } else {
+        skipped++;
+      }
+    }
+
+    merged = [...merged, ...newSessions];
+    onUpdateSessions(merged);
+    saveUserData(userProfile.id, 'sessions', merged);
+
+    showToast(`Restore selesai: ${added} ditambahkan, ${skipped} dilewati, ${overwritten} ditimpa`, 'success', 6000);
+
+    setRestoreConflicts([]);
+    setRestoreNewSessions([]);
+    setConflictResults(new Map());
   };
 
   const handleClearLocalData = () => {
@@ -745,7 +864,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     <h4 className="text-sm font-black text-slate-900">Ekspor Backup</h4>
                   </div>
                   <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-                    Unduh file backup berisi semua data sesi Anda dalam format JSON terenkripsi. Anda dapat memfilter berdasarkan rentang tanggal.
+                    Unduh file backup berisi semua data sesi Anda dalam format ZIP. Anda dapat memfilter berdasarkan rentang tanggal. Foto dan video tidak termasuk dalam backup.
                   </p>
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
@@ -795,20 +914,21 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     Impor file backup yang sebelumnya diekspor. File harus berasal dari akun pengguna yang sama untuk keamanan data.
                   </p>
 
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 mb-6">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-amber-700 leading-relaxed">
-                      Restore akan <strong>menimpa</strong> data sesi yang ada. Pastikan Anda telah mem-backup data terkini sebelum melakukan restore.
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 mb-6">
+                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-emerald-700 leading-relaxed">
+                      Restore akan <strong>menggabungkan</strong> data backup dengan data yang ada. Sesi baru otomatis ditambahkan, sesi duplikat akan dikonfirmasi.
                     </p>
                   </div>
 
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     onClick={handleImportBackup}
-                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/20"
+                    disabled={restoreLoading}
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50"
                   >
-                    <Upload className="w-4 h-4" />
-                    Pilih File Backup
+                    {restoreLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {restoreLoading ? 'Memproses...' : 'Pilih File Backup (.zip)'}
                   </motion.button>
                 </div>
               </div>
@@ -1068,6 +1188,114 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         cancelText="Batalkan"
         variant="danger"
       />
+
+      <AnimatePresence>
+        {showMismatchModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+            onClick={() => setShowMismatchModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900">Akun Tidak Cocok</h3>
+              </div>
+              <p className="text-sm text-slate-600 mb-6">File backup ini milik akun lain. Restore hanya dapat dilakukan menggunakan backup dari akun yang sama.</p>
+              <button
+                onClick={() => setShowMismatchModal(false)}
+                className="w-full py-3 bg-slate-900 hover:bg-black text-white rounded-xl text-sm font-bold transition-all"
+              >
+                Tutup
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showConflictModal && restoreConflicts[currentConflictIdx] && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">Konflik Sesi</h3>
+                    <p className="text-xs text-slate-400">{currentConflictIdx + 1} dari {restoreConflicts.length} konflik</p>
+                  </div>
+                </div>
+                <button onClick={() => { setShowConflictModal(false); finalizeRestore(restoreNewSessions, conflictResults); }} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                  <X className="w-4 h-4 text-slate-400" />
+                </button>
+              </div>
+
+              <p className="text-sm text-slate-600 mb-4">Sesi dengan ID yang sama sudah ada di data lokal:</p>
+
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Data Lokal</p>
+                  <p className="text-sm font-bold text-slate-900">{restoreConflicts[currentConflictIdx].existingSession.patient.name}</p>
+                  <p className="text-xs text-slate-500 mt-1">{new Date(restoreConflicts[currentConflictIdx].existingSession.date).toLocaleDateString('id-ID')}</p>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">Dari Backup</p>
+                  <p className="text-sm font-bold text-slate-900">{restoreConflicts[currentConflictIdx].backupSession.patient.name}</p>
+                  <p className="text-xs text-slate-500 mt-1">{new Date(restoreConflicts[currentConflictIdx].backupSession.date).toLocaleDateString('id-ID')}</p>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 mb-6 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={applyToAll}
+                  onChange={e => setApplyToAll(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-slate-600 font-medium">Terapkan ke semua konflik tersisa</span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleConflictAction('skip')}
+                  className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all"
+                >
+                  {applyToAll ? 'Lewati Semua' : 'Lewati'}
+                </button>
+                <button
+                  onClick={() => handleConflictAction('overwrite')}
+                  className="py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-all"
+                >
+                  {applyToAll ? 'Timpa Semua' : 'Timpa'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

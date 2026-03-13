@@ -476,6 +476,7 @@ function AppContent() {
           hospitalSettingsList={hospitalSettingsList}
           onUpdateUser={setUserProfile}
           onUpdateHospitalList={handleUpdateHospitalList}
+          onUpdateSessions={setSessions}
           onCancelSubscription={handleCancelSubscription}
           plan={selectedPlan}
           sessions={sessions}
