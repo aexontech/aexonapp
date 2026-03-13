@@ -19,7 +19,9 @@ import {
   Loader2,
   X,
   Eye,
-  EyeOff
+  EyeOff,
+  Info,
+  Users
 } from 'lucide-react';
 import { UserProfile, HospitalSettings, Session } from '../types';
 import { useToast } from './ToastProvider';
@@ -54,8 +56,10 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const [isSaved, setIsSaved] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
 
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
@@ -74,6 +78,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const isAdmin = userProfile.role === 'admin';
   const isEnterprise = plan === 'enterprise';
   const isDokterInstitusi = !isAdmin && isEnterprise;
+  const isPersonal = !isAdmin && !isEnterprise;
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfileForm({ ...profileForm, [e.target.name]: e.target.value });
@@ -84,7 +89,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
     setProfileSaving(true);
 
     try {
-      if (profileForm.name !== userProfile.name) {
+      if (profileForm.name !== userProfile.name && !isDokterInstitusi) {
         const now = new Date();
         if (userProfile.lastNameChangeDate) {
           const lastChange = new Date(userProfile.lastNameChangeDate);
@@ -102,20 +107,24 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       const authId = user?.id;
 
       if (authId) {
+        const updatePayload: Record<string, any> = {
+          specialization: profileForm.specialization,
+        };
+
+        if (!isDokterInstitusi) {
+          updatePayload.full_name = profileForm.name;
+          updatePayload.str_number = profileForm.strNumber || null;
+          updatePayload.sip_number = profileForm.sipNumber || null;
+          updatePayload.phone = profileForm.phone;
+        }
+
         const { error } = await supabase
           .from('doctor_accounts')
-          .update({
-            full_name: profileForm.name,
-            specialization: profileForm.specialization,
-            str_number: profileForm.strNumber || null,
-            sip_number: profileForm.sipNumber || null,
-            phone: profileForm.phone,
-          })
+          .update(updatePayload)
           .eq('user_id', authId);
 
         if (error) {
-          onUpdateUser(profileForm);
-          showToast('Gagal menyimpan ke server. Perubahan disimpan lokal saja.', 'warning');
+          showToast('Gagal menyimpan ke server: ' + error.message, 'error');
           setProfileSaving(false);
           return;
         }
@@ -126,16 +135,20 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       showToast('Profil berhasil disimpan.', 'success');
       setTimeout(() => setIsSaved(false), 3000);
     } catch {
-      onUpdateUser(profileForm);
-      showToast('Profil disimpan lokal (server tidak tersedia).', 'warning');
+      showToast('Gagal terhubung ke server. Silakan coba lagi.', 'error');
     }
     setProfileSaving(false);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      showToast('Password minimal 6 karakter.', 'warning');
+
+    if (!currentPassword) {
+      showToast('Masukkan password saat ini.', 'warning');
+      return;
+    }
+    if (newPassword.length < 8) {
+      showToast('Password baru minimal 8 karakter.', 'warning');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -145,11 +158,23 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
     setPasswordSaving(true);
     try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userProfile.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        showToast('Password saat ini salah.', 'error');
+        setPasswordSaving(false);
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
         showToast(error.message || 'Gagal mengubah password.', 'error');
       } else {
         showToast('Password berhasil diubah.', 'success');
+        setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       }
@@ -351,12 +376,19 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const getInitials = (name: string) =>
     name.split(' ').filter(n => !n.startsWith('Dr.')).map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-  const tabs: { id: typeof activeTab; label: string; icon: React.ComponentType<any> }[] = [
+  const visibleTabs: { id: typeof activeTab; label: string; icon: React.ComponentType<any> }[] = [
     { id: 'profil', label: 'Profil', icon: User },
     { id: 'keamanan', label: 'Keamanan', icon: Shield },
-    ...(!isDokterInstitusi ? [{ id: 'langganan' as const, label: 'Langganan', icon: CreditCard }] : []),
-    { id: 'backup', label: 'Backup', icon: HardDrive },
   ];
+
+  if (!isDokterInstitusi) {
+    visibleTabs.push({ id: 'langganan', label: 'Langganan', icon: CreditCard });
+  }
+
+  visibleTabs.push({ id: 'backup', label: 'Backup', icon: HardDrive });
+
+  const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium";
+  const readOnlyClass = "w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed text-sm font-medium";
 
   return (
     <div className="flex-1 p-8 max-w-5xl mx-auto w-full font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar">
@@ -366,7 +398,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       </div>
 
       <div className="flex gap-2 mb-8 border-b border-slate-100 pb-0">
-        {tabs.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -396,6 +428,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         )}
       </AnimatePresence>
 
+      {/* ═══════════════ TAB: PROFIL ═══════════════ */}
       {activeTab === 'profil' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
@@ -406,8 +439,22 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
               <div>
                 <h3 className="text-xl font-black text-slate-900">{profileForm.name}</h3>
                 <p className="text-sm text-slate-500">{profileForm.specialization}</p>
+                {isDokterInstitusi && (
+                  <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-teal-50 text-teal-700">
+                    Dokter Institusi
+                  </span>
+                )}
               </div>
             </div>
+
+            {isDokterInstitusi && (
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3 mb-6">
+                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  Nama dan email dikelola oleh Admin Institusi Anda. Anda hanya dapat mengubah spesialisasi.
+                </p>
+              </div>
+            )}
 
             <div className="h-px bg-slate-100 mb-8" />
 
@@ -420,9 +467,12 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     name="name"
                     value={profileForm.name}
                     onChange={handleProfileChange}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium"
+                    readOnly={isDokterInstitusi}
+                    className={isDokterInstitusi ? readOnlyClass : inputClass}
                   />
-                  <p className="text-[10px] text-slate-400 ml-1 italic">Dapat diubah sekali setiap 7 hari.</p>
+                  {!isDokterInstitusi && (
+                    <p className="text-[10px] text-slate-400 ml-1 italic">Dapat diubah sekali setiap 7 hari.</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
@@ -430,7 +480,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     type="email"
                     value={profileForm.email}
                     readOnly
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed text-sm font-medium"
+                    className={readOnlyClass}
                   />
                 </div>
                 <div className="space-y-2">
@@ -440,41 +490,46 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     name="specialization"
                     value={profileForm.specialization}
                     onChange={handleProfileChange}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium"
+                    className={inputClass}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nomor WhatsApp</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={profileForm.phone}
-                    onChange={handleProfileChange}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. STR (Surat Tanda Registrasi)</label>
-                  <input
-                    type="text"
-                    name="strNumber"
-                    value={profileForm.strNumber || ''}
-                    onChange={handleProfileChange}
-                    placeholder="16 digit nomor STR"
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium placeholder:text-slate-300"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. SIP (Surat Izin Praktik)</label>
-                  <input
-                    type="text"
-                    name="sipNumber"
-                    value={profileForm.sipNumber || ''}
-                    onChange={handleProfileChange}
-                    placeholder="Nomor SIP aktif"
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium placeholder:text-slate-300"
-                  />
-                </div>
+
+                {!isDokterInstitusi && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nomor WhatsApp</label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={profileForm.phone}
+                        onChange={handleProfileChange}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. STR (Surat Tanda Registrasi)</label>
+                      <input
+                        type="text"
+                        name="strNumber"
+                        value={profileForm.strNumber || ''}
+                        onChange={handleProfileChange}
+                        placeholder="16 digit nomor STR"
+                        className={inputClass + " placeholder:text-slate-300"}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. SIP (Surat Izin Praktik)</label>
+                      <input
+                        type="text"
+                        name="sipNumber"
+                        value={profileForm.sipNumber || ''}
+                        onChange={handleProfileChange}
+                        placeholder="Nomor SIP aktif"
+                        className={inputClass + " placeholder:text-slate-300"}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="pt-4 flex justify-end">
                 <motion.button
@@ -492,6 +547,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         </motion.div>
       )}
 
+      {/* ═══════════════ TAB: KEAMANAN ═══════════════ */}
       {activeTab === 'keamanan' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
@@ -509,13 +565,28 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
             <form onSubmit={handleChangePassword} className="max-w-md space-y-4">
               <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password Saat Ini</label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPass ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    placeholder="Masukkan password saat ini"
+                    className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm"
+                  />
+                  <button type="button" onClick={() => setShowCurrentPass(!showCurrentPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password Baru</label>
                 <div className="relative">
                   <input
                     type={showNewPass ? 'text' : 'password'}
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
-                    placeholder="Minimal 6 karakter"
+                    placeholder="Minimal 8 karakter"
                     className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm"
                   />
                   <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -550,9 +621,9 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             </form>
           </div>
 
-          <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-            <h3 className="text-lg font-black text-slate-900 mb-6">Manajemen Data</h3>
-            <div className="space-y-4">
+          {!isAdmin && (
+            <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
+              <h3 className="text-lg font-black text-slate-900 mb-6">Manajemen Data</h3>
               <div className="flex items-center justify-between p-5 bg-amber-50 rounded-xl border border-amber-100">
                 <div className="flex items-center gap-3">
                   <Database className="w-5 h-5 text-amber-600" />
@@ -569,58 +640,149 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </button>
               </div>
             </div>
-          </div>
+          )}
         </motion.div>
       )}
 
+      {/* ═══════════════ TAB: LANGGANAN ═══════════════ */}
       {activeTab === 'langganan' && !isDokterInstitusi && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {isAdmin ? (
-            <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-purple-600" />
+
+          {/* ── ADMIN INSTITUSI: enterprise plan + seat management ── */}
+          {isAdmin && (
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">Paket Enterprise</h3>
+                    <p className="text-sm text-slate-500">Kelola paket enterprise institusi Anda.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900">Paket Enterprise</h3>
-                  <p className="text-sm text-slate-500">Kelola paket enterprise institusi Anda.</p>
+
+                <div className="h-px bg-slate-100 mb-6" />
+
+                <div className="p-6 bg-[#0C1E35] rounded-2xl text-white mb-6">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest block mb-1">Paket Aktif</span>
+                      <h4 className="text-2xl font-black">Enterprise Access</h4>
+                    </div>
+                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full">Aktif</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-6">
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Berlaku Hingga</p>
+                      <p className="text-lg font-black">12 Des 2026</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Admin</p>
+                      <p className="text-lg font-black">{userProfile.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Enterprise ID</p>
+                      <p className="text-sm font-bold font-mono">{userProfile.enterprise_id || '-'}</p>
+                    </div>
+                  </div>
                 </div>
+
+                <button
+                  onClick={() => showToast('Hubungi tim sales Aexon untuk perpanjangan enterprise.', 'info')}
+                  className="px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all text-sm"
+                >
+                  Perpanjang Enterprise
+                </button>
               </div>
 
-              <div className="h-px bg-slate-100 mb-6" />
+              <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">Seat Dokter</h3>
+                    <p className="text-sm text-slate-500">Kelola jumlah seat dokter di institusi Anda.</p>
+                  </div>
+                </div>
 
-              <div className="p-6 bg-[#0C1E35] rounded-2xl text-white mb-6">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest block mb-1">Paket Aktif</span>
-                    <h4 className="text-2xl font-black">Enterprise Access</h4>
+                <div className="h-px bg-slate-100 mb-6" />
+
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="p-5 bg-slate-50 rounded-xl text-center">
+                    <p className="text-2xl font-black text-[#0C1E35]">10</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total Seat</p>
                   </div>
-                  <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full">Aktif</span>
-                </div>
-                <div className="grid grid-cols-3 gap-6">
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Jumlah Seat</p>
-                    <p className="text-lg font-black">10 Dokter</p>
+                  <div className="p-5 bg-emerald-50 rounded-xl text-center">
+                    <p className="text-2xl font-black text-emerald-600">7</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Terpakai</p>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Berlaku Hingga</p>
-                    <p className="text-lg font-black">12 Des 2026</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Admin</p>
-                    <p className="text-lg font-black">{userProfile.name}</p>
+                  <div className="p-5 bg-blue-50 rounded-xl text-center">
+                    <p className="text-2xl font-black text-blue-600">3</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Tersedia</p>
                   </div>
                 </div>
+
+                <div className="space-y-3 mb-6">
+                  <h4 className="text-sm font-bold text-slate-900">Dokter Terdaftar</h4>
+                  <div className="rounded-xl border border-slate-100 overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nama</th>
+                          <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Spesialisasi</th>
+                          <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                          <th className="px-5 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {[
+                          { name: 'Dr. Budi Santoso, Sp.PD', spec: 'Penyakit Dalam', status: 'active' },
+                          { name: 'Dr. Rina Wijaya, Sp.B', spec: 'Bedah Umum', status: 'active' },
+                          { name: 'Dr. Ahmad Fauzi, Sp.OG', spec: 'Obstetri & Ginekologi', status: 'active' },
+                          { name: 'Dr. Maya Sari, Sp.A', spec: 'Anak', status: 'active' },
+                          { name: 'Dr. Hendra Pratama, Sp.JP', spec: 'Jantung & Pembuluh Darah', status: 'active' },
+                          { name: 'Dr. Siti Nurhaliza, Sp.M', spec: 'Mata', status: 'inactive' },
+                          { name: 'Dr. Dedi Kurniawan, Sp.THT', spec: 'THT-KL', status: 'active' },
+                        ].map((doc, i) => (
+                          <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-5 py-3 font-bold text-slate-900">{doc.name}</td>
+                            <td className="px-5 py-3 text-slate-600">{doc.spec}</td>
+                            <td className="px-5 py-3">
+                              <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full ${
+                                doc.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                {doc.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              <button
+                                onClick={() => showToast('Fitur kelola seat akan tersedia segera.', 'info')}
+                                className="text-xs text-red-500 hover:text-red-700 font-bold transition-colors"
+                              >
+                                Hapus
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => showToast('Fitur tambah seat akan tersedia segera.', 'info')}
+                  className="px-5 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
+                >
+                  + Tambah Seat Dokter
+                </button>
               </div>
-
-              <button
-                onClick={() => showToast('Hubungi tim sales Aexon untuk perpanjangan enterprise.', 'info')}
-                className="px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all text-sm"
-              >
-                Perpanjang Enterprise
-              </button>
             </div>
-          ) : (
+          )}
+
+          {/* ── PERSONAL: plan status + billing + CTA ── */}
+          {isPersonal && (
             <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
@@ -717,27 +879,35 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </div>
               </div>
 
-              {(plan === null || plan === 'subscription') && (
-                <div className="mt-6 p-5 bg-blue-50 rounded-xl border border-blue-100 flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-[#0C1E35]">Perpanjang Langganan</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Jangan sampai akses Anda terputus.</p>
-                  </div>
-                  <button
-                    onClick={() => showToast('Mengarahkan ke halaman perpanjangan...', 'info')}
-                    className="px-5 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
-                  >
-                    Perpanjang Sekarang
-                  </button>
+              <div className="mt-6 p-5 bg-blue-50 rounded-xl border border-blue-100 flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-[#0C1E35]">Perpanjang Langganan</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">Jangan sampai akses Anda terputus.</p>
                 </div>
-              )}
+                <button
+                  onClick={() => showToast('Mengarahkan ke halaman perpanjangan...', 'info')}
+                  className="px-5 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
+                >
+                  Perpanjang Sekarang
+                </button>
+              </div>
             </div>
           )}
         </motion.div>
       )}
 
+      {/* ═══════════════ TAB: BACKUP ═══════════════ */}
       {activeTab === 'backup' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          {isDokterInstitusi && (
+            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
+              <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 leading-relaxed">
+                Langganan Anda dikelola oleh <strong>Admin Institusi</strong>. Hubungi admin Anda untuk informasi paket dan pembayaran.
+              </p>
+            </div>
+          )}
+
           <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
@@ -762,7 +932,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   type="date"
                   value={backupDateFrom}
                   onChange={(e) => setBackupDateFrom(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium"
+                  className={inputClass}
                 />
               </div>
               <div className="space-y-2">
@@ -771,7 +941,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   type="date"
                   value={backupDateTo}
                   onChange={(e) => setBackupDateTo(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium"
+                  className={inputClass}
                 />
               </div>
             </div>
