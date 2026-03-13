@@ -28,7 +28,6 @@ export default function Launcher({ onLogin }: LauncherProps) {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
 
-  const [regPrefix, setRegPrefix] = useState<'Dr.' | 'dr.' | 'Prof. Dr.'>('Dr.');
   const [regName, setRegName] = useState('');
   const [regStr, setRegStr] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -139,7 +138,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
       return;
     }
 
-    const fullName = `${regPrefix} ${regName.trim()}`;
+    const fullName = regName.trim();
 
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -391,26 +390,6 @@ export default function Launcher({ onLogin }: LauncherProps) {
                 <p className="text-sm text-gray-500 mb-6">Buat akun dokter baru</p>
 
                 <form onSubmit={handleRegister} className="space-y-3.5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-500 ml-1">Gelar</label>
-                    <div className="flex gap-2">
-                      {(['Dr.', 'dr.', 'Prof. Dr.'] as const).map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setRegPrefix(p)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                            regPrefix === p
-                              ? 'bg-[#0D9488] text-white'
-                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-gray-500 ml-1">Nama Lengkap *</label>
                     <div className="relative">
