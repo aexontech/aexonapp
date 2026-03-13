@@ -11,12 +11,24 @@ import Settings from './components/Settings';
 import Gallery from './components/Gallery';
 import AddDoctor from './components/AddDoctor';
 import ManageSubscription from './components/ManageSubscription';
+import EulaModal from './components/EulaModal';
+import ConfirmModal from './components/ConfirmModal';
+import ToastProvider, { useToast } from './components/ToastProvider';
 import { PatientData, Session, UserProfile, HospitalSettings, UserRole } from './types';
+import { saveUserData, loadUserData } from './lib/storage';
+import { AlertTriangle } from 'lucide-react';
 
-function App() {
+function AppContent() {
+  const { showToast } = useToast();
+  const [eulaAccepted, setEulaAccepted] = useState(() => {
+    try {
+      const stored = localStorage.getItem('aexon_eula_accepted');
+      return stored ? JSON.parse(stored).accepted === true : false;
+    } catch { return false; }
+  });
+
   const [currentView, setCurrentView] = useState<'launcher' | 'pricing' | 'dashboard' | 'admin-dashboard' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'add-doctor' | 'manage-subscription'>('launcher');
-  const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'token' | 'enterprise' | null>(null);
-  const [tokens, setTokens] = useState<number>(0);
+  const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | null>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(7);
   
   const [patientData, setPatientData] = useState<PatientData | null>(null);
@@ -25,6 +37,8 @@ function App() {
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isRecordingActive, setIsRecordingActive] = useState(false);
+  const [showNavGuard, setShowNavGuard] = useState(false);
+  const [pendingNavTarget, setPendingNavTarget] = useState<string | null>(null);
   const [doctors, setDoctors] = useState<UserProfile[]>([
     {
       id: 'DOC-001',
@@ -65,6 +79,8 @@ function App() {
   ]);
   const [editingDoctor, setEditingDoctor] = useState<UserProfile | null>(null);
 
+  const hasActiveAccess = selectedPlan === 'subscription' || selectedPlan === 'enterprise' || (trialDaysLeft !== null && trialDaysLeft > 0);
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isRecordingActive) {
@@ -78,22 +94,39 @@ function App() {
 
   const handleNavigate = (menu: any) => {
     if (currentView === 'active-session' && isRecordingActive) {
-      const confirmLeave = window.confirm('Sesi aktif sedang berjalan. Apakah Anda yakin ingin pindah halaman? Sesi akan tetap berjalan di latar belakang, namun disarankan untuk menyelesaikan sesi terlebih dahulu untuk memastikan semua data tersimpan.');
-      if (!confirmLeave) return;
+      setPendingNavTarget(menu);
+      setShowNavGuard(true);
+      return;
+    }
+    if ((menu === 'session-form' || menu === 'active-session') && !hasActiveAccess) {
+      setCurrentView('pricing');
+      return;
     }
     setCurrentView(menu);
   };
 
+  const confirmNavGuard = () => {
+    setShowNavGuard(false);
+    if (pendingNavTarget) {
+      setCurrentView(pendingNavTarget as any);
+      setPendingNavTarget(null);
+    }
+  };
+
+  const cancelNavGuard = () => {
+    setShowNavGuard(false);
+    setPendingNavTarget(null);
+  };
+
   useEffect(() => {
     if (userProfile) {
-      const savedSessions = localStorage.getItem(`aexon_sessions_${userProfile.id}`);
-      if (savedSessions) {
+      const parsed = loadUserData<any[]>(userProfile.id, 'sessions');
+      if (parsed && Array.isArray(parsed)) {
         try {
-          const parsed = JSON.parse(savedSessions);
           const formatted = parsed.map((s: any) => ({
             ...s,
             date: new Date(s.date),
-            captures: s.captures.map((c: any) => ({
+            captures: (s.captures || []).map((c: any) => ({
               ...c,
               timestamp: new Date(c.timestamp)
             }))
@@ -104,10 +137,39 @@ function App() {
           setSessions([]);
         }
       } else {
-        setSessions([]);
+        const legacySessions = localStorage.getItem(`aexon_sessions_${userProfile.id}`);
+        if (legacySessions) {
+          try {
+            const parsed2 = JSON.parse(legacySessions);
+            const formatted = parsed2.map((s: any) => ({
+              ...s,
+              date: new Date(s.date),
+              captures: (s.captures || []).map((c: any) => ({
+                ...c,
+                timestamp: new Date(c.timestamp)
+              }))
+            }));
+            setSessions(formatted);
+            saveUserData(userProfile.id, 'sessions', parsed2);
+          } catch {
+            setSessions([]);
+          }
+        } else {
+          setSessions([]);
+        }
       }
     }
   }, [userProfile?.id]);
+
+  const persistSessions = (updatedSessions: Session[]) => {
+    if (userProfile) {
+      try {
+        saveUserData(userProfile.id, 'sessions', updatedSessions);
+      } catch (e) {
+        showToast('Penyimpanan penuh. Beberapa foto mungkin tidak tersimpan. Pertimbangkan untuk menghapus sesi lama.', 'error', 8000);
+      }
+    }
+  };
 
   const [hospitalSettingsList, setHospitalSettingsList] = useState<HospitalSettings[]>([
     {
@@ -183,11 +245,8 @@ function App() {
     }
   };
 
-  const handleSelectPlan = (plan: 'subscription' | 'token') => {
+  const handleSelectPlan = (plan: 'subscription') => {
     setSelectedPlan(plan);
-    if (plan === 'token') {
-      setTokens(25);
-    }
     setCurrentView('dashboard');
   };
 
@@ -196,21 +255,10 @@ function App() {
     setCurrentView('active-session');
   };
 
-  const handleEndSession = (session: Session, tokenDeducted: boolean) => {
+  const handleEndSession = (session: Session) => {
     const updatedSessions = [session, ...sessions];
     setSessions(updatedSessions);
-    
-    if (userProfile) {
-      try {
-        localStorage.setItem(`aexon_sessions_${userProfile.id}`, JSON.stringify(updatedSessions));
-      } catch (e) {
-        console.warn("Failed to save sessions to localStorage (likely quota exceeded due to many photos)", e);
-      }
-    }
-
-    if (tokenDeducted) {
-      setTokens(prev => Math.max(0, prev - 1));
-    }
+    persistSessions(updatedSessions);
     setPatientData(null);
     setViewingSession(session);
     setCurrentView('report-generator');
@@ -229,23 +277,18 @@ function App() {
   const handleUpdateSession = (updatedSession: Session) => {
     const updatedSessions = sessions.map(s => s.id === updatedSession.id ? updatedSession : s);
     setSessions(updatedSessions);
-    if (userProfile) {
-      localStorage.setItem(`aexon_sessions_${userProfile.id}`, JSON.stringify(updatedSessions));
-    }
+    persistSessions(updatedSessions);
   };
 
   const handleDeleteSession = (sessionId: string) => {
     const updatedSessions = sessions.filter(s => s.id !== sessionId);
     setSessions(updatedSessions);
-    if (userProfile) {
-      localStorage.setItem(`aexon_sessions_${userProfile.id}`, JSON.stringify(updatedSessions));
-    }
+    persistSessions(updatedSessions);
   };
 
   const handleLogout = () => {
     setCurrentView('launcher');
     setSelectedPlan(null);
-    setTokens(0);
     setPatientData(null);
     setSessions([]);
     setViewingSession(null);
@@ -254,8 +297,7 @@ function App() {
 
   const handleCancelSubscription = () => {
     setSelectedPlan(null);
-    setTokens(0);
-    alert('Paket berlangganan telah dibatalkan.');
+    showToast('Paket berlangganan telah dibatalkan.', 'warning');
   };
 
   const handleAddDoctor = (doctorData: any) => {
@@ -292,6 +334,15 @@ function App() {
     }
   };
 
+  if (!eulaAccepted) {
+    return (
+      <EulaModal
+        onAccept={() => setEulaAccepted(true)}
+        onDecline={() => {}}
+      />
+    );
+  }
+
   if (currentView === 'launcher') {
     return <Launcher onLogin={handleLogin} />;
   }
@@ -309,7 +360,6 @@ function App() {
         onNavigate={handleNavigate}
         onLogout={handleLogout}
         plan={selectedPlan}
-        tokens={tokens}
         trialDaysLeft={trialDaysLeft}
         userProfile={userProfile!}
       >
@@ -317,7 +367,7 @@ function App() {
         <Dashboard 
           sessions={sessions} 
           onNewSession={() => {
-            if (!selectedPlan || (selectedPlan === 'token' && tokens === 0)) {
+            if (!hasActiveAccess) {
               setCurrentView('pricing');
             } else {
               setCurrentView('session-form');
@@ -327,6 +377,9 @@ function App() {
           onViewGallery={handleViewGallery}
           onDeleteSession={handleDeleteSession}
           userProfile={userProfile}
+          hasActiveAccess={hasActiveAccess}
+          selectedPlan={selectedPlan}
+          trialDaysLeft={trialDaysLeft}
         />
       )}
 
@@ -377,10 +430,9 @@ function App() {
         />
       )}
       
-      {currentView === 'active-session' && patientData && selectedPlan && (
+      {currentView === 'active-session' && patientData && (
         <EndoscopyApp 
-          plan={selectedPlan}
-          tokens={tokens}
+          plan={selectedPlan || 'subscription'}
           patientData={patientData}
           onEndSession={handleEndSession}
           onLogout={handleLogout}
@@ -412,6 +464,8 @@ function App() {
             setViewingSession(updatedSession);
             handleUpdateSession(updatedSession);
           }}
+          userProfile={userProfile}
+          allSessions={sessions}
         />
       )}
 
@@ -423,10 +477,31 @@ function App() {
           onUpdateHospitalList={handleUpdateHospitalList}
           onCancelSubscription={handleCancelSubscription}
           plan={selectedPlan}
+          sessions={sessions}
         />
       )}
     </MainLayout>
+
+    <ConfirmModal
+      isOpen={showNavGuard}
+      onConfirm={confirmNavGuard}
+      onCancel={cancelNavGuard}
+      title="Keluar dari Sesi?"
+      message="Prosedur sedang berjalan. Keluar sekarang akan menghapus data yang belum disimpan. Yakin keluar?"
+      confirmText="Keluar"
+      cancelText="Batal"
+      variant="warning"
+      icon={<AlertTriangle className="w-10 h-10 text-amber-500" />}
+    />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }
 

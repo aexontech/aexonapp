@@ -26,6 +26,7 @@ function calculateAge(dob: string): number | null {
 
 export default function SessionForm({ onSubmit, onCancel, userProfile }: SessionFormProps) {
   const sessionId = useMemo(() => Math.random().toString(36).substr(2, 9).toUpperCase(), []);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [formData, setFormData] = useState<PatientData>({
     name: '',
     rmNumber: '',
@@ -93,10 +94,11 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
     e.preventDefault();
     
     if (formData.category === 'Kamar Operasi' && !formData.diagnosis_icd10) {
-      alert('Diagnosis Utama wajib diisi untuk kategori Kamar Operasi (OK).');
+      setValidationError('Diagnosis Utama wajib diisi untuk kategori Kamar Operasi (OK).');
       return;
     }
 
+    setValidationError(null);
     if (formData.name && formData.rmNumber && formData.procedures_icd9[0]) {
       onSubmit(formData);
     }
@@ -379,7 +381,19 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                     </div>
                   </div>
                 </div>
-                <div className="flex items-end">
+                <div className="flex flex-col items-end gap-3">
+                  <AnimatePresence>
+                    {validationError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="w-full bg-red-50 border border-red-200 text-red-600 text-xs font-bold p-4 rounded-2xl text-center"
+                      >
+                        {validationError}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                   <motion.button
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.98 }}

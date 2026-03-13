@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Lock, User, KeyRound, Building2, ShieldCheck, ArrowRight, Globe, Mail, Eye, EyeOff } from 'lucide-react';
 import { Logo, Pattern } from './Logo';
 
-// Custom Google Icon
 const GoogleIcon = () => (
   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
     <path
@@ -42,13 +41,13 @@ export default function Launcher({ onLogin }: LauncherProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    // Simulate authentication
     setTimeout(() => {
       if (isRegistering) {
         if (username && password && strNumber && sipNumber && fullName) {
@@ -88,14 +87,17 @@ export default function Launcher({ onLogin }: LauncherProps) {
     }, 1500);
   };
 
+  const handleForgotPassword = () => {
+    setResetSent(true);
+    setTimeout(() => setResetSent(false), 5000);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 font-sans text-slate-900 relative overflow-hidden">
-      {/* Dynamic Background */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full bg-slate-50" />
         <Pattern className="text-blue-500 opacity-[0.03]" />
         
-        {/* Animated Blobs */}
         <motion.div 
           animate={{ 
             scale: [1, 1.2, 1],
@@ -123,7 +125,6 @@ export default function Launcher({ onLogin }: LauncherProps) {
         className="max-w-xl w-full relative z-10"
       >
         <div className="bg-white/80 backdrop-blur-3xl border border-white rounded-[3rem] p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] relative overflow-hidden">
-          {/* Top accent bar */}
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400" />
           
           <div className="flex flex-col items-center mb-12">
@@ -144,7 +145,6 @@ export default function Launcher({ onLogin }: LauncherProps) {
             </div>
           </div>
 
-          {/* Mode Switcher */}
           {!isRegistering && (
             <div className="space-y-6 mb-10">
               <div className="flex p-2 bg-slate-50 rounded-2xl border border-slate-100">
@@ -302,7 +302,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                   {!isRegistering && (
                     <button 
                       type="button" 
-                      onClick={() => alert('Fitur reset password telah dikirim ke email terdaftar.')}
+                      onClick={handleForgotPassword}
                       className="text-[9px] font-black text-blue-600 hover:text-blue-500 transition-colors uppercase tracking-widest"
                     >
                       Lupa?
@@ -329,6 +329,19 @@ export default function Launcher({ onLogin }: LauncherProps) {
                   </button>
                 </div>
               </div>
+
+              <AnimatePresence>
+                {resetSent && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="bg-blue-50 border border-blue-100 text-blue-600 text-[10px] font-bold p-4 rounded-2xl text-center"
+                  >
+                    Link reset password telah dikirim ke email terdaftar. Silakan cek inbox Anda.
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {error && (
                 <motion.div 
@@ -391,9 +404,15 @@ export default function Launcher({ onLogin }: LauncherProps) {
             </motion.form>
           </AnimatePresence>
 
-          <div className="mt-12 pt-8 border-t border-slate-100 text-center">
+          <div className="mt-12 pt-8 border-t border-slate-100 text-center space-y-2">
+            <p className="text-[10px] font-bold text-slate-400">
+              Kelola langganan di{' '}
+              <a href="https://aexon.id" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 transition-colors underline underline-offset-2">
+                aexon.id
+              </a>
+            </p>
             <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">
-              © 2026 PT Aexon Inovasi Teknologi
+              &copy; 2026 PT Aexon Inovasi Teknologi
             </p>
           </div>
         </div>

@@ -22,7 +22,7 @@ interface ReportGeneratorProps {
   onBack: () => void;
   hospitalSettingsList: HospitalSettings[];
   userProfile: UserProfile;
-  plan: 'subscription' | 'token' | 'enterprise' | null;
+  plan: 'subscription' | 'enterprise' | null;
 }
 
 export default function ReportGenerator({ session, onBack, hospitalSettingsList, userProfile, plan }: ReportGeneratorProps) {
@@ -179,7 +179,6 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
   };
 
   const handleSavePDF = () => {
-    alert('Fitur ini akan membuka dialog penyimpanan PDF bawaan browser Anda. Silakan pilih "Save as PDF" pada menu Destination/Printer.');
     window.print();
   };
 

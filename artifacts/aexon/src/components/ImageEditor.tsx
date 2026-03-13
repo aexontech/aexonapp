@@ -320,7 +320,7 @@ export default function ImageEditor({ imageUrl, initialShapes = [], onSave, onCl
                   return (
                     <Arrow
                       {...commonProps}
-                      points={shape.points}
+                      points={shape.points || [0, 0, 50, 50]}
                       fill={shape.color}
                       pointerLength={10}
                       pointerWidth={10}

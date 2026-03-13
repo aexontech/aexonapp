@@ -1,21 +1,20 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Camera, Video, Square, Download, Settings, RefreshCw, AlertCircle, Maximize, Minimize, FileImage, FileVideo, CheckCircle2, ChevronDown, Sliders, HardDrive, Info, X } from 'lucide-react';
+import { Camera, Video, Square, Download, Settings, RefreshCw, AlertCircle, Maximize, Minimize, FileImage, FileVideo, CheckCircle2, ChevronDown, Sliders, HardDrive, Info, X, Trash2, Edit3, MousePointer2 } from 'lucide-react';
 import { PatientData, Capture, Session } from '../types';
 import ImageEditor from './ImageEditor';
-import { Trash2, Edit3, MousePointer2 } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 import { Pattern } from './Logo';
 
 interface EndoscopyAppProps {
-  plan: 'subscription' | 'token' | 'enterprise';
-  tokens: number;
+  plan: 'subscription' | 'enterprise';
   patientData: PatientData;
-  onEndSession: (session: Session, tokenDeducted: boolean) => void;
+  onEndSession: (session: Session) => void;
   onLogout: () => void;
   onRecordingStatusChange?: (isRecording: boolean) => void;
 }
 
-export default function EndoscopyApp({ plan, tokens, patientData, onEndSession, onLogout, onRecordingStatusChange }: EndoscopyAppProps) {
+export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout, onRecordingStatusChange }: EndoscopyAppProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -64,11 +63,16 @@ export default function EndoscopyApp({ plan, tokens, patientData, onEndSession, 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedCaptureIds]);
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const handleDeleteSelected = () => {
-    if (window.confirm(`Hapus ${selectedCaptureIds.length} item terpilih?`)) {
-      setCaptures(prev => prev.filter(c => !selectedCaptureIds.includes(c.id)));
-      setSelectedCaptureIds([]);
-    }
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteSelected = () => {
+    setCaptures(prev => prev.filter(c => !selectedCaptureIds.includes(c.id)));
+    setSelectedCaptureIds([]);
+    setShowDeleteModal(false);
   };
 
   const toggleCaptureSelection = (id: string) => {
@@ -420,10 +424,7 @@ export default function EndoscopyApp({ plan, tokens, patientData, onEndSession, 
         status: 'completed'
       };
       
-      // Deduct token if plan is token
-      const tokenDeducted = plan === 'token';
-      
-      onEndSession(session, tokenDeducted);
+      onEndSession(session);
       setShowFinishConfirmation(false);
     } catch (err) {
       console.error("Error finishing session:", err);
@@ -1132,6 +1133,17 @@ export default function EndoscopyApp({ plan, tokens, patientData, onEndSession, 
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onConfirm={confirmDeleteSelected}
+        onCancel={() => setShowDeleteModal(false)}
+        title="Hapus Item Terpilih?"
+        message={`Apakah Anda yakin ingin menghapus ${selectedCaptureIds.length} item terpilih? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Ya, Hapus"
+        cancelText="Batalkan"
+        variant="danger"
+      />
     </div>
   );
 }

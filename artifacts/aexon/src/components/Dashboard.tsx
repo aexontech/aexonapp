@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, Calendar, FileText, User, Clock, Settings, LogOut, Sparkles, Activity, ShieldCheck, TrendingUp, BarChart3, Clock3, ArrowRight, Zap, Camera, Database, ChevronRight, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, FileText, User, Clock, Settings, LogOut, Sparkles, Activity, ShieldCheck, TrendingUp, BarChart3, Clock3, ArrowRight, Zap, Camera, Database, ChevronRight, RefreshCw, Trash2, X, Lock, AlertTriangle, HardDrive, ExternalLink } from 'lucide-react';
 import { Session, UserProfile } from '../types';
 import { Pattern } from './Logo';
+import { getLocalStorageUsage } from '../lib/storage';
 
 interface DashboardProps {
   sessions: Session[];
@@ -11,13 +12,18 @@ interface DashboardProps {
   onViewGallery: (session: Session) => void;
   onDeleteSession: (sessionId: string) => void;
   userProfile: UserProfile;
+  hasActiveAccess?: boolean;
+  selectedPlan?: 'subscription' | 'enterprise' | null;
+  trialDaysLeft?: number | null;
 }
 
-export default function Dashboard({ sessions, onNewSession, onViewSession, onViewGallery, onDeleteSession, userProfile }: DashboardProps) {
+export default function Dashboard({ sessions, onNewSession, onViewSession, onViewGallery, onDeleteSession, userProfile, hasActiveAccess = true, selectedPlan = null, trialDaysLeft = null }: DashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [sessionToDelete, setSessionToDelete] = useState<{ id: string, name: string } | null>(null);
   const itemsPerPage = 8;
+
+  const storageInfo = useMemo(() => getLocalStorageUsage(), [sessions.length]);
 
   const handleDeleteClick = (sessionId: string, patientName: string) => {
     setSessionToDelete({ id: sessionId, name: patientName });
@@ -44,20 +50,53 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
 
   const totalMedia = sessions.reduce((acc, s) => acc + s.captures.length, 0);
 
+  const getCategoryBorderColor = (category: string) => {
+    switch (category) {
+      case 'Poli': return 'border-l-4 border-l-blue-500';
+      case 'Kamar Operasi': return 'border-l-4 border-l-orange-500';
+      case 'IGD': return 'border-l-4 border-l-red-500';
+      default: return 'border-l-4 border-l-slate-300';
+    }
+  };
+
   const stats = [
     { label: 'Total Sesi', value: sessions.length, icon: FileText, color: 'text-white', bg: 'bg-blue-600', gradient: 'from-blue-600 to-indigo-600', trend: '+12%', description: 'Sesi tersimpan' },
     { label: 'Bulan Ini', value: sessions.filter(s => s.date.getMonth() === new Date().getMonth()).length, icon: TrendingUp, color: 'text-white', bg: 'bg-emerald-500', gradient: 'from-emerald-500 to-teal-500', trend: '+5%', description: 'Pertumbuhan' },
     { label: 'Total Media', value: totalMedia, icon: Camera, color: 'text-white', bg: 'bg-rose-500', gradient: 'from-rose-500 to-orange-500', trend: '+18%', description: 'Foto & Video' },
-    { label: 'Storage', value: '210 GB', icon: Database, color: 'text-white', bg: 'bg-violet-600', gradient: 'from-violet-600 to-purple-600', trend: '92%', description: 'Tersedia' },
+    { label: 'Storage', value: storageInfo.usedFormatted, icon: Database, color: 'text-white', bg: 'bg-violet-600', gradient: 'from-violet-600 to-purple-600', trend: storageInfo.usedMB > 4 ? 'Warning' : 'OK', description: 'Terpakai' },
   ];
+
+  const showSubscriptionBanner = !hasActiveAccess && selectedPlan === null && (trialDaysLeft === null || trialDaysLeft === 0);
 
   return (
     <div className="flex-1 font-sans text-slate-900 relative overflow-y-auto h-full custom-scrollbar bg-slate-50 px-8 lg:px-12 py-10">
-      {/* Dynamic Background Elements */}
       <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-400/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-purple-400/10 rounded-full blur-[100px] pointer-events-none" />
+
+      {showSubscriptionBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-center justify-between relative z-10"
+        >
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+            <p className="text-sm font-semibold text-amber-800">
+              Langganan Anda belum aktif. Untuk memulai sesi baru, silakan berlangganan di aexon.id
+            </p>
+          </div>
+          <a
+            href="https://aexon.id/harga"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200"
+          >
+            Berlangganan Sekarang
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </motion.div>
+      )}
       
-      {/* Welcome Section */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8 mb-12 relative z-10">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
@@ -79,7 +118,6 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
         </motion.div>
       </div>
 
-      {/* Stats Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 relative z-10">
         {stats.map((stat, i) => (
           <motion.div
@@ -87,15 +125,20 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="group relative bg-white p-6 rounded-[2.5rem] border border-white shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 overflow-hidden"
+            className="group relative bg-white p-6 rounded-2xl border border-white shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-200 overflow-hidden"
           >
-            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-5 group-hover:opacity-10 transition-opacity duration-500 rounded-full -mr-16 -mt-16`} />
+            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-5 group-hover:opacity-10 transition-opacity duration-200 rounded-full -mr-16 -mt-16`} />
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-8">
-                <div className={`w-12 h-12 rounded-2xl ${stat.bg} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500`}>
+                <div className={`w-12 h-12 rounded-2xl ${stat.bg} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200`}>
                   <stat.icon className={`w-6 h-6 ${stat.color === 'text-white' ? 'text-white' : stat.color}`} />
                 </div>
-                <div className="px-2 py-1 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-black text-slate-400">
+                <div className={`px-2 py-1 rounded-lg border text-[10px] font-black ${
+                  stat.label === 'Storage' && storageInfo.usedMB > 4 
+                    ? 'bg-red-50 border-red-100 text-red-500' 
+                    : 'bg-slate-50 border-slate-100 text-slate-400'
+                }`}>
+                  {stat.label === 'Storage' && storageInfo.usedMB > 4 && <AlertTriangle className="w-3 h-3 inline mr-1" />}
                   {stat.trend}
                 </div>
               </div>
@@ -109,29 +152,37 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
         ))}
       </div>
 
-      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12 relative z-10">
-        {/* Session History Section */}
         <div className="lg:col-span-8 space-y-8">
           <div className="bg-white/90 backdrop-blur-3xl p-10 rounded-[3.5rem] border border-white shadow-2xl shadow-slate-200/60 relative overflow-hidden group/history">
             <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-[100px] -mr-48 -mt-48 pointer-events-none" />
             
             <motion.button 
-              whileHover={{ scale: 1.02, y: -4 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={hasActiveAccess ? { scale: 1.02, y: -4 } : {}}
+              whileTap={hasActiveAccess ? { scale: 0.98 } : {}}
               onClick={onNewSession}
-              className="w-full py-6 bg-blue-600 text-white text-sm font-black rounded-[2rem] shadow-2xl shadow-blue-600/20 flex items-center justify-center gap-4 group relative overflow-hidden mb-8"
+              disabled={!hasActiveAccess}
+              className={`w-full py-6 text-sm font-black rounded-2xl flex items-center justify-center gap-4 group relative overflow-hidden mb-8 transition-all duration-200 ${
+                hasActiveAccess 
+                  ? 'bg-blue-600 text-white shadow-2xl shadow-blue-600/20' 
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+              title={!hasActiveAccess ? 'Diperlukan langganan aktif' : ''}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center relative z-10 group-hover:bg-white/20 transition-colors">
-                <Plus className="w-6 h-6 transition-transform duration-500" />
+              {hasActiveAccess && (
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+              )}
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center relative z-10 transition-colors ${
+                hasActiveAccess ? 'bg-white/10 group-hover:bg-white/20' : 'bg-slate-300/30'
+              }`}>
+                {hasActiveAccess ? <Plus className="w-6 h-6" /> : <Lock className="w-5 h-5" />}
               </div>
               <span className="relative z-10 tracking-[0.1em]">MULAI SESI OPERASI BARU</span>
             </motion.button>
 
             <div className="flex flex-col sm:flex-row items-center justify-between gap-8 mb-10 relative z-10">
               <div className="flex items-center gap-6">
-                <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-600/30 transition-transform duration-500">
+                <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-600/30 transition-transform duration-200">
                   <Clock3 className="w-8 h-8 text-white" />
                 </div>
                 <div>
@@ -148,14 +199,48 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-3xl text-sm font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all shadow-inner"
+                  className="w-full pl-14 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-3xl text-sm font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all shadow-inner"
                   placeholder="Cari RM atau Nama..."
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
 
             <div className="space-y-4 relative z-10">
-              {filteredSessions.length === 0 ? (
+              {sessions.length === 0 && !searchTerm ? (
+                <div className="py-24 text-center">
+                  <div className="w-28 h-28 bg-blue-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 border border-blue-100">
+                    <div className="relative">
+                      <FileText className="w-12 h-12 text-blue-300" />
+                      <div className="absolute -right-1 -bottom-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                        <Plus className="w-3.5 h-3.5 text-white" />
+                      </div>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-black text-slate-700 mb-3 tracking-tight">Belum ada sesi</h3>
+                  <p className="text-sm text-slate-400 font-medium mb-8 max-w-sm mx-auto">
+                    Mulai sesi baru untuk mendokumentasikan prosedur endoskopi
+                  </p>
+                  {hasActiveAccess && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={onNewSession}
+                      className="inline-flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all duration-200 shadow-xl shadow-blue-500/20"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Mulai Sesi Baru
+                    </motion.button>
+                  )}
+                </div>
+              ) : filteredSessions.length === 0 ? (
                 <div className="py-32 text-center">
                   <motion.div 
                     animate={{ y: [0, -10, 0] }}
@@ -175,10 +260,10 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
-                        className="group/item flex flex-col sm:flex-row items-center justify-between p-6 bg-slate-50/50 hover:bg-white rounded-[2.5rem] border border-transparent hover:border-blue-100 hover:shadow-2xl hover:shadow-blue-500/5 transition-all duration-500"
+                        className={`group/item flex flex-col sm:flex-row items-center justify-between p-6 bg-slate-50/50 hover:bg-white rounded-2xl ${getCategoryBorderColor(session.patient.category)} border-y border-r border-transparent hover:border-blue-100 hover:shadow-2xl hover:shadow-blue-500/5 transition-all duration-200`}
                       >
                         <div className="flex items-center gap-6 w-full sm:w-auto mb-6 sm:mb-0">
-                          <div className="w-16 h-16 rounded-3xl bg-white flex items-center justify-center text-slate-900 font-black text-xl border border-slate-100 shadow-sm group-hover/item:bg-blue-600 group-hover/item:text-white transition-all duration-500">
+                          <div className="w-16 h-16 rounded-3xl bg-white flex items-center justify-center text-slate-900 font-black text-xl border border-slate-100 shadow-sm group-hover/item:bg-blue-600 group-hover/item:text-white transition-all duration-200">
                             {session.patient.name.charAt(0)}
                           </div>
                           <div>
@@ -201,7 +286,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               onClick={() => onViewGallery(session)}
-                              className="p-4 bg-white hover:bg-slate-900 text-slate-400 hover:text-white rounded-2xl transition-all border border-slate-100 hover:border-slate-900 shadow-sm"
+                              className="p-4 bg-white hover:bg-slate-900 text-slate-400 hover:text-white rounded-2xl transition-all duration-200 border border-slate-100 hover:border-slate-900 shadow-sm"
                               title="Galeri Media"
                             >
                               <Camera className="w-5 h-5" />
@@ -210,7 +295,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               onClick={() => onViewSession(session)}
-                              className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl transition-all shadow-xl shadow-blue-500/20 text-[11px] font-black uppercase tracking-widest"
+                              className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl transition-all duration-200 shadow-xl shadow-blue-500/20 text-[11px] font-black uppercase tracking-widest"
                             >
                               LAPORAN
                               <ArrowRight className="w-4 h-4" />
@@ -219,7 +304,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               onClick={() => handleDeleteClick(session.id, session.patient.name)}
-                              className="p-4 bg-white hover:bg-red-600 text-slate-400 hover:text-white rounded-2xl transition-all border border-slate-100 hover:border-red-600 shadow-sm"
+                              className="p-4 bg-white hover:bg-red-600 text-slate-400 hover:text-white rounded-2xl transition-all duration-200 border border-slate-100 hover:border-red-600 shadow-sm"
                               title="Hapus Sesi"
                             >
                               <Trash2 className="w-5 h-5" />
@@ -230,7 +315,6 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                     ))}
                   </div>
                   
-                  {/* Pagination & New Session Button */}
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-8 mt-12 pt-8 border-t border-slate-100">
                     {totalPages > 1 ? (
                       <div className="flex items-center gap-3">
@@ -238,7 +322,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                           <button
                             key={p}
                             onClick={() => setCurrentPage(p)}
-                            className={`w-12 h-12 rounded-2xl text-[11px] font-black transition-all ${
+                            className={`w-12 h-12 rounded-2xl text-[11px] font-black transition-all duration-200 ${
                               currentPage === p 
                                 ? 'bg-slate-900 text-white shadow-2xl scale-110' 
                                 : 'bg-white text-slate-400 border border-slate-100 hover:border-slate-900'
@@ -256,15 +340,13 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
           </div>
         </div>
 
-        {/* Sidebar Section */}
         <div className="lg:col-span-4 space-y-8">
-          {/* License Card */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-gradient-to-br from-slate-900 to-indigo-950 p-8 rounded-[3rem] text-white relative overflow-hidden shadow-2xl group"
           >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-[100px] -mr-32 -mt-32 opacity-30 group-hover:opacity-50 transition-opacity duration-700" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-[100px] -mr-32 -mt-32 opacity-30 group-hover:opacity-50 transition-opacity duration-200" />
             <Pattern className="text-white opacity-[0.05] absolute inset-0 scale-150 rotate-45" />
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-8">
@@ -296,14 +378,13 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                   </div>
                 </div>
 
-              <button className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-white text-slate-900 text-[11px] font-black uppercase tracking-widest rounded-[1.5rem] hover:bg-blue-400 hover:text-white transition-all active:scale-95 shadow-xl">
+              <button className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-white text-slate-900 text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-400 hover:text-white transition-all duration-200 active:scale-95 shadow-xl">
                 PERPANJANG LISENSI
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </motion.div>
 
-          {/* Storage Status */}
           <div className="bg-white p-8 rounded-[3rem] border border-white shadow-2xl shadow-slate-200/60 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -mr-16 -mt-16" />
             <div className="relative z-10">
@@ -314,8 +395,12 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                   </div>
                   <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Penyimpanan Lokal</h3>
                 </div>
-                <div className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-blue-200 shadow-sm">
-                  AKTIF
+                <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border shadow-sm ${
+                  storageInfo.usedMB > 4 
+                    ? 'bg-red-100 text-red-600 border-red-200' 
+                    : 'bg-blue-100 text-blue-600 border-blue-200'
+                }`}>
+                  {storageInfo.usedFormatted}
                 </div>
               </div>
               
@@ -341,7 +426,6 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {sessionToDelete && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -356,7 +440,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-[2.5rem] p-10 shadow-2xl border border-slate-100 overflow-hidden"
+              className="relative w-full max-w-md bg-white rounded-3xl p-10 shadow-2xl border border-slate-100 overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-2 bg-red-500" />
               <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mb-8 mx-auto">
@@ -369,13 +453,13 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
               <div className="flex flex-col gap-3">
                 <button
                   onClick={confirmDelete}
-                  className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-600/20"
+                  className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-200 shadow-lg shadow-red-600/20"
                 >
                   YA, HAPUS PERMANEN
                 </button>
                 <button
                   onClick={() => setSessionToDelete(null)}
-                  className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+                  className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-200"
                 >
                   BATALKAN
                 </button>

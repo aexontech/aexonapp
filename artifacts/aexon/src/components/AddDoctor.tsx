@@ -24,7 +24,6 @@ export default function AddDoctor({ editingDoctor, onBack, onSave }: AddDoctorPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
-    alert(editingDoctor ? 'Data dokter berhasil diperbarui.' : 'Dokter baru berhasil didaftarkan ke sistem.');
   };
 
   return (

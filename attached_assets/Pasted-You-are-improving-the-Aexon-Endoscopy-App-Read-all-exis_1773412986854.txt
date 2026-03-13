@@ -1,0 +1,175 @@
+You are improving the Aexon Endoscopy App. Read all existing files carefully before making changes. Preserve ALL existing features. Apply these improvements:
+
+═══════════════════════════════════════
+1. EULA — FIRST TIME LOGIN PER DEVICE
+═══════════════════════════════════════
+- On first launch on a new device, before showing Launcher, display a full-screen EULA modal
+- Check localStorage key 'aexon_eula_accepted' — if not set, show EULA
+- EULA content:
+  Title: "Perjanjian Lisensi Pengguna Akhir (EULA)"
+  Subtitle: "Aexon Endoscopy App — Baca sebelum menggunakan"
+  Sections:
+  1. Penggunaan Aplikasi: App ini hanya untuk tenaga medis berlisensi. Penggunaan di luar keperluan medis dilarang.
+  2. Data Pasien: Seluruh data pasien tersimpan secara lokal di perangkat ini dan terenkripsi per akun. Pengguna bertanggung jawab penuh atas keamanan data.
+  3. Privasi: Aexon tidak mengumpulkan atau mengirimkan data pasien ke server manapun tanpa persetujuan eksplisit pengguna.
+  4. Lisensi: Lisensi bersifat personal dan tidak dapat dipindahtangankan. Satu lisensi untuk satu dokter.
+  5. Batasan Tanggung Jawab: Aexon tidak bertanggung jawab atas keputusan medis yang diambil berdasarkan dokumentasi yang dibuat melalui aplikasi ini.
+- Scrollable content area — user MUST scroll to bottom before "Setuju & Lanjutkan" button becomes active (button disabled + gray until scrolled to bottom)
+- "Tidak Setuju" button closes/exits app (window.close() or show message "Tutup aplikasi untuk keluar")
+- On agree: set localStorage 'aexon_eula_accepted' = 'true' + timestamp, proceed to Launcher
+- Design: full screen, white background, navy #0C1E35 header, teal #0D9488 accents, lucide-react icons only
+
+═══════════════════════════════════════
+2. LOGIC FIXES
+═══════════════════════════════════════
+- FIX: Session ID regenerates on every render — move sessionId generation into useMemo with empty dependency array [] in SessionForm.tsx (already uses useMemo but verify it's not re-triggering)
+- FIX: Trial days — search ALL files for "14" in context of days/trial, replace with 7 everywhere including display text
+- FIX: Navigation guard — in App.tsx the confirm dialog uses window.confirm (browser default). Replace with a custom modal component using lucide-react AlertTriangle icon. Modal text: "Prosedur sedang berjalan. Keluar sekarang akan menghapus data yang belum disimpan. Yakin keluar?" with two buttons: "Batal" (navy outline) and "Keluar" (red filled)
+- FIX: Storage quota warning — in handleEndSession, the catch block currently only console.warn. Add a visible toast notification: "Penyimpanan penuh. Beberapa foto mungkin tidak tersimpan. Pertimbangkan untuk menghapus sesi lama." using a red banner that auto-dismisses after 8 seconds
+- FIX: Delete session confirmation — replace window.confirm with the same custom modal pattern (already has sessionToDelete state, just replace the confirm UI)
+- FIX: In EndoscopyApp, handleDeleteSelected uses window.confirm — replace with custom modal
+- FIX: Dashboard shows "Storage: 210 GB" as hardcoded — calculate actual localStorage usage: const used = JSON.stringify(localStorage).length / 1024 / 1024; show as "X.X MB" with a warning icon if over 4MB
+
+═══════════════════════════════════════
+3. UI OVERHAUL — PRESERVE ALL FEATURES
+═══════════════════════════════════════
+Apply these UI improvements across all components while keeping every existing feature:
+
+GLOBAL:
+- Replace ALL window.confirm, window.alert with custom modal components
+- All icons from lucide-react only — audit every file and replace any remaining emoji or non-lucide icons
+- Consistent border-radius: cards use rounded-2xl, modals use rounded-3xl, buttons use rounded-xl
+- Consistent color system: navy #0C1E35, blue #1A52A8, teal #0D9488, slate-50 background
+- Add subtle hover transitions (200ms) to all interactive elements
+- Toast notification system: create a ToastProvider component that shows success/error/warning toasts in top-right corner, auto-dismiss 4 seconds
+
+LAUNCHER (Launcher.tsx):
+- Clean up login form — center the card vertically and horizontally
+- Add "Aexon Endoscopy" product name below logo with version badge
+- Smooth fade-in animation on load
+- Show subscription status hint: "Butuh akun? Daftar di aexon.id"
+
+DASHBOARD (Dashboard.tsx):
+- Fix stats card: replace hardcoded "210 GB" with real localStorage calculation
+- Empty state: when sessions.length === 0, show centered illustration (inline SVG of document + plus icon), text "Belum ada sesi", subtext "Mulai sesi baru untuk mendokumentasikan prosedur endoskopi", CTA button "Mulai Sesi Baru"
+- Search bar: add clear button (X icon) when search has text
+- Session cards: add subtle left border color based on category (blue=Poli, orange=OK, red=IGD)
+
+SESSION FORM (SessionForm.tsx):
+- Keep existing 2-section layout (dark blue patient section + white diagnosis section)
+- The session ID in header should be stable (verify useMemo fix from point 2)
+- Add subtle pulse animation to the "active" indicator dot next to operator name
+
+ENDOSCOPY APP (EndoscopyApp.tsx):
+- Capture button: add visual feedback — brief scale animation + flash effect on capture
+- Recording indicator: pulsing red dot when recording is active, visible in top-left of video
+- Keyboard shortcut hint below capture button: "Tekan Spasi untuk capture" in gray-400 text, font-size 12px
+- Gallery tabs (Foto/Video/Utility): add item count badge next to each tab label
+- Replace window.confirm in handleDeleteSelected with custom modal
+
+REPORT GENERATOR (ReportGenerator.tsx):
+- Keep all existing page management, layouts, and export features
+- Add loading state when generating/printing report: show spinner overlay with "Menyiapkan laporan..." text
+- Print button: add tooltip on hover showing "Cetak atau simpan sebagai PDF"
+
+SETTINGS (Settings.tsx):
+- Keep all existing settings
+- Add visual section dividers between setting groups
+- Save button: show success checkmark animation after save (replace with CheckCircle2 icon for 2 seconds then back to Save)
+
+═══════════════════════════════════════
+4. EXPORT FILES IN GALLERY
+═══════════════════════════════════════
+In Gallery.tsx, add an Export panel/section:
+
+EXPORT SINGLE: Each photo/video item gets an export button (Download icon from lucide-react) on hover
+- Photo: download as JPG
+- Video: download as MP4
+
+EXPORT BULK: Add "Export Pilihan" button in the gallery toolbar (only visible when items are selected)
+- Downloads all selected photos as JPG files
+- Downloads all selected videos as MP4 files
+
+EXPORT LAPORAN (Export Pasien): Add a prominent button "Export Pasien" with an ℹ️ Info icon (lucide-react Info) that shows tooltip on hover:
+"Export data pasien dalam format siap buka:
+- Laporan → PDF
+- Foto endoskopi → JPG
+- Video prosedur → MP4
+File dapat dibuka di perangkat manapun tanpa app Aexon."
+- On click: trigger browser download for each selected photo (JPG), each selected video (MP4), and open print dialog for report PDF
+
+BACKUP BUTTON: Add "Backup Semua Data" button with ℹ️ Info icon tooltip:
+"Backup seluruh data akun dalam 1 file ZIP terenkripsi.
+- Semua sesi & pasien dalam rentang tanggal pilihan
+- Foto & video tetap terenkripsi di dalam ZIP
+- Hanya bisa di-restore ke akun yang sama"
+- Show date range picker (dari tanggal - sampai tanggal)
+- Export as JSON file named: Aexon_Backup_[userId]_[date].json (ZIP encryption is Fase 2 — for now use JSON)
+- Include all sessions in date range with all patient data and captures metadata
+
+═══════════════════════════════════════
+5. REMOVE TOKEN PAYMENT — SUBSCRIPTION ONLY
+═══════════════════════════════════════
+- Remove ALL references to 'token' plan from App.tsx, Pricing.tsx, EndoscopyApp.tsx, and any other file
+- Remove token counter, token deduction logic, and token-related UI everywhere
+- In App.tsx: selectedPlan type becomes 'subscription' | 'enterprise' | null (remove 'token')
+- In handleEndSession: remove tokenDeducted parameter and all token logic
+- In EndoscopyApp: remove tokens prop and token-related checks
+- In Pricing.tsx: remove token pricing card, keep only subscription plans (BASIC, PRO, KLINIK) matching the plans from Supabase: BASIC Rp299.000/bln, PRO Rp599.000/bln (most popular), KLINIK Rp1.299.000/bln
+- Keep enterprise plan for institutional/admin login
+
+═══════════════════════════════════════
+6. SUBSCRIPTION GATING
+═══════════════════════════════════════
+- Users with NO active subscription get LIMITED access:
+  - CAN: login, see dashboard (read-only), see their past sessions (view only, no new session)
+  - CANNOT: start new session, access EndoscopyApp, generate new reports
+  - Show a persistent banner at top of dashboard: "Langganan Anda belum aktif. Untuk memulai sesi baru, silakan berlangganan di aexon.id" with button "Berlangganan Sekarang" that opens https://aexon.id/harga in browser
+  - Disable "Mulai Sesi Baru" button with lock icon (Lock from lucide-react) and tooltip "Diperlukan langganan aktif"
+- Users with ACTIVE subscription (subscription or enterprise plan): full access
+- Trial users (trialDaysLeft > 0): full access, show trial countdown banner
+- Trial expired (trialDaysLeft === 0 or null and no plan): limited access, show upgrade banner
+- In Launcher.tsx: after login, check subscription status. For now simulate with: if selectedPlan is null = no subscription
+
+═══════════════════════════════════════
+7. BACKUP BUTTON PLACEMENT
+═══════════════════════════════════════
+Place the Backup button in TWO locations:
+1. Settings page (Settings.tsx): Add "Backup & Restore" section at the bottom of settings with:
+   - "Backup Semua Data" button (primary, teal) with ℹ️ tooltip (same as point 4)
+   - "Import / Restore" button (outline, navy) with ℹ️ Info tooltip: "Restore data dari file backup (.json). Hanya bisa di-restore ke akun yang sama. Cocok untuk pindah ke perangkat baru."
+   - Import: file input (hidden) triggered by button click, accepts .json files, parse and restore sessions to localStorage
+   - Date range picker for backup scope
+
+2. Dashboard (Dashboard.tsx): Add a small "Backup" button with HardDrive icon (lucide-react) in the top-right header area next to the "Mulai Sesi Baru" button. On click: trigger same backup flow as Settings.
+
+═══════════════════════════════════════
+8. APP ARCHITECTURE — ENCRYPTION & STORAGE
+═══════════════════════════════════════
+Implement the data isolation architecture:
+
+DATA STORAGE PER USER:
+- All session data is already stored in localStorage with key 'aexon_sessions_[userId]' ✅ (keep this)
+- Add encryption layer using a simple XOR cipher for now (full AES-256 is Fase 2):
+  - Create src/lib/storage.ts with functions:
+    - encryptData(data: string, key: string): string — XOR encrypt
+    - decryptData(data: string, key: string): string — XOR decrypt
+    - getEncryptionKey(userId: string): string — derives key from userId (simple hash for now)
+    - saveUserData(userId: string, key: string, data: any): void — encrypt then localStorage.setItem
+    - loadUserData(userId: string, key: string): any — localStorage.getItem then decrypt
+  - Replace direct localStorage calls in App.tsx with saveUserData/loadUserData functions
+  - This ensures data is obfuscated per user — even if someone opens DevTools they see encrypted strings
+
+EULA CHECK: Already covered in point 1
+
+OFFLINE CAPABILITY: Already works — all data is local. Add a network status indicator in MainLayout: small dot in sidebar footer, green = online, gray = offline, with tooltip "Online - sinkronisasi aktif" / "Offline - data tersimpan lokal"
+
+FILE EXPORT SECURITY: When exporting (Gallery export or Backup):
+- Exported JPG/MP4/JSON files are plain (not encrypted) — this is intentional for portability
+- Show one-time warning toast on first export: "File yang diekspor tidak terenkripsi dan dapat dibuka di perangkat manapun. Simpan dengan aman."
+- Store 'aexon_export_warned' in localStorage to not show again
+
+RESTORE VALIDATION:
+- On Import/Restore: check that the backup file's userId matches the currently logged-in userId
+- If mismatch: show error modal "File backup ini milik akun lain dan tidak dapat di-restore ke akun ini."
+- If match: merge sessions (don't overwrite, add sessions that don't exist by ID)

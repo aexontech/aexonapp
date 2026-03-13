@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, 
   Building2, 
@@ -19,9 +19,18 @@ import {
   Trash2,
   ExternalLink,
   Type,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Download,
+  RefreshCw,
+  Calendar,
+  FileArchive,
+  AlertTriangle,
+  HardDrive
 } from 'lucide-react';
-import { UserProfile, HospitalSettings } from '../types';
+import { UserProfile, HospitalSettings, Session } from '../types';
+import { useToast } from './ToastProvider';
+import ConfirmModal from './ConfirmModal';
+import { saveUserData, loadUserData, getLocalStorageUsage } from '../lib/storage';
 
 interface SettingsProps {
   userProfile: UserProfile;
@@ -29,24 +38,28 @@ interface SettingsProps {
   onUpdateUser: (profile: UserProfile) => void;
   onUpdateHospitalList: (settings: HospitalSettings[]) => void;
   onCancelSubscription: () => void;
-  plan: 'subscription' | 'token' | 'enterprise' | null;
+  plan: 'subscription' | 'enterprise' | null;
+  sessions: Session[];
 }
 
-export default function Settings({ userProfile, hospitalSettingsList, onUpdateUser, onUpdateHospitalList, onCancelSubscription, plan }: SettingsProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'hospital' | 'billing' | 'security' | 'notifications' | 'enterprise' | 'accessibility' | 'storage'>('profile');
+export default function Settings({ userProfile, hospitalSettingsList, onUpdateUser, onUpdateHospitalList, onCancelSubscription, plan, sessions }: SettingsProps) {
+  const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<'profile' | 'hospital' | 'billing' | 'security' | 'notifications' | 'enterprise' | 'accessibility' | 'storage' | 'backup'>('profile');
   
   const [profileForm, setProfileForm] = useState<UserProfile>(userProfile);
   const [hospitalFormList, setHospitalFormList] = useState<HospitalSettings[]>(hospitalSettingsList);
   const [isSaved, setIsSaved] = useState(false);
+  const [showClearDataModal, setShowClearDataModal] = useState(false);
 
-  // Storage simulation state
+  const [backupDateFrom, setBackupDateFrom] = useState('');
+  const [backupDateTo, setBackupDateTo] = useState('');
+
   const [storageSettings, setStorageSettings] = useState({
     photoDir: 'C:/Aexon/Captures/Photos',
     videoDir: 'C:/Aexon/Captures/Videos',
-    usedSpace: 45.5, // GB
-    totalSpace: 256, // GB
   });
 
+  const storageInfo = getLocalStorageUsage();
   const isAdmin = userProfile.role === 'admin';
   const isEnterprise = plan === 'enterprise';
 
@@ -70,11 +83,10 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   };
 
   const handleLogoUpload = (index: number) => {
-    // Simulate logo upload
     const newList = [...hospitalFormList];
     newList[index] = { ...newList[index], logoUrl: `https://picsum.photos/seed/${Date.now()}/200/200` };
     setHospitalFormList(newList);
-    alert('Logo berhasil diunggah (Simulasi)');
+    showToast('Logo berhasil diunggah (Simulasi)', 'success');
   };
 
   const handleAddHospital = () => {
@@ -95,7 +107,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check if name has changed
     if (profileForm.name !== userProfile.name) {
       const now = new Date();
       if (userProfile.lastNameChangeDate) {
@@ -104,12 +115,11 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
         if (diffDays < 7) {
-          alert(`Anda baru saja mengubah nama. Perubahan nama hanya dapat dilakukan sekali setiap 7 hari. Sisa waktu: ${7 - diffDays} hari.`);
+          showToast(`Perubahan nama hanya dapat dilakukan sekali setiap 7 hari. Sisa waktu: ${7 - diffDays} hari.`, 'warning', 6000);
           return;
         }
       }
       
-      // Update last change date
       const updatedProfile = {
         ...profileForm,
         lastNameChangeDate: now.toISOString()
@@ -131,7 +141,95 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
   const showSavedMessage = () => {
     setIsSaved(true);
+    showToast('Perubahan berhasil disimpan.', 'success');
     setTimeout(() => setIsSaved(false), 3000);
+  };
+
+  const handleExportBackup = () => {
+    let filteredSessions = sessions;
+    
+    if (backupDateFrom || backupDateTo) {
+      filteredSessions = sessions.filter(s => {
+        const sessionDate = new Date(s.date).getTime();
+        const from = backupDateFrom ? new Date(backupDateFrom).getTime() : 0;
+        const to = backupDateTo ? new Date(backupDateTo).setHours(23, 59, 59, 999) : Infinity;
+        return sessionDate >= from && sessionDate <= to;
+      });
+    }
+
+    if (filteredSessions.length === 0) {
+      showToast('Tidak ada sesi dalam rentang tanggal yang dipilih.', 'warning');
+      return;
+    }
+
+    const backupData = {
+      version: '2.5.0',
+      exportedAt: new Date().toISOString(),
+      userId: userProfile.id,
+      userName: userProfile.name,
+      sessionsCount: filteredSessions.length,
+      sessions: filteredSessions
+    };
+
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aexon_backup_${userProfile.id}_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast(`Backup ${filteredSessions.length} sesi berhasil diunduh.`, 'success');
+  };
+
+  const handleImportBackup = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string);
+          
+          if (!data.version || !data.userId || !Array.isArray(data.sessions)) {
+            showToast('Format file backup tidak valid.', 'error');
+            return;
+          }
+
+          if (data.userId !== userProfile.id) {
+            showToast('File backup ini milik pengguna lain dan tidak dapat di-restore ke akun Anda.', 'error', 6000);
+            return;
+          }
+
+          saveUserData(userProfile.id, 'sessions', data.sessions);
+          showToast(`Restore berhasil! ${data.sessions.length} sesi telah dipulihkan. Refresh halaman untuk melihat data.`, 'success', 8000);
+        } catch {
+          showToast('Gagal membaca file backup. File mungkin rusak.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  const handleClearLocalData = () => {
+    localStorage.removeItem(`aexon_sessions_${userProfile.id}`);
+    const key = `aexon_sessions_${userProfile.id}`;
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(`aexon_`) && k.endsWith(`_${userProfile.id}`)) {
+        localStorage.removeItem(k);
+      }
+    }
+    setShowClearDataModal(false);
+    showToast('Semua data lokal berhasil dihapus. Halaman akan dimuat ulang.', 'warning', 3000);
+    setTimeout(() => window.location.reload(), 2000);
   };
 
   const tabs = [
@@ -139,6 +237,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
     { id: 'hospital', label: isEnterprise ? 'Informasi Institusi' : 'Kop Surat RS (Maks 3)', icon: Building2 },
     { id: 'accessibility', label: 'Tampilan & Aksesibilitas', icon: Type },
     { id: 'storage', label: 'Penyimpanan & Media', icon: Database },
+    { id: 'backup', label: 'Backup & Restore', icon: HardDrive },
     { id: 'security', label: 'Keamanan', icon: Shield },
     { id: 'notifications', label: 'Notifikasi', icon: Bell },
     { id: 'billing', label: 'Langganan', icon: CreditCard },
@@ -156,7 +255,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       </div>
 
       <div className="flex flex-col lg:flex-row gap-10">
-        {/* Sidebar Tabs */}
         <div className="w-full lg:w-72 shrink-0 space-y-2">
           {tabs.map((tab) => (
             <button
@@ -174,18 +272,20 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
           ))}
         </div>
 
-        {/* Content Area */}
         <div className="flex-1 bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-10 shadow-sm relative overflow-hidden">
-          {isSaved && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="absolute top-6 right-6 bg-emerald-500 text-white px-5 py-2.5 rounded-2xl text-sm font-bold flex items-center shadow-lg shadow-emerald-500/20 z-20"
-            >
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              Perubahan Berhasil Disimpan
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {isSaved && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                className="absolute top-6 right-6 bg-emerald-500 text-white px-5 py-2.5 rounded-2xl text-sm font-bold flex items-center shadow-lg shadow-emerald-500/20 z-20"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Perubahan Berhasil Disimpan
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {activeTab === 'profile' && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -198,6 +298,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   <p className="text-slate-500 text-sm">Data personal Anda yang akan muncul pada laporan.</p>
                 </div>
               </div>
+
+              <div className="h-px bg-slate-100 mb-8" />
 
               <form onSubmit={handleSaveProfile} className="space-y-8">
                 <div className="grid md:grid-cols-2 gap-8">
@@ -268,9 +370,13 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   </div>
                 </div>
                 <div className="pt-4 flex justify-end">
-                  <button type="submit" className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl transition-all shadow-xl shadow-slate-900/10 active:scale-95">
+                  <motion.button 
+                    whileTap={{ scale: 0.95 }}
+                    type="submit" 
+                    className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl transition-all shadow-xl shadow-slate-900/10"
+                  >
                     Simpan Perubahan
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </motion.div>
@@ -303,6 +409,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   </button>
                 )}
               </div>
+
+              <div className="h-px bg-slate-100 mb-8" />
 
               {isEnterprise && (
                 <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start">
@@ -440,9 +548,13 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
                 {(!isEnterprise || isAdmin) && (
                   <div className="pt-4 flex justify-end">
-                    <button type="submit" className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl transition-all shadow-xl shadow-slate-900/10 active:scale-95">
+                    <motion.button 
+                      whileTap={{ scale: 0.95 }}
+                      type="submit" 
+                      className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl transition-all shadow-xl shadow-slate-900/10"
+                    >
                       {isEnterprise ? 'Simpan Informasi Institusi' : 'Simpan Semua Kop Surat'}
-                    </button>
+                    </motion.button>
                   </div>
                 )}
               </form>
@@ -460,6 +572,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   <p className="text-slate-500 text-sm">Sesuaikan kenyamanan visual sistem Aexon.</p>
                 </div>
               </div>
+
+              <div className="h-px bg-slate-100 mb-8" />
 
               <div className="space-y-10">
                 <div className="space-y-6">
@@ -522,35 +636,35 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </div>
               </div>
 
+              <div className="h-px bg-slate-100 mb-8" />
+
               <div className="space-y-10">
-                {/* Storage Info */}
                 <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
                   <div className="flex justify-between items-end mb-4">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 mb-1">Status Kapasitas Disk</h4>
-                      <p className="text-xs text-slate-500">Penyimpanan lokal pada perangkat ini.</p>
+                      <h4 className="text-sm font-bold text-slate-900 mb-1">Penyimpanan Lokal (localStorage)</h4>
+                      <p className="text-xs text-slate-500">Data disimpan di browser perangkat ini.</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-lg font-black text-blue-600">{storageSettings.totalSpace - storageSettings.usedSpace} GB</span>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Tersedia</span>
+                      <span className={`text-lg font-black ${storageInfo.usedMB > 4 ? 'text-red-600' : 'text-blue-600'}`}>{storageInfo.usedFormatted}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Terpakai</span>
                     </div>
                   </div>
                   
                   <div className="h-4 bg-slate-200 rounded-full overflow-hidden mb-4">
                     <motion.div 
                       initial={{ width: 0 }}
-                      animate={{ width: `${(storageSettings.usedSpace / storageSettings.totalSpace) * 100}%` }}
-                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-600"
+                      animate={{ width: `${Math.min((storageInfo.usedMB / 5) * 100, 100)}%` }}
+                      className={`h-full ${storageInfo.usedMB > 4 ? 'bg-red-500' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`}
                     />
                   </div>
                   
                   <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    <span>Terpakai: {storageSettings.usedSpace} GB</span>
-                    <span>Total: {storageSettings.totalSpace} GB</span>
+                    <span>Terpakai: {storageInfo.usedFormatted}</span>
+                    <span>Batas: ~5 MB</span>
                   </div>
                 </div>
 
-                {/* Directory Settings */}
                 <div className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-8">
                     <div className="space-y-2">
@@ -563,7 +677,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                           className="flex-1 px-5 py-4 border border-slate-200 rounded-2xl bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium"
                         />
                         <button 
-                          onClick={() => alert('Dialog pemilihan folder sistem dibuka...')}
+                          onClick={() => showToast('Fitur pemilihan folder tidak tersedia di browser.', 'info')}
                           className="px-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-blue-600 transition-all"
                         >
                           <Save className="w-4 h-4" />
@@ -580,7 +694,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                           className="flex-1 px-5 py-4 border border-slate-200 rounded-2xl bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium"
                         />
                         <button 
-                          onClick={() => alert('Dialog pemilihan folder sistem dibuka...')}
+                          onClick={() => showToast('Fitur pemilihan folder tidak tersedia di browser.', 'info')}
                           className="px-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-blue-600 transition-all"
                         >
                           <Save className="w-4 h-4" />
@@ -598,12 +712,104 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </div>
 
                 <div className="pt-4 flex justify-end">
-                  <button 
+                  <motion.button 
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => showSavedMessage()}
-                    className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl transition-all shadow-xl shadow-slate-900/10 active:scale-95"
+                    className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl transition-all shadow-xl shadow-slate-900/10"
                   >
                     Simpan Konfigurasi Media
-                  </button>
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'backup' && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+              <div className="flex items-center gap-4 mb-10">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                  <HardDrive className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">Backup & Restore</h3>
+                  <p className="text-slate-500 text-sm">Ekspor dan impor data sesi Anda untuk keamanan tambahan.</p>
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-100 mb-8" />
+
+              <div className="space-y-10">
+                <div className="p-8 bg-emerald-50/50 rounded-[2.5rem] border border-emerald-100">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Download className="w-5 h-5 text-emerald-600" />
+                    <h4 className="text-sm font-black text-slate-900">Ekspor Backup</h4>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+                    Unduh file backup berisi semua data sesi Anda dalam format JSON terenkripsi. Anda dapat memfilter berdasarkan rentang tanggal.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dari Tanggal</label>
+                      <input
+                        type="date"
+                        value={backupDateFrom}
+                        onChange={(e) => setBackupDateFrom(e.target.value)}
+                        className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-sm font-medium"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Sampai Tanggal</label>
+                      <input
+                        type="date"
+                        value={backupDateTo}
+                        onChange={(e) => setBackupDateTo(e.target.value)}
+                        className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-sm font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-500">
+                      {sessions.length} sesi tersedia untuk backup
+                    </span>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleExportBackup}
+                      className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+                    >
+                      <Download className="w-4 h-4" />
+                      Unduh Backup
+                    </motion.button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-100" />
+
+                <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border border-blue-100">
+                  <div className="flex items-center gap-3 mb-6">
+                    <RefreshCw className="w-5 h-5 text-blue-600" />
+                    <h4 className="text-sm font-black text-slate-900">Restore dari Backup</h4>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+                    Impor file backup yang sebelumnya diekspor. File harus berasal dari akun pengguna yang sama untuk keamanan data.
+                  </p>
+
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 mb-6">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                      Restore akan <strong>menimpa</strong> data sesi yang ada. Pastikan Anda telah mem-backup data terkini sebelum melakukan restore.
+                    </p>
+                  </div>
+
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleImportBackup}
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/20"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Pilih File Backup
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
@@ -620,6 +826,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   <p className="text-slate-500 text-sm">Kelola kata sandi dan autentikasi dua faktor.</p>
                 </div>
               </div>
+
+              <div className="h-px bg-slate-100 mb-8" />
 
               <div className="space-y-10">
                 <div className="grid md:grid-cols-2 gap-10">
@@ -669,12 +877,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                       </div>
                     </div>
                     <button 
-                      onClick={() => {
-                        if (confirm('Apakah Anda yakin ingin menghapus semua riwayat sesi lokal Anda? Tindakan ini tidak dapat dibatalkan.')) {
-                          localStorage.removeItem(`aexon_sessions_${userProfile.id}`);
-                          window.location.reload();
-                        }
-                      }}
+                      onClick={() => setShowClearDataModal(true)}
                       className="px-6 py-2.5 bg-white text-amber-600 font-bold rounded-xl hover:bg-amber-100 transition-colors border border-amber-200"
                     >
                       Hapus Riwayat Sesi
@@ -711,6 +914,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   <p className="text-slate-500 text-sm">Konfigurasi tingkat korporat dan integrasi sistem rumah sakit.</p>
                 </div>
               </div>
+
+              <div className="h-px bg-slate-100 mb-8" />
 
               <div className="space-y-8">
                 <div className="grid md:grid-cols-2 gap-8">
@@ -760,8 +965,9 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </div>
               </div>
 
+              <div className="h-px bg-slate-100 mb-8" />
+
               <div className="space-y-8">
-                {/* Current Plan Card */}
                 <div className="p-8 bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] text-white relative overflow-hidden shadow-xl">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] -mr-32 -mt-32" />
                   <div className="relative z-10">
@@ -770,7 +976,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                         <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-2 block">Paket Saat Ini</span>
                         <h4 className="text-3xl font-black tracking-tight">
                           {plan === 'subscription' ? 'Annual Subscription' : 
-                           plan === 'token' ? 'Token Pack' : 
                            plan === 'enterprise' ? 'Enterprise Access' : 'Trial Period'}
                         </h4>
                       </div>
@@ -800,7 +1005,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
                     <div className="flex flex-wrap gap-4">
                       <button 
-                        onClick={() => alert('Redirecting to payment gateway...')}
+                        onClick={() => showToast('Mengarahkan ke halaman pembayaran aexon.id...', 'info')}
                         className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-lg shadow-blue-600/20"
                       >
                         Update Metode Pembayaran
@@ -815,7 +1020,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   </div>
                 </div>
 
-                {/* Transaction History */}
                 <div className="space-y-6">
                   <h4 className="text-sm font-bold text-slate-900 ml-1">Riwayat Transaksi</h4>
                   <div className="bg-slate-50 rounded-[2rem] border border-slate-100 overflow-hidden">
@@ -832,7 +1036,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                         {[
                           { date: '12 Des 2025', desc: 'Annual Subscription Renewal', amount: 'Rp 5.999.000', status: 'Selesai' },
                           { date: '12 Des 2024', desc: 'Annual Subscription Renewal', amount: 'Rp 5.999.000', status: 'Selesai' },
-                          { date: '15 Nov 2024', desc: 'Token Pack (25 Tokens)', amount: 'Rp 1.249.999', status: 'Selesai' },
                         ].map((t, i) => (
                           <tr key={i} className="hover:bg-white transition-colors">
                             <td className="px-6 py-4 font-medium text-slate-600">{t.date}</td>
@@ -854,6 +1057,17 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showClearDataModal}
+        onConfirm={handleClearLocalData}
+        onCancel={() => setShowClearDataModal(false)}
+        title="Hapus Semua Data Lokal?"
+        message="Apakah Anda yakin ingin menghapus semua riwayat sesi lokal Anda? Tindakan ini tidak dapat dibatalkan. Disarankan untuk membuat backup terlebih dahulu."
+        confirmText="Ya, Hapus Semua"
+        cancelText="Batalkan"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -409,7 +409,6 @@ export default function ManageSubscription({ onBack }: ManageSubscriptionProps) 
                   {activeModal !== 'billing' && (
                     <button 
                       onClick={() => {
-                        alert('Permintaan Anda sedang diproses. Tim Aexon akan segera menghubungi Anda untuk konfirmasi.');
                         setActiveModal(null);
                       }}
                       className="flex-1 py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20"

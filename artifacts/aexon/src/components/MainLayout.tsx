@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, Plus, CalendarDays, Settings, LogOut, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { FileText, Plus, CalendarDays, Settings, LogOut, ChevronLeft, ChevronRight, Menu, Wifi, WifiOff } from 'lucide-react';
 import { UserProfile } from '../types';
 import { Logo } from './Logo';
 
@@ -9,19 +9,29 @@ interface MainLayoutProps {
   activeMenu: 'dashboard' | 'admin-dashboard' | 'pricing' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'launcher' | 'add-doctor' | 'manage-subscription';
   onNavigate: (menu: any) => void;
   onLogout: () => void;
-  plan: 'subscription' | 'token' | 'enterprise' | null;
-  tokens: number;
+  plan: 'subscription' | 'enterprise' | null;
   trialDaysLeft: number | null;
   userProfile: UserProfile;
 }
 
-export default function MainLayout({ children, activeMenu, onNavigate, onLogout, plan, tokens, trialDaysLeft, userProfile }: MainLayoutProps) {
+export default function MainLayout({ children, activeMenu, onNavigate, onLogout, plan, trialDaysLeft, userProfile }: MainLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const isAdmin = userProfile.role === 'admin';
-  const subscriptionDaysLeft = 3; // Mocked for demo
+  const subscriptionDaysLeft = 3;
   const isWarning = (trialDaysLeft !== null) || 
-                    (plan === 'subscription' && subscriptionDaysLeft < 5) || 
-                    (plan === 'token' && tokens < 3);
+                    (plan === 'subscription' && subscriptionDaysLeft < 5);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const menuItems = isAdmin ? [
     { id: 'admin-dashboard', label: 'Admin Console', icon: <FileText className="w-5 h-5" /> },
@@ -34,11 +44,9 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
 
   return (
     <div className="h-screen bg-slate-100 flex font-sans text-slate-900 overflow-hidden relative">
-      {/* Decorative Background Elements */}
       <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-blue-100/30 rounded-full blur-[120px] -mr-64 -mt-64 pointer-events-none z-0" />
       <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-indigo-100/20 rounded-full blur-[100px] -ml-48 -mb-48 pointer-events-none z-0" />
       
-      {/* Sidebar */}
       <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-200 flex flex-col h-full z-40 transition-all duration-300 ease-in-out shadow-sm shrink-0`}>
         <div className={`h-16 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-4'} border-b border-slate-100 shrink-0`}>
           <div 
@@ -100,7 +108,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
             <button
               key={item.id}
               onClick={() => onNavigate(item.id as any)}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all ${
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                 activeMenu === item.id || (activeMenu === 'active-session' && item.id === 'session-form') || (activeMenu === 'report-generator' && item.id === 'dashboard')
                   ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -120,11 +128,10 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
         </nav>
 
         <div className="p-4 border-t border-slate-100 space-y-1 shrink-0">
-          {/* Unified Status & Subscription Card */}
           {!isCollapsed && (
             <motion.div 
               whileHover={{ scale: 1.02 }}
-              className={`mb-4 p-4 rounded-2xl shadow-lg border border-white/10 relative overflow-hidden group cursor-pointer transition-all ${
+              className={`mb-4 p-4 rounded-2xl shadow-lg border border-white/10 relative overflow-hidden group cursor-pointer transition-all duration-200 ${
                 isWarning ? 'bg-gradient-to-br from-orange-500 to-red-600 shadow-orange-500/25' :
                 plan === 'enterprise' ? 'bg-gradient-to-br from-indigo-600 to-purple-700 shadow-indigo-500/20' :
                 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-blue-500/20'
@@ -139,7 +146,6 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
                   }`} />
                   <p className="text-[10px] font-black text-white/80 uppercase tracking-[0.15em]">
                     {plan === 'subscription' ? 'Masa Aktif' : 
-                     plan === 'token' ? 'Status Token' : 
                      plan === 'enterprise' ? 'Akses Enterprise' : 
                      trialDaysLeft !== null ? 'Masa Percobaan' : 'Status Akses'}
                   </p>
@@ -150,15 +156,6 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
                     <p className="text-[11px] text-white font-bold leading-tight mb-3">Langganan berakhir dalam <span className={isWarning ? 'text-white underline underline-offset-2' : 'text-emerald-400'}>{subscriptionDaysLeft} hari</span>.</p>
                     <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden mb-3">
                       <motion.div initial={{ width: 0 }} animate={{ width: '85%' }} className={`h-full ${isWarning ? 'bg-white' : 'bg-emerald-400'}`} />
-                    </div>
-                  </>
-                )}
-
-                {plan === 'token' && (
-                  <>
-                    <p className="text-[11px] text-white font-bold leading-tight mb-3">Tersisa <span className={isWarning ? 'text-white underline underline-offset-2' : 'text-emerald-400'}>{tokens} Token</span> Sesi.</p>
-                    <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden mb-3">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, (tokens/50)*100)}%` }} className={`h-full ${isWarning ? 'bg-white' : 'bg-emerald-400'}`} />
                     </div>
                   </>
                 )}
@@ -180,7 +177,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
                   <p className="text-[11px] text-white font-bold leading-tight mb-3">Belum ada paket aktif.</p>
                 )}
 
-                <div className="mt-4 py-2.5 px-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-xl border border-white/20 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-wider transition-all group-hover:scale-[1.02] active:scale-95 shadow-sm">
+                <div className="mt-4 py-2.5 px-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-xl border border-white/20 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-wider transition-all duration-200 group-hover:scale-[1.02] active:scale-95 shadow-sm">
                   {plan === 'subscription' || trialDaysLeft !== null || plan === null ? 'Perpanjang Sekarang' : 'Lihat Detail Paket'}
                   <ChevronRight className="w-3 h-3 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
                 </div>
@@ -190,7 +187,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           
           <button 
             onClick={() => onNavigate('settings')}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all ${
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
               activeMenu === 'settings'
                 ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -202,16 +199,24 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           </button>
           <button 
             onClick={onLogout}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all duration-200`}
             title={isCollapsed ? 'Keluar' : ''}
           >
             <LogOut className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 text-red-400`} />
             {!isCollapsed && 'Keluar'}
           </button>
+
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-2 mt-2`} title={isOnline ? 'Online - sinkronisasi aktif' : 'Offline - data tersimpan lokal'}>
+            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+            {!isCollapsed && (
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-2">
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
+            )}
+          </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden transition-all duration-300 ease-in-out bg-white">
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           {children}

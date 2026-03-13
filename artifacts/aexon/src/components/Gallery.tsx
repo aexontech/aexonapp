@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Download, FileImage, FileVideo, Maximize, RefreshCw, Edit3, Plus, Info, Trash2, X, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Download, FileImage, FileVideo, Edit3, Info, Trash2, AlertTriangle, FileArchive } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
-import { Session, Capture } from '../types';
+import { Session, Capture, UserProfile } from '../types';
 import ImageEditor from './ImageEditor';
+import { useToast } from './ToastProvider';
 
 interface GalleryProps {
   session: Session;
   onBack: () => void;
   onUpdateSession?: (session: Session) => void;
+  userProfile?: UserProfile | null;
+  allSessions?: Session[];
 }
 
-export default function Gallery({ session, onBack, onUpdateSession }: GalleryProps) {
+export default function Gallery({ session, onBack, onUpdateSession, userProfile, allSessions }: GalleryProps) {
+  const { showToast } = useToast();
   const [captures, setCaptures] = useState<Capture[]>(session.captures);
   const [editingPhoto, setEditingPhoto] = useState<Capture | null>(null);
   const [mediaToDelete, setMediaToDelete] = useState<string | null>(null);
@@ -46,16 +50,65 @@ export default function Gallery({ session, onBack, onUpdateSession }: GalleryPro
     document.body.removeChild(a);
   };
 
+  const exportBulkPhotos = () => {
+    if (photos.length === 0) {
+      showToast('Tidak ada foto untuk diekspor.', 'warning');
+      return;
+    }
+    
+    showToast('Peringatan: File media yang diekspor tidak terenkripsi. Simpan di lokasi yang aman.', 'warning', 6000);
+    
+    photos.forEach((photo, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = photo.url;
+        a.download = `endo_${session.patient.rmNumber}_foto_${i + 1}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, i * 300);
+    });
+  };
+
+  const exportSessionReport = () => {
+    const reportData = {
+      sessionId: session.id,
+      date: session.date,
+      patient: {
+        name: session.patient.name,
+        rmNumber: session.patient.rmNumber,
+        procedures: session.patient.procedures,
+        diagnosis: session.patient.diagnosis,
+        category: session.patient.category
+      },
+      photosCount: photos.length,
+      videosCount: videos.length,
+      operator: session.patient.operator,
+      clinicalNotes: session.clinicalNotes || '',
+      exportedAt: new Date().toISOString(),
+      exportedBy: userProfile?.name || 'Unknown'
+    };
+
+    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `laporan_sesi_${session.patient.rmNumber}_${session.id.substring(0, 8)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast('Laporan sesi berhasil diekspor.', 'success');
+  };
+
   return (
     <div className="flex-1 flex bg-slate-50 h-full overflow-hidden relative">
-      {/* Background Elements */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.03),transparent_70%)]" />
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
-        {/* Header */}
         <header className="h-20 border-b border-slate-200 bg-white/80 backdrop-blur-3xl flex items-center justify-between px-8 shrink-0 z-10">
           <div className="flex items-center gap-6">
             <motion.button 
@@ -71,7 +124,27 @@ export default function Gallery({ session, onBack, onUpdateSession }: GalleryPro
               <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none">GALERI SESI</h1>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={exportBulkPhotos}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20"
+              title="Download semua foto"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Ekspor Foto ({photos.length})
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={exportSessionReport}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
+              title="Ekspor data laporan sesi"
+            >
+              <FileArchive className="w-3.5 h-3.5" />
+              Laporan
+            </motion.button>
             <div className="px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                 SESSION ID: <span className="text-blue-600">{session.id.substring(0, 8)}</span>
@@ -80,10 +153,8 @@ export default function Gallery({ session, onBack, onUpdateSession }: GalleryPro
           </div>
         </header>
 
-        {/* Content */}
         <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto space-y-16">
-            {/* Photos Section */}
             <section>
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
@@ -152,7 +223,6 @@ export default function Gallery({ session, onBack, onUpdateSession }: GalleryPro
               )}
             </section>
 
-            {/* Videos Section */}
             <section>
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
@@ -218,7 +288,6 @@ export default function Gallery({ session, onBack, onUpdateSession }: GalleryPro
         </main>
       </div>
 
-      {/* Sidebar Info - Right Side */}
       <div className="w-96 bg-white border-l border-slate-200 flex flex-col h-full overflow-hidden shrink-0 relative z-20">
         <div className="p-6 bg-gradient-to-br from-blue-600 to-indigo-700 text-white shrink-0 shadow-2xl m-4 rounded-[2rem]">
           <div className="flex items-center gap-4 mb-6">
@@ -306,7 +375,6 @@ export default function Gallery({ session, onBack, onUpdateSession }: GalleryPro
         />
       )}
 
-      {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {mediaToDelete && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
