@@ -1,42 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { motion } from 'motion/react';
-import { User, FileText, Calendar, Activity, ArrowRight, ChevronLeft, Stethoscope, ClipboardList, Building2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { User, Activity, ArrowRight, ChevronLeft, Stethoscope, ClipboardList, Building2, Plus, X } from 'lucide-react';
 import { PatientData, UserProfile } from '../types';
 import { Pattern } from './Logo';
+import ICD10Autocomplete from './ICD10Autocomplete';
+import ICD9Autocomplete from './ICD9Autocomplete';
 
 interface SessionFormProps {
   onSubmit: (data: PatientData) => void;
   onCancel: () => void;
   userProfile: UserProfile;
-}
-
-const icd9Codes: Record<string, string> = {
-  '45.13': 'Esophagogastroduodenoscopy [EGD]',
-  '45.23': 'Colonoscopy',
-  '33.22': 'Bronchoscopy',
-  '54.21': 'Laparoscopy',
-  '80.20': 'Arthroscopy',
-  '57.32': 'Cystoscopy',
-};
-
-const icd10Codes: Record<string, string> = {
-  'K29.7': 'Gastritis, unspecified',
-  'K21.9': 'Gastro-esophageal reflux disease',
-  'K25.9': 'Gastric ulcer, unspecified',
-  'K52.9': 'Noninfective gastroenteritis and colitis',
-  'C16.9': 'Malignant neoplasm of stomach',
-  'K92.2': 'Gastrointestinal hemorrhage, unspecified',
-};
-
-function matchIcd(value: string, codes: Record<string, string>): string | null {
-  if (!value.trim()) return null;
-  const lower = value.toLowerCase();
-  for (const [code, desc] of Object.entries(codes)) {
-    if (lower.includes(code.toLowerCase()) || lower.includes(desc.toLowerCase())) {
-      return `${code} - ${desc}`;
-    }
-  }
-  return null;
 }
 
 function calculateAge(dob: string): number | null {
@@ -59,10 +32,12 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
     dob: '',
     gender: 'Laki-laki',
     operator: userProfile.name,
-    procedures: ['', '', ''],
+    procedures: [''],
     diagnosis: '',
     differentialDiagnosis: '',
-    category: 'Poli'
+    category: 'Poli',
+    diagnosis_icd10: '',
+    procedures_icd9: [''],
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -70,28 +45,64 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleProcedureChange = (index: number, value: string) => {
-    const newProcedures = [...formData.procedures];
-    newProcedures[index] = value;
-    setFormData(prev => ({ ...prev, procedures: newProcedures }));
+  const updateField = (field: keyof PatientData, value: string) => {
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      if (field === 'diagnosis_icd10') {
+        updated.diagnosis = value;
+      }
+      return updated;
+    });
+  };
+
+  const updateProcedure = (index: number, value: string) => {
+    setFormData(prev => {
+      const newProcedures = [...prev.procedures_icd9];
+      newProcedures[index] = value;
+      return {
+        ...prev,
+        procedures_icd9: newProcedures,
+        procedures: newProcedures,
+      };
+    });
+  };
+
+  const addProcedure = () => {
+    if (formData.procedures_icd9.length < 5) {
+      setFormData(prev => ({
+        ...prev,
+        procedures_icd9: [...prev.procedures_icd9, ''],
+        procedures: [...prev.procedures, ''],
+      }));
+    }
+  };
+
+  const removeProcedure = (index: number) => {
+    if (formData.procedures_icd9.length <= 1) return;
+    setFormData(prev => {
+      const newProcedures = prev.procedures_icd9.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        procedures_icd9: newProcedures,
+        procedures: newProcedures,
+      };
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.category === 'Kamar Operasi' && !formData.diagnosis) {
+    if (formData.category === 'Kamar Operasi' && !formData.diagnosis_icd10) {
       alert('Diagnosis Utama wajib diisi untuk kategori Kamar Operasi (OK).');
       return;
     }
 
-    if (formData.name && formData.rmNumber && formData.procedures[0]) {
+    if (formData.name && formData.rmNumber && formData.procedures_icd9[0]) {
       onSubmit(formData);
     }
   };
 
   const age = calculateAge(formData.dob);
-  const diagnosisMatch = matchIcd(formData.diagnosis, icd10Codes);
-  const diffDiagnosisMatch = matchIcd(formData.differentialDiagnosis, icd10Codes);
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col items-center p-8 font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar relative">
@@ -238,46 +249,61 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                   <Activity className="w-4 h-4 mr-3" />
                   PROSEDUR & TINDAKAN (ICD-9-CM)
                 </h3>
-                <div className="space-y-6 relative z-10">
-                  {[0, 1, 2].map((index) => {
-                    const procedureMatch = matchIcd(formData.procedures[index], icd9Codes);
-                    return (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-black text-sm ${
-                            index === 0 
-                              ? 'bg-white/25 text-white' 
-                              : 'bg-white/10 text-blue-200'
-                          }`}>
-                            {index + 1}
-                          </div>
-                          <div className="flex-1 relative">
-                            <input
-                              type="text"
-                              list="icd9-list"
-                              required={index === 0}
-                              value={formData.procedures[index]}
-                              onChange={(e) => handleProcedureChange(index, e.target.value)}
-                              className="block w-full px-6 py-4.5 border border-white/20 rounded-2xl bg-white/10 text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-bold text-sm"
-                              placeholder={index === 0 ? "Tindakan Utama (Wajib) *" : "Tindakan Tambahan (Opsional)"}
-                            />
-                            {index === 0 && (
-                              <span className="absolute top-1/2 -translate-y-1/2 right-5 text-red-300 font-black text-lg">*</span>
-                            )}
-                          </div>
+                <div className="space-y-4 relative z-10">
+                  <AnimatePresence mode="popLayout">
+                    {formData.procedures_icd9.map((proc, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex items-start gap-3"
+                      >
+                        <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-black text-sm mt-1 ${
+                          index === 0 
+                            ? 'bg-white/25 text-white' 
+                            : 'bg-white/10 text-blue-200'
+                        }`}>
+                          {index + 1}
                         </div>
-                        {procedureMatch && (
-                          <motion.p
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="ml-14 text-[10px] font-bold text-blue-200/80"
+                        <div className="flex-1">
+                          <ICD9Autocomplete
+                            value={proc}
+                            onChange={(val) => updateProcedure(index, val)}
+                            index={index}
+                          />
+                        </div>
+                        {index > 0 && (
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            type="button"
+                            onClick={() => removeProcedure(index)}
+                            className="w-10 h-10 shrink-0 rounded-xl bg-white/10 hover:bg-red-500/30 border border-white/20 flex items-center justify-center text-blue-200 hover:text-white transition-all mt-1"
                           >
-                            ✓ {procedureMatch}
-                          </motion.p>
+                            <X className="w-4 h-4" />
+                          </motion.button>
                         )}
-                      </div>
-                    );
-                  })}
+                        {index === 0 && (
+                          <div className="w-10 shrink-0" />
+                        )}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+
+                  {formData.procedures_icd9.length < 5 && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="button"
+                      onClick={addProcedure}
+                      className="ml-[52px] flex items-center gap-2 px-5 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-blue-100 hover:text-white transition-all text-xs font-black uppercase tracking-widest"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Tambah Tindakan
+                    </motion.button>
+                  )}
                 </div>
               </motion.div>
 
@@ -294,54 +320,23 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                 </h3>
 
                 <div className="space-y-6 relative z-10">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] ml-1">
-                      Diagnosis Utama {formData.category === 'Kamar Operasi' && <span className="text-red-500">*</span>}
-                    </label>
-                    <input
-                      type="text"
-                      name="diagnosis"
-                      list="icd10-list"
-                      value={formData.diagnosis}
-                      onChange={handleChange}
-                      className="block w-full px-5 py-4 min-h-[48px] border border-slate-200 rounded-2xl bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all font-bold text-sm"
-                      placeholder="Cari atau ketik diagnosis utama..."
-                    />
-                    {diagnosisMatch && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 ml-1"
-                      >
-                        <span className="px-2.5 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-black text-blue-700">
-                          {diagnosisMatch}
-                        </span>
-                      </motion.div>
-                    )}
-                  </div>
+                  <ICD10Autocomplete
+                    value={formData.diagnosis_icd10}
+                    onChange={(val) => updateField('diagnosis_icd10', val)}
+                    label="Diagnosis Utama (ICD-10)"
+                    required={formData.category === 'Kamar Operasi'}
+                  />
 
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] ml-1">Diagnosis Banding</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] ml-1 block mb-2">Diagnosis Banding</label>
                     <input
                       type="text"
                       name="differentialDiagnosis"
-                      list="icd10-list"
                       value={formData.differentialDiagnosis}
                       onChange={handleChange}
-                      className="block w-full px-5 py-4 min-h-[48px] border border-slate-200 rounded-2xl bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all font-bold text-sm"
-                      placeholder="Cari atau ketik diagnosis banding..."
+                      className="block w-full px-5 py-4 min-h-[48px] border border-slate-200 rounded-2xl bg-white text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all font-semibold text-sm"
+                      placeholder="Diagnosis banding (opsional)..."
                     />
-                    {diffDiagnosisMatch && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 ml-1"
-                      >
-                        <span className="px-2.5 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-black text-blue-700">
-                          {diffDiagnosisMatch}
-                        </span>
-                      </motion.div>
-                    )}
                   </div>
                 </div>
               </motion.div>

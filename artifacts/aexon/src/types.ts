@@ -4,10 +4,12 @@ export interface PatientData {
   dob: string;
   gender: 'Laki-laki' | 'Perempuan';
   operator: string;
-  procedures: string[]; // Array of up to 3 procedures
+  procedures: string[];
   diagnosis: string;
   differentialDiagnosis: string;
-  category: 'Kamar Operasi' | 'Poli';
+  category: 'Kamar Operasi' | 'Poli' | 'IGD';
+  diagnosis_icd10: string;
+  procedures_icd9: string[];
 }
 
 export interface Capture {
