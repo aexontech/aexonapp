@@ -360,7 +360,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                   <label className="text-[10px] font-black text-blue-200 uppercase tracking-[0.15em] ml-1">Operator / Dokter</label>
                   <div className="px-5 py-4.5 bg-white/10 border border-white/20 rounded-2xl text-white font-black text-sm flex items-center shadow-sm">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full mr-3 animate-pulse" />
-                    Dr. {userProfile.name.split(' ').pop()}
+                    {userProfile.name}
                   </div>
                 </div>
                 <div className="space-y-3">

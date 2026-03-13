@@ -57,14 +57,24 @@ Aexon Endoscopy — React 19 + Vite + TypeScript desktop app for endoscopy sessi
 - Entry: `src/main.tsx`, main component: `src/App.tsx`
 - Key components: Launcher (login), Dashboard, SessionForm, EndoscopyApp (active session), ReportGenerator, Gallery, Settings, AdminDashboard
 - UI stack: Tailwind CSS v4, Framer Motion (`motion/react`), Lucide icons, Konva (image editor)
+- Font: Plus Jakarta Sans (Google Fonts), loaded in index.html and set in index.css body
+- Auth: Supabase email+password via `src/lib/supabase.ts`. Requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY env vars. Falls back gracefully when not configured.
+- EULA: Per-user, shown after first login on new device. Plain/boring monospace style. Stored as `aexon_eula_accepted_[userId]` in localStorage.
+- Login: Email + password fields, forgot password flow (Supabase resetPasswordForEmail), "aexon.id" registration link. No Google OAuth.
+- handleLogin signature: `(role, email, fullName, plan, trialDaysLeft)` — receives plan/trial data from Supabase subscription query
+- Dashboard: Hero greeting (name in teal), 3 stat cards (Total Sesi, Sesi Bulan Ini, Total Media) with animated count-up, session list with category-colored borders, single "Mulai Sesi Baru" button
+- No "Dr." prefix added manually — userProfile.name already includes title from Supabase profile
+- Encryption: XOR cipher in `src/lib/storage.ts` (saveUserData/loadUserData)
+- Subscription: subscription-only model (no tokens), gating via hasActiveAccess
+- Backup/Restore: Settings tab with date-range filter, JSON export/import
+- Gallery export: bulk/individual photo download, session report JSON
 - Types: `src/types.ts` — PatientData, Session, Capture, UserProfile, HospitalSettings
 - ICD data: `src/data/icd9.ts` (790 ICD-9-CM procedures), `src/data/icd10.ts` (494 ICD-10 diagnoses) with search functions
 - ICD autocomplete: `src/components/ICD9Autocomplete.tsx` and `src/components/ICD10Autocomplete.tsx` — dropdown search with keyboard navigation, category badges
 - PatientData has `diagnosis_icd10` (string) and `procedures_icd9` (string[], up to 5) fields; old `diagnosis`/`procedures` fields kept synced for backward compat
 - SessionForm layout: Row 1 patient identity, Row 2 procedures (ICD-9 autocomplete, dynamic add/remove) + diagnosis (ICD-10 autocomplete), Row 3 administration
-- Trial: 7-day trial period, navigation guard active during recording sessions
+- Navigation guard active during recording sessions
 - Session ID: generated once via `useMemo` (not on every render)
-- No Gemini API key exposed in the client bundle
 
 ### `artifacts/api-server` (`@workspace/api-server`)
 

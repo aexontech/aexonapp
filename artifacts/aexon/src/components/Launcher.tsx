@@ -1,417 +1,308 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Lock, User, KeyRound, Building2, ShieldCheck, ArrowRight, Globe, Mail, Eye, EyeOff } from 'lucide-react';
-import { Logo, Pattern } from './Logo';
-
-const GoogleIcon = () => (
-  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-    <path
-      fill="currentColor"
-      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-    />
-    <path
-      fill="currentColor"
-      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-    />
-    <path
-      fill="currentColor"
-      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-    />
-    <path
-      fill="currentColor"
-      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-    />
-  </svg>
-);
+import { Mail, Lock, Eye, EyeOff, ChevronLeft, Loader2, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Logo } from './Logo';
+import { supabase } from '../lib/supabase';
 
 interface LauncherProps {
-  onLogin: (role: 'doctor' | 'admin', username: string, fullName?: string) => void;
+  onLogin: (role: 'doctor' | 'admin', email: string, fullName: string, plan: 'subscription' | 'enterprise' | null, trialDaysLeft: number | null) => void;
 }
 
 export default function Launcher({ onLogin }: LauncherProps) {
-  const [loginMode, setLoginMode] = useState<'standard' | 'enterprise'>('standard');
-  const [ssoRole, setSsoRole] = useState<'doctor' | 'admin'>('doctor');
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [username, setUsername] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [enterpriseId, setEnterpriseId] = useState('');
-  const [strNumber, setStrNumber] = useState('');
-  const [sipNumber, setSipNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    setTimeout(() => {
-      if (isRegistering) {
-        if (username && password && strNumber && sipNumber && fullName) {
-          onLogin('doctor', username, fullName);
-        } else {
-          setError('Semua data wajib diisi untuk pendaftaran.');
-          setIsLoading(false);
-        }
-        return;
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+
+      const { data: profile } = await supabase
+        .from('doctor_accounts')
+        .select('*')
+        .eq('user_id', data.user.id)
+        .single();
+
+      const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('*, product_plans(*), products(*)')
+        .eq('doctor_id', profile?.id)
+        .in('status', ['active', 'trial'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      const plan: 'subscription' | 'enterprise' | null = subscription?.status === 'active' ? 'subscription' :
+                   subscription?.status === 'trial' ? 'subscription' : null;
+
+      let trialDaysLeft: number | null = null;
+      if (subscription?.status === 'trial' && subscription?.current_period_end) {
+        const end = new Date(subscription.current_period_end);
+        const now = new Date();
+        trialDaysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
       }
 
-      if (loginMode === 'standard') {
-        if (username && password) {
-          onLogin('doctor', username);
-        } else {
-          setError('Username dan Password wajib diisi.');
-          setIsLoading(false);
-        }
-      } else {
-        const isDoctorSSO = ssoRole === 'doctor';
-        if (isDoctorSSO) {
-          if (username && password) {
-            onLogin('doctor', username);
-          } else {
-            setError('ID Dokter dan Password wajib diisi.');
-            setIsLoading(false);
-          }
-        } else {
-          if (enterpriseId && username && password) {
-            onLogin('admin', username);
-          } else {
-            setError('Enterprise ID, Username, dan Password wajib diisi.');
-            setIsLoading(false);
-          }
-        }
-      }
-    }, 1500);
+      onLogin('doctor', data.user.email ?? '', profile?.full_name ?? data.user.email ?? '', plan, trialDaysLeft);
+
+    } catch (err: any) {
+      setError(err.message === 'Invalid login credentials'
+        ? 'Email atau password salah. Periksa kembali.'
+        : 'Koneksi gagal. Periksa internet dan coba lagi.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleForgotPassword = () => {
-    setResetSent(true);
-    setTimeout(() => setResetSent(false), 5000);
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+    setResetError('');
+
+    try {
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: 'https://aexon.id/reset-password'
+      });
+      if (resetErr) throw resetErr;
+      setResetSent(true);
+    } catch (err: any) {
+      setResetError(err.message || 'Gagal mengirim link reset. Coba lagi.');
+    } finally {
+      setResetLoading(false);
+    }
   };
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 relative overflow-hidden">
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full bg-slate-50" />
+          <motion.div
+            animate={{ scale: [1, 1.2, 1], x: [0, 100, 0], y: [0, 50, 0] }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] bg-teal-400/10 rounded-full blur-[120px]"
+          />
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-[420px] w-full relative z-10"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl p-10">
+            <button
+              onClick={() => { setShowForgotPassword(false); setResetSent(false); setResetError(''); }}
+              className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors mb-6"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Kembali ke Login
+            </button>
+
+            {resetSent ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-5">
+                  <CheckCircle2 className="w-8 h-8 text-[#0D9488]" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Link reset password telah dikirim!</h2>
+                <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                  Periksa inbox email kamu. Link berlaku selama 1 jam.
+                </p>
+                <button
+                  onClick={() => { setShowForgotPassword(false); setResetSent(false); }}
+                  className="w-full py-3 bg-[#0D9488] text-white font-bold rounded-xl hover:bg-[#0D9488]/90 transition-colors text-sm"
+                >
+                  Kembali ke Login
+                </button>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Reset Password</h2>
+                <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                  Masukkan email terdaftar. Kami akan mengirimkan link untuk membuat password baru.
+                </p>
+
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm"
+                      placeholder="Email terdaftar"
+                      required
+                    />
+                  </div>
+
+                  {resetError && (
+                    <div className="flex items-center gap-2 text-red-600 text-xs">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      {resetError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="w-full py-3 bg-[#0D9488] text-white font-bold rounded-xl hover:bg-[#0D9488]/90 transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {resetLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : null}
+                    Kirim Link Reset
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 font-sans text-slate-900 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 relative overflow-hidden">
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full bg-slate-50" />
-        <Pattern className="text-blue-500 opacity-[0.03]" />
-        
-        <motion.div 
-          animate={{ 
-            scale: [1, 1.2, 1],
-            x: [0, 100, 0],
-            y: [0, 50, 0]
-          }}
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], x: [0, 100, 0], y: [0, 50, 0] }}
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] bg-blue-400/10 rounded-full blur-[120px]" 
+          className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] bg-teal-400/10 rounded-full blur-[120px]"
         />
-        <motion.div 
-          animate={{ 
-            scale: [1, 1.3, 1],
-            x: [0, -100, 0],
-            y: [0, -50, 0]
-          }}
+        <motion.div
+          animate={{ scale: [1, 1.3, 1], x: [0, -100, 0], y: [0, -50, 0] }}
           transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] bg-indigo-400/10 rounded-full blur-[120px]" 
+          className="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] bg-indigo-400/10 rounded-full blur-[120px]"
         />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="max-w-xl w-full relative z-10"
+        className="max-w-[420px] w-full relative z-10"
       >
-        <div className="bg-white/80 backdrop-blur-3xl border border-white rounded-[3rem] p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400" />
-          
-          <div className="flex flex-col items-center mb-12">
-            <div className="relative mb-8">
-              <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-10 animate-pulse" />
-              <Logo mSize={100} wSize={50} className="relative z-10" showPattern />
+        <div className="bg-white rounded-3xl shadow-2xl p-10">
+          <div className="flex flex-col items-center mb-8">
+            <div className="relative mb-5">
+              <div className="absolute inset-0 bg-[#0D9488] blur-3xl opacity-10 animate-pulse" />
+              <Logo mSize={80} wSize={40} className="relative z-10" showPattern />
             </div>
             <div className="flex flex-col items-center text-center">
-              <div className="px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full mb-4">
-                <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em]">Aexon Pro V2.5</span>
+              <div className="px-3 py-1 bg-teal-50 border border-teal-100 rounded-full mb-3">
+                <span className="text-[10px] font-bold text-[#0D9488] uppercase tracking-[0.2em]">v2.5.0</span>
               </div>
-              <h2 className="text-4xl font-black tracking-tighter text-slate-900 mb-3">
-                {isRegistering ? 'Daftar Akun' : 'Selamat Datang'}
+              <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 mb-2">
+                Selamat Datang
               </h2>
-              <p className="text-slate-500 text-sm font-medium max-w-[400px]">
-                {isRegistering ? 'Lengkapi data medis profesional Anda' : 'Masuk ke sistem manajemen endoskopi terintegrasi'}
+              <p className="text-gray-500 text-sm font-medium">
+                Masuk ke sistem manajemen endoskopi
               </p>
             </div>
           </div>
 
-          {!isRegistering && (
-            <div className="space-y-6 mb-10">
-              <div className="flex p-2 bg-slate-50 rounded-2xl border border-slate-100">
-                <button
-                  onClick={() => setLoginMode('standard')}
-                  className={`flex-1 flex items-center justify-center py-4 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    loginMode === 'standard' 
-                    ? 'bg-white text-slate-900 shadow-xl scale-[1.02] border border-slate-100' 
-                    : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  Pribadi
-                </button>
-                <button
-                  onClick={() => setLoginMode('enterprise')}
-                  className={`flex-1 flex items-center justify-center py-4 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    loginMode === 'enterprise' 
-                    ? 'bg-white text-slate-900 shadow-xl scale-[1.02] border border-slate-100' 
-                    : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  <Building2 className="w-4 h-4 mr-2" />
-                  Institusi
-                </button>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-500 ml-1">Email</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Mail className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                  placeholder="Email terdaftar"
+                  required
+                />
               </div>
-
-              {loginMode === 'enterprise' && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="grid grid-cols-2 gap-4"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSsoRole('doctor')}
-                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border-2 transition-all gap-2 ${
-                      ssoRole === 'doctor' 
-                      ? 'bg-blue-50 border-blue-500 text-blue-600 shadow-lg' 
-                      : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200'
-                    }`}
-                  >
-                    <User className={`w-6 h-6 ${ssoRole === 'doctor' ? 'text-blue-600' : 'text-slate-300'}`} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Dokter</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSsoRole('admin')}
-                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border-2 transition-all gap-2 ${
-                      ssoRole === 'admin' 
-                      ? 'bg-blue-50 border-blue-500 text-blue-600 shadow-lg' 
-                      : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-200'
-                    }`}
-                  >
-                    <ShieldCheck className={`w-6 h-6 ${ssoRole === 'admin' ? 'text-blue-600' : 'text-slate-300'}`} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Admin</span>
-                  </button>
-                </motion.div>
-              )}
             </div>
-          )}
 
-          <AnimatePresence mode="wait">
-            <motion.form 
-              key={isRegistering ? 'register' : loginMode}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              onSubmit={handleLogin} 
-              className="space-y-6"
-            >
-              {loginMode === 'enterprise' && ssoRole === 'admin' && !isRegistering && (
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Enterprise ID</label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                      <Globe className="h-4 w-4 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
-                    </div>
-                    <input
-                      type="text"
-                      value={enterpriseId}
-                      onChange={(e) => setEnterpriseId(e.target.value)}
-                      className="block w-full pl-14 pr-5 py-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm"
-                      placeholder="RS-JAKARTA-01"
-                    />
-                  </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-500 ml-1">Password</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Lock className="h-4 w-4 text-gray-400" />
                 </div>
-              )}
-
-              {isRegistering && (
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nama Lengkap & Gelar</label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                      <User className="h-4 w-4 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
-                    </div>
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="block w-full pl-14 pr-5 py-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm"
-                      placeholder="Dr. Budi Santoso, Sp.PD"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
-                  {isRegistering ? 'Username' : (loginMode === 'standard' ? 'ID Dokter / Username' : (ssoRole === 'admin' ? 'Admin Username' : 'ID Dokter Institusi'))}
-                </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                    <User className="h-4 w-4 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
-                  </div>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="block w-full pl-14 pr-5 py-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm"
-                    placeholder={isRegistering ? "username_baru" : (loginMode === 'standard' ? "budi.santoso" : (ssoRole === 'admin' ? "admin.rsup" : "dr.budi.sso"))}
-                  />
-                </div>
-              </div>
-
-              {isRegistering && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">No. STR</label>
-                    <input
-                      type="text"
-                      value={strNumber}
-                      onChange={(e) => setStrNumber(e.target.value)}
-                      className="block w-full px-5 py-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm"
-                      placeholder="16 Digit"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">No. SIP</label>
-                    <input
-                      type="text"
-                      value={sipNumber}
-                      onChange={(e) => setSipNumber(e.target.value)}
-                      className="block w-full px-5 py-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm"
-                      placeholder="SIP/2026/..."
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center ml-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Password</label>
-                  {!isRegistering && (
-                    <button 
-                      type="button" 
-                      onClick={handleForgotPassword}
-                      className="text-[9px] font-black text-blue-600 hover:text-blue-500 transition-colors uppercase tracking-widest"
-                    >
-                      Lupa?
-                    </button>
-                  )}
-                </div>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                    <KeyRound className="h-4 w-4 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-14 pr-14 py-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-300 hover:text-blue-500 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <AnimatePresence>
-                {resetSent && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="bg-blue-50 border border-blue-100 text-blue-600 text-[10px] font-bold p-4 rounded-2xl text-center"
-                  >
-                    Link reset password telah dikirim ke email terdaftar. Silakan cek inbox Anda.
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {error && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-50 border border-red-100 text-red-600 text-[10px] font-black p-4 rounded-2xl text-center uppercase tracking-widest"
-                >
-                  {error}
-                </motion.div>
-              )}
-
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={isLoading}
-                className="w-full relative group overflow-hidden flex justify-center items-center py-5 px-6 rounded-[1.5rem] shadow-xl shadow-blue-500/20 text-[11px] font-black text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-50 uppercase tracking-[0.2em] mt-8"
-              >
-                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="relative flex items-center">
-                  {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      {isRegistering ? 'Daftar Sekarang' : 'Masuk ke Sistem'}
-                      <ArrowRight className="w-4 h-4 ml-3 group-hover:translate-x-1 transition-transform" />
-                    </>
-                  )}
-                </span>
-              </motion.button>
-
-              {!isRegistering && loginMode === 'standard' && (
-                <div className="space-y-6">
-                  <div className="relative flex items-center">
-                    <div className="flex-grow border-t border-slate-100"></div>
-                    <span className="flex-shrink mx-4 text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">Atau</span>
-                    <div className="flex-grow border-t border-slate-100"></div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => onLogin('doctor', 'google_user')}
-                    className="w-full flex items-center justify-center py-4 px-6 bg-white border border-slate-100 rounded-2xl text-[10px] font-black text-slate-600 hover:bg-slate-50 transition-all active:scale-[0.98] uppercase tracking-widest"
-                  >
-                    <GoogleIcon />
-                    Google Account
-                  </button>
-                </div>
-              )}
-
-              <div className="text-center pt-4">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  className="block w-full pl-11 pr-11 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                  placeholder="Password"
+                  required
+                />
                 <button
                   type="button"
-                  onClick={() => setIsRegistering(!isRegistering)}
-                  className="text-[10px] font-black text-blue-600 hover:text-blue-500 transition-colors uppercase tracking-[0.2em]"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  {isRegistering ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar'}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </motion.form>
-          </AnimatePresence>
+            </div>
 
-          <div className="mt-12 pt-8 border-t border-slate-100 text-center space-y-2">
-            <p className="text-[10px] font-bold text-slate-400">
-              Kelola langganan di{' '}
-              <a href="https://aexon.id" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 transition-colors underline underline-offset-2">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-2 text-red-600 text-xs bg-red-50 border border-red-100 rounded-xl p-3"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </motion.div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 bg-[#0D9488] text-white font-bold rounded-xl hover:bg-[#0D9488]/90 transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Masuk...
+                </>
+              ) : (
+                'Masuk'
+              )}
+            </button>
+
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => { setShowForgotPassword(true); setResetEmail(email); }}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Lupa password?
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-gray-100 text-center space-y-1">
+            <p className="text-xs text-gray-400">
+              Belum punya akun? Daftar di{' '}
+              <a href="https://aexon.id" target="_blank" rel="noopener noreferrer" className="text-[#0D9488] font-medium hover:underline">
                 aexon.id
               </a>
             </p>
-            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">
+            <p className="text-[10px] text-gray-300">
               &copy; 2026 PT Aexon Inovasi Teknologi
             </p>
           </div>

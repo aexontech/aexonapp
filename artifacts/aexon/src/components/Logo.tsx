@@ -52,7 +52,7 @@ export const Monogram = ({ bg = C.white, fg = C.ink, dot = C.blue, size = 100 })
 
 export const Word = ({ color = C.ink, size = 28 }) => (
   <svg height={size} viewBox="0 0 130 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ height: size, width: 'auto', overflow: 'visible' }}>
-    <text x="0" y="26" fontFamily="'Outfit', sans-serif" fontWeight="600" fontSize="28" fill={color} letterSpacing="-0.3">Aexon</text>
+    <text x="0" y="26" fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="600" fontSize="28" fill={color} letterSpacing="-0.3">Aexon</text>
   </svg>
 );
 

@@ -20,16 +20,10 @@ import { AlertTriangle } from 'lucide-react';
 
 function AppContent() {
   const { showToast } = useToast();
-  const [eulaAccepted, setEulaAccepted] = useState(() => {
-    try {
-      const stored = localStorage.getItem('aexon_eula_accepted');
-      return stored ? JSON.parse(stored).accepted === true : false;
-    } catch { return false; }
-  });
 
   const [currentView, setCurrentView] = useState<'launcher' | 'pricing' | 'dashboard' | 'admin-dashboard' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'add-doctor' | 'manage-subscription'>('launcher');
   const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | null>(null);
-  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(7);
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   
   const [patientData, setPatientData] = useState<PatientData | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -39,6 +33,7 @@ function AppContent() {
   const [isRecordingActive, setIsRecordingActive] = useState(false);
   const [showNavGuard, setShowNavGuard] = useState(false);
   const [pendingNavTarget, setPendingNavTarget] = useState<string | null>(null);
+  const [showEula, setShowEula] = useState(false);
   const [doctors, setDoctors] = useState<UserProfile[]>([
     {
       id: 'DOC-001',
@@ -184,13 +179,15 @@ function AppContent() {
     }
   ]);
 
-  const handleLogin = (role: UserRole, username: string, fullName?: string) => {
+  const handleLogin = (role: UserRole, email: string, fullName: string, plan: 'subscription' | 'enterprise' | null, trialDaysLeft: number | null) => {
+    const userId = `DOC-${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+
     if (role === 'admin') {
       setUserProfile({
-        id: `ADM-${username.toUpperCase()}`,
-        name: fullName || `Admin ${username}`,
+        id: `ADM-${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        name: fullName || `Admin`,
         specialization: 'Hospital Administrator',
-        email: `${username}@rsup.co.id`,
+        email: email,
         phone: '021-1234567',
         role: 'admin',
         status: 'active'
@@ -206,37 +203,47 @@ function AppContent() {
       }]);
       setCurrentView('admin-dashboard');
     } else {
-      const isInstitutional = username.toLowerCase().includes('sso');
-      setUserProfile({
-        id: `DOC-${username.toUpperCase()}`,
-        name: fullName || (username.includes('.') ? username : `Dr. ${username}`),
+      const profile: UserProfile = {
+        id: userId,
+        name: fullName || email,
         specialization: 'Spesialis Penyakit Dalam',
-        email: `${username}@hospital.com`,
+        email: email,
         phone: '08123456789',
         role: 'doctor',
         status: 'active',
-        strNumber: '1234567890123456',
-        sipNumber: 'SIP/2026/001/RS',
         preferences: {
           fontSize: 'normal'
         }
-      });
-      
-      if (isInstitutional) {
-        setSelectedPlan('enterprise');
-        setHospitalSettingsList([{
-          id: 'ENT-001',
-          name: 'RSUP Jakarta',
-          address: 'Jl. Diponegoro No. 71, Jakarta Pusat',
-          phone: '021-555000',
-          email: 'enterprise@rsup.co.id',
-          logoUrl: ''
-        }]);
-        setCurrentView('dashboard');
+      };
+      setUserProfile(profile);
+      setSelectedPlan(plan);
+      setTrialDaysLeft(trialDaysLeft);
+
+      const eulaKey = `aexon_eula_accepted_${userId}`;
+      const eulaAccepted = localStorage.getItem(eulaKey);
+      if (!eulaAccepted) {
+        setShowEula(true);
       } else {
         setCurrentView('dashboard');
       }
     }
+  };
+
+  const handleEulaAccept = () => {
+    if (userProfile) {
+      const eulaKey = `aexon_eula_accepted_${userProfile.id}`;
+      localStorage.setItem(eulaKey, JSON.stringify({ accepted: true, timestamp: new Date().toISOString() }));
+    }
+    setShowEula(false);
+    setCurrentView('dashboard');
+  };
+
+  const handleEulaDecline = () => {
+    setShowEula(false);
+    setUserProfile(null);
+    setSelectedPlan(null);
+    setTrialDaysLeft(null);
+    setCurrentView('launcher');
   };
 
   const handleUpdateHospitalList = (list: HospitalSettings[]) => {
@@ -293,6 +300,7 @@ function AppContent() {
     setSessions([]);
     setViewingSession(null);
     setUserProfile(null);
+    setTrialDaysLeft(null);
   };
 
   const handleCancelSubscription = () => {
@@ -334,11 +342,11 @@ function AppContent() {
     }
   };
 
-  if (!eulaAccepted) {
+  if (showEula) {
     return (
       <EulaModal
-        onAccept={() => setEulaAccepted(true)}
-        onDecline={() => {}}
+        onAccept={handleEulaAccept}
+        onDecline={handleEulaDecline}
       />
     );
   }

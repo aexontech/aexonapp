@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -14,11 +13,14 @@
     font-size: 18px;
     letter-spacing: 0.01em;
   }
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
 }
 
 @layer utilities {
   .font-aexon {
-    font-family: 'Outfit', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-weight: 600;
     letter-spacing: -0.01em;
   }
