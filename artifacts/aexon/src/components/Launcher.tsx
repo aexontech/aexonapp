@@ -184,7 +184,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
       <motion.div
         animate={{ scale: [1, 1.2, 1], x: [0, 100, 0], y: [0, 50, 0] }}
         transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] bg-teal-400/10 rounded-full blur-[120px]"
+        className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] bg-[#0C1E35]/5 rounded-full blur-[120px]"
       />
       <motion.div
         animate={{ scale: [1, 1.3, 1], x: [0, -100, 0], y: [0, -50, 0] }}
@@ -197,12 +197,12 @@ export default function Launcher({ onLogin }: LauncherProps) {
   const logoHeader = (
     <div className="flex flex-col items-center mb-8">
       <div className="relative mb-5">
-        <div className="absolute inset-0 bg-[#0D9488] blur-3xl opacity-10 animate-pulse" />
+        <div className="absolute inset-0 bg-[#0C1E35] blur-3xl opacity-10 animate-pulse" />
         <Logo mSize={80} wSize={40} className="relative z-10" showPattern />
       </div>
       <div className="flex flex-col items-center text-center">
-        <div className="px-3 py-1 bg-teal-50 border border-teal-100 rounded-full mb-3">
-          <span className="text-[10px] font-bold text-[#0D9488] uppercase tracking-[0.2em]">v2.5.0</span>
+        <div className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full mb-3">
+          <span className="text-[10px] font-bold text-[#0C1E35] uppercase tracking-[0.2em]">v2.5.0</span>
         </div>
         <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 mb-2">
           Selamat Datang
@@ -235,7 +235,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
             {resetSent ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <CheckCircle2 className="w-8 h-8 text-[#0D9488]" />
+                  <CheckCircle2 className="w-8 h-8 text-[#0C1E35]" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Link reset password telah dikirim!</h2>
                 <p className="text-sm text-gray-500 leading-relaxed mb-6">
@@ -243,7 +243,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                 </p>
                 <button
                   onClick={() => { setViewMode('login'); setResetSent(false); }}
-                  className="w-full py-3 bg-[#0D9488] text-white font-bold rounded-xl hover:bg-[#0D9488]/90 transition-colors text-sm"
+                  className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm"
                 >
                   Kembali ke Login
                 </button>
@@ -264,7 +264,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                       type="email"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm"
+                      className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm"
                       placeholder="Email terdaftar"
                       required
                     />
@@ -280,7 +280,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="w-full py-3 bg-[#0D9488] text-white font-bold rounded-xl hover:bg-[#0D9488]/90 transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                     Kirim Link Reset
@@ -314,8 +314,8 @@ export default function Launcher({ onLogin }: LauncherProps) {
               </button>
 
               <div className="text-center py-4">
-                <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <Building2 className="w-8 h-8 text-[#0D9488]" />
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                  <Building2 className="w-8 h-8 text-[#0C1E35]" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-3">Daftar Akun Institusi</h2>
                 <p className="text-sm text-gray-500 leading-relaxed mb-8">
@@ -371,7 +371,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
             {regSuccess ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <CheckCircle2 className="w-8 h-8 text-[#0D9488]" />
+                  <CheckCircle2 className="w-8 h-8 text-[#0C1E35]" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Pendaftaran berhasil!</h2>
                 <p className="text-sm text-gray-500 leading-relaxed mb-6">
@@ -379,7 +379,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                 </p>
                 <button
                   onClick={() => { setViewMode('login'); setRegSuccess(false); }}
-                  className="w-full py-3 bg-[#0D9488] text-white font-bold rounded-xl hover:bg-[#0D9488]/90 transition-colors text-sm"
+                  className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm"
                 >
                   Kembali ke Login
                 </button>
@@ -401,7 +401,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
                         disabled={regLoading}
-                        className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                        className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
                         placeholder="Nama lengkap (tanpa gelar)"
                         required
                       />
@@ -415,7 +415,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                       value={regStr}
                       onChange={(e) => setRegStr(e.target.value)}
                       disabled={regLoading}
-                      className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                      className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
                       placeholder="Nomor Surat Tanda Registrasi"
                       required
                     />
@@ -432,7 +432,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
                         disabled={regLoading}
-                        className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                        className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
                         placeholder="Email aktif"
                         required
                       />
@@ -450,7 +450,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
                         disabled={regLoading}
-                        className="block w-full pl-11 pr-11 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                        className="block w-full pl-11 pr-11 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
                         placeholder="Min. 8 karakter"
                         required
                       />
@@ -475,7 +475,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                         value={regConfirmPassword}
                         onChange={(e) => setRegConfirmPassword(e.target.value)}
                         disabled={regLoading}
-                        className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                        className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
                         placeholder="Ulangi password"
                         required
                       />
@@ -489,7 +489,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                       value={regSip}
                       onChange={(e) => setRegSip(e.target.value)}
                       disabled={regLoading}
-                      className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                      className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
                       placeholder="Surat Izin Praktik"
                     />
                   </div>
@@ -501,7 +501,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                       value={regSpecialization}
                       onChange={(e) => setRegSpecialization(e.target.value)}
                       disabled={regLoading}
-                      className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                      className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
                       placeholder="Contoh: Gastroenterohepatologi"
                     />
                   </div>
@@ -520,7 +520,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                   <button
                     type="submit"
                     disabled={regLoading}
-                    className="w-full py-3 bg-[#0D9488] text-white font-bold rounded-xl hover:bg-[#0D9488]/90 transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
+                    className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
                   >
                     {regLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                     Daftar
@@ -553,7 +553,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
               onClick={() => { setLoginType('personal'); setError(''); }}
               className={`flex flex-col items-center gap-1 p-4 rounded-2xl border-2 transition-all duration-200 ${
                 loginType === 'personal'
-                  ? 'bg-[#0D9488] border-[#0D9488] text-white'
+                  ? 'bg-[#0C1E35] border-[#0C1E35] text-white'
                   : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
               }`}
             >
@@ -568,7 +568,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
               onClick={() => { setLoginType('institusi'); setError(''); }}
               className={`flex flex-col items-center gap-1 p-4 rounded-2xl border-2 transition-all duration-200 ${
                 loginType === 'institusi'
-                  ? 'bg-[#0D9488] border-[#0D9488] text-white'
+                  ? 'bg-[#0C1E35] border-[#0C1E35] text-white'
                   : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
               }`}
             >
@@ -595,7 +595,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                     onClick={() => setInstitusiRole('doctor')}
                     className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
                       institusiRole === 'doctor'
-                        ? 'bg-white text-[#0D9488] shadow-sm'
+                        ? 'bg-white text-[#0C1E35] shadow-sm'
                         : 'text-gray-400 hover:text-gray-500'
                     }`}
                   >
@@ -606,7 +606,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                     onClick={() => setInstitusiRole('admin')}
                     className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
                       institusiRole === 'admin'
-                        ? 'bg-white text-[#0D9488] shadow-sm'
+                        ? 'bg-white text-[#0C1E35] shadow-sm'
                         : 'text-gray-400 hover:text-gray-500'
                     }`}
                   >
@@ -629,7 +629,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
                   placeholder="Email terdaftar"
                   required
                 />
@@ -647,7 +647,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="block w-full pl-11 pr-11 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all text-sm disabled:opacity-50"
+                  className="block w-full pl-11 pr-11 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
                   placeholder="Password"
                   required
                 />
@@ -675,7 +675,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-[#0D9488] text-white font-bold rounded-xl hover:bg-[#0D9488]/90 transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+              className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
             >
               {isLoading ? (
                 <>
@@ -704,7 +704,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
               <button
                 type="button"
                 onClick={() => { setViewMode('register'); setRegError(''); setRegSuccess(false); }}
-                className="text-[#0D9488] font-medium hover:underline"
+                className="text-[#0C1E35] font-medium hover:underline"
               >
                 Daftar Sekarang
               </button>

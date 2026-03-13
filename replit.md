@@ -57,12 +57,13 @@ Aexon Endoscopy — React 19 + Vite + TypeScript desktop app for endoscopy sessi
 - Entry: `src/main.tsx`, main component: `src/App.tsx`
 - Key components: Launcher (login), Dashboard, SessionForm, EndoscopyApp (active session), ReportGenerator, Gallery, Settings, AdminDashboard
 - UI stack: Tailwind CSS v4, Framer Motion (`motion/react`), Lucide icons, Konva (image editor)
-- Font: Plus Jakarta Sans (Google Fonts), loaded in index.html and set in index.css body
+- Fonts: Plus Jakarta Sans (body text) + Outfit (brand "Aexon" wordmark only), loaded in index.html. `.font-aexon` utility class uses Outfit bold.
 - Auth: Supabase email+password via `src/lib/supabase.ts`. Requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY env vars. Falls back gracefully when not configured.
 - EULA: Per-user, shown after first login on new device. Plain/boring monospace style. Stored as `aexon_eula_accepted_[userId]` in localStorage.
-- Login: Email + password fields, forgot password flow (Supabase resetPasswordForEmail), "aexon.id" registration link. No Google OAuth.
+- Brand colors: Primary = navy #0C1E35 (buttons, selected states, accents). Teal kept only for success states (CheckCircle). Background: slate-50. Cards: white + border-slate-200.
+- Login: 2-card selector (Personal / Institusi), Institusi sub-selector (Dokter/Admin), email+password form, forgot password flow, registration flow (Personal form / Institusi info screen). No Google OAuth.
 - handleLogin signature: `(role, email, fullName, plan, trialDaysLeft)` — receives plan/trial data from Supabase subscription query
-- Dashboard: Hero greeting (name in teal), 3 stat cards (Total Sesi, Sesi Bulan Ini, Total Media) with animated count-up, session list with category-colored borders, single "Mulai Sesi Baru" button
+- Dashboard: Hero greeting (name in navy #0C1E35), 3 stat cards (Total Sesi, Sesi Bulan Ini, Total Media) with animated count-up, session list with category-colored borders, single "Mulai Sesi Baru" button
 - No "Dr." prefix added manually — userProfile.name already includes title from Supabase profile
 - Encryption: XOR cipher in `src/lib/storage.ts` (saveUserData/loadUserData)
 - Subscription: subscription-only model (no tokens), gating via hasActiveAccess

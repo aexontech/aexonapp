@@ -84,7 +84,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
 
   const stats = [
     { label: 'Total Sesi', value: sessions.length, icon: Activity, gradient: 'from-blue-500 to-blue-600' },
-    { label: 'Sesi Bulan Ini', value: thisMonthCount, icon: TrendingUp, gradient: 'from-teal-500 to-teal-600' },
+    { label: 'Sesi Bulan Ini', value: thisMonthCount, icon: TrendingUp, gradient: 'from-[#0C1E35] to-[#1a3a5c]' },
     { label: 'Total Media', value: totalMedia, icon: Camera, gradient: 'from-purple-500 to-purple-600' },
   ];
 
@@ -124,7 +124,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
           <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
             Selamat datang,
           </h2>
-          <h2 className="text-4xl font-extrabold tracking-tight text-[#0D9488] leading-tight">
+          <h2 className="text-4xl font-extrabold tracking-tight text-[#0C1E35] leading-tight">
             {userProfile.name}
           </h2>
           <div className="flex items-center gap-3 mt-2">
@@ -139,7 +139,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onNewSession}
-            className={`flex items-center gap-2 px-6 py-3 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-teal-500/20 ${sessions.length === 0 ? 'animate-pulse' : ''}`}
+            className={`flex items-center gap-2 px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#0C1E35]/20 ${sessions.length === 0 ? 'animate-pulse' : ''}`}
           >
             <Plus className="w-5 h-5" />
             Mulai Sesi Baru
@@ -213,7 +213,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                   type="text"
                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all"
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all"
                   placeholder="Cari prosedur, ICD, RM..."
                 />
                 {searchTerm && (
@@ -248,7 +248,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                     >
                       <div className="flex items-center gap-4 min-w-0 flex-1">
                         <div>
-                          <div className="text-base font-semibold text-slate-900 group-hover:text-[#0D9488] transition-colors">
+                          <div className="text-base font-semibold text-slate-900 group-hover:text-[#0C1E35] transition-colors">
                             {session.patient.procedures[0] || 'Prosedur'}
                           </div>
                           <div className="flex items-center gap-3 mt-1">
@@ -282,7 +282,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={(e) => { e.stopPropagation(); onViewSession(session); }}
-                          className="flex items-center gap-2 px-4 py-2.5 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white rounded-xl transition-all duration-200 text-xs font-bold"
+                          className="flex items-center gap-2 px-4 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl transition-all duration-200 text-xs font-bold"
                         >
                           Laporan
                           <ArrowRight className="w-3.5 h-3.5" />

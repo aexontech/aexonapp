@@ -95,7 +95,7 @@ export default function ManageSubscription({ onBack }: ManageSubscriptionProps) 
                     initial={{ width: 0 }}
                     animate={{ width: `${(subscriptionInfo.usedSeats / subscriptionInfo.totalSeats) * 100}%` }}
                     transition={{ duration: 1.5, ease: "easeOut" }}
-                    className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.5)]" 
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.5)]" 
                   />
                 </div>
                 <p className="text-[10px] text-indigo-200 mt-4 font-medium italic">
