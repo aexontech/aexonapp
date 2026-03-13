@@ -99,7 +99,7 @@ export default function Gallery({ session, onBack, onUpdateSession, onViewReport
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={exportBulkPhotos}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-900/10"
               title="Download semua foto"
             >
               <Download className="w-3.5 h-3.5" />
@@ -159,7 +159,7 @@ export default function Gallery({ session, onBack, onUpdateSession, onViewReport
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => setEditingPhoto(photo)}
-                            className="p-3 bg-blue-600 hover:bg-blue-500 rounded-2xl text-white transition-all shadow-xl"
+                            className="p-3 bg-[#0C1E35] hover:bg-blue-500 rounded-2xl text-white transition-all shadow-xl"
                             title="Edit Marker"
                           >
                             <Edit3 className="w-4 h-4" />

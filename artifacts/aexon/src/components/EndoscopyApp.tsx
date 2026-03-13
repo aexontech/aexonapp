@@ -443,12 +443,12 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
       {/* Header / Top Bar */}
       <header className="h-24 border-b border-slate-200 bg-white/80 backdrop-blur-3xl flex items-center justify-between px-10 shrink-0 z-[100] relative">
         <div className="flex items-center space-x-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/20">
+          <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-slate-900/10">
             <Camera className="w-7 h-7 text-white" />
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-3 mb-2">
-              <div className="px-3 py-1 bg-blue-600/10 border border-blue-500/20 rounded-full">
+              <div className="px-3 py-1 bg-[#0C1E35]/10 border border-blue-500/20 rounded-full">
                 <span className="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em]">Sesi Aktif</span>
               </div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">RM: {patientData.rmNumber}</span>
@@ -496,7 +496,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleFinishSession}
-            className="flex items-center px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-2xl shadow-blue-600/30 cursor-pointer"
+            className="flex items-center px-8 py-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-2xl shadow-blue-600/30 cursor-pointer"
           >
             <CheckCircle2 className="w-5 h-5 mr-3" />
             SELESAIKAN SESI
@@ -708,7 +708,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
                 onClick={() => setActiveGalleryTab(tab as any)}
                 className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all border ${
                   activeGalleryTab === tab 
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20' 
+                    ? 'bg-[#0C1E35] text-white border-blue-600 shadow-lg shadow-slate-900/10' 
                     : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-slate-100'
                 }`}
               >
@@ -882,7 +882,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
 
                       <button 
                         onClick={() => setUtilitySettings(prev => ({ ...prev, whiteBalance: 0 }))}
-                        className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-2xl shadow-blue-600/20"
+                        className="w-full py-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-2xl shadow-slate-900/10"
                       >
                         Auto White Balance
                       </button>
@@ -930,7 +930,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
                           <div 
                             className={`absolute top-3 right-3 w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-all z-20 ${
                               selectedCaptureIds.includes(capture.id) 
-                                ? 'bg-blue-600 border-blue-600 text-white shadow-lg' 
+                                ? 'bg-[#0C1E35] border-blue-600 text-white shadow-lg' 
                                 : 'bg-black/20 border-white/20 opacity-0 group-hover:opacity-100 backdrop-blur-md'
                             }`}
                             onClick={(e) => {
@@ -959,7 +959,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
                                   e.stopPropagation();
                                   setEditingCapture(capture);
                                 }}
-                                className="w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-2xl text-white transition-all flex items-center justify-center shadow-lg shadow-blue-600/20"
+                                className="w-10 h-10 bg-[#0C1E35] hover:bg-[#1a3a5c] rounded-2xl text-white transition-all flex items-center justify-center shadow-lg shadow-slate-900/10"
                                 title="Edit Marker"
                               >
                                 <Edit3 className="w-5 h-5" />
@@ -1057,7 +1057,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
                 </button>
                 <button 
                   onClick={confirmFinishSession}
-                  className="py-5 px-8 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl transition-all shadow-xl shadow-blue-500/20 cursor-pointer"
+                  className="py-5 px-8 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl transition-all shadow-xl shadow-slate-900/10 cursor-pointer"
                 >
                   Ya, Selesaikan
                 </button>
@@ -1123,7 +1123,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
                   </button>
                   <button 
                     onClick={() => setSelectedCaptureForReview(null)}
-                    className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-blue-500/20"
+                    className="px-10 py-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-slate-900/10"
                   >
                     Tutup
                   </button>

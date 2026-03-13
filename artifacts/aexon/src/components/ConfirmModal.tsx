@@ -32,7 +32,7 @@ const variantStyles = {
   info: {
     accent: 'bg-blue-500',
     iconBg: 'bg-blue-50',
-    confirmBtn: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20',
+    confirmBtn: 'bg-[#0C1E35] hover:bg-[#1a3a5c] text-white shadow-slate-900/10',
     cancelBtn: 'bg-slate-100 hover:bg-slate-200 text-slate-600',
     defaultIcon: <AlertTriangle className="w-10 h-10 text-blue-500" />,
   },

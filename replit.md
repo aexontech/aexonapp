@@ -60,14 +60,17 @@ Aexon Endoscopy — React 19 + Vite + TypeScript desktop app for endoscopy sessi
 - Fonts: Plus Jakarta Sans (body text) + Outfit (brand "Aexon" wordmark only), loaded in index.html. `.font-aexon` utility class uses Outfit bold.
 - Auth: Supabase email+password via `src/lib/supabase.ts`. Requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY env vars. Falls back gracefully when not configured.
 - EULA: Per-user, shown after first login on new device. Plain/boring monospace style. Stored as `aexon_eula_accepted_[userId]` in localStorage.
-- Brand colors: Primary = navy #0C1E35 (buttons, selected states, accents). Teal kept only for success states (CheckCircle). Background: slate-50. Cards: white + border-slate-200.
+- Brand colors: Primary = navy #0C1E35 (buttons, selected states, accents), hover = #1a3a5c. Teal kept only for success states (CheckCircle). Background: slate-50. Cards: white + border-slate-100 + rounded-2xl + shadow-sm.
+- Global UI: Primary buttons bg-[#0C1E35] hover:bg-[#1a3a5c] rounded-xl. Inputs border-slate-200 rounded-xl focus:ring-[#0C1E35]/20. No blue-600 primary usage.
+- Sidebar (MainLayout.tsx): White bg, border-r border-slate-100. Active nav = bg-[#0C1E35] text-white rounded-xl, inactive = text-gray-500 hover:bg-slate-50. Bottom section: user initials circle (navy), name, role badge (Personal=blue, Dokter Institusi=teal, Admin Institusi=purple), subscription chip (Aktif=green, Trial X hari=yellow, Tidak Aktif=red), logout.
 - Login: 2-card selector (Personal / Institusi), Institusi sub-selector (Dokter/Admin), email+password form, forgot password flow, registration flow (Personal form / Institusi info screen). No Google OAuth.
 - handleLogin signature: `(role, email, fullName, plan, trialDaysLeft)` — receives plan/trial data from Supabase subscription query
 - Dashboard: Hero greeting (name in navy #0C1E35), 3 stat cards (Total Sesi, Sesi Bulan Ini, Total Media) with animated count-up, session list with category-colored borders, single "Mulai Sesi Baru" button
 - No "Dr." prefix added manually — userProfile.name already includes title from Supabase profile
 - Encryption: XOR cipher in `src/lib/storage.ts` (saveUserData/loadUserData)
 - Subscription: subscription-only model (no tokens), gating via hasActiveAccess
-- Backup/Restore: Settings tab with date-range filter, JSON export/import
+- Settings (Settings.tsx): 4-tab layout (Profil / Keamanan / Langganan / Backup). Profil: avatar initials, name, email(read-only), specialization, STR, SIP, phone — saves to Supabase doctor_accounts via auth.getUser() UUID. Keamanan: change password via supabase.auth.updateUser({ password }), data cleanup. Langganan: Personal shows plan+billing+CTA; Dokter Institusi hides tab entirely; Admin shows enterprise plan+seat count. Backup: existing ZIP backup/restore with conflict resolution.
+- Backup/Restore: Settings Backup tab with date-range filter, ZIP export/import, conflict modal for duplicates
 - Gallery export: bulk/individual photo download, session report JSON
 - Types: `src/types.ts` — PatientData, Session, Capture, UserProfile, HospitalSettings
 - ICD data: `src/data/icd9.ts` (790 ICD-9-CM procedures), `src/data/icd10.ts` (494 ICD-10 diagnoses) with search functions

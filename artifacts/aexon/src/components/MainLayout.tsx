@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, Plus, CalendarDays, Settings, LogOut, ChevronLeft, ChevronRight, Menu, Wifi, WifiOff } from 'lucide-react';
+import { FileText, Plus, CalendarDays, Settings, LogOut, ChevronLeft, ChevronRight, Wifi, WifiOff } from 'lucide-react';
 import { UserProfile } from '../types';
 import { Logo } from './Logo';
 
@@ -18,9 +18,6 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const isAdmin = userProfile.role === 'admin';
-  const subscriptionDaysLeft = 3;
-  const isWarning = (trialDaysLeft !== null) || 
-                    (plan === 'subscription' && subscriptionDaysLeft < 5);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -42,21 +39,42 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
     { id: 'pricing', label: 'Paket & Berlangganan', icon: <CalendarDays className="w-5 h-5" /> },
   ];
 
+  const isActive = (itemId: string) =>
+    activeMenu === itemId ||
+    (activeMenu === 'active-session' && itemId === 'session-form') ||
+    (activeMenu === 'report-generator' && itemId === 'dashboard');
+
+  const getInitials = (name: string) =>
+    name.split(' ').filter(n => !n.startsWith('Dr.')).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+  const getRoleBadge = () => {
+    if (isAdmin) return { label: 'Admin Institusi', color: 'bg-purple-100 text-purple-700' };
+    if (plan === 'enterprise') return { label: 'Dokter Institusi', color: 'bg-teal-100 text-teal-700' };
+    return { label: 'Personal', color: 'bg-blue-100 text-blue-700' };
+  };
+
+  const getSubscriptionChip = () => {
+    if (plan === 'subscription') return { label: 'Aktif', color: 'bg-emerald-100 text-emerald-700' };
+    if (plan === 'enterprise') return { label: 'Aktif', color: 'bg-emerald-100 text-emerald-700' };
+    if (trialDaysLeft !== null && trialDaysLeft > 0) return { label: `Trial ${trialDaysLeft} hari`, color: 'bg-yellow-100 text-yellow-700' };
+    return { label: 'Tidak Aktif', color: 'bg-red-100 text-red-700' };
+  };
+
+  const roleBadge = getRoleBadge();
+  const subChip = getSubscriptionChip();
+
   return (
-    <div className="h-screen bg-slate-100 flex font-sans text-slate-900 overflow-hidden relative">
-      <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-blue-100/30 rounded-full blur-[120px] -mr-64 -mt-64 pointer-events-none z-0" />
-      <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-indigo-100/20 rounded-full blur-[100px] -ml-48 -mb-48 pointer-events-none z-0" />
-      
-      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-200 flex flex-col h-full z-40 transition-all duration-300 ease-in-out shadow-sm shrink-0`}>
+    <div className="h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden relative">
+      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-100 flex flex-col h-full z-40 transition-all duration-300 ease-in-out shrink-0`}>
         <div className={`h-16 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-4'} border-b border-slate-100 shrink-0`}>
-          <div 
+          <div
             onClick={() => onNavigate(isAdmin ? 'admin-dashboard' : 'dashboard')}
             className={`flex items-center cursor-pointer hover:opacity-80 transition-opacity overflow-hidden ${isCollapsed ? 'hidden' : ''}`}
           >
             <Logo mSize={28} wSize={isCollapsed ? 0 : 18} />
           </div>
           {isCollapsed && (
-            <div 
+            <div
               onClick={() => onNavigate(isAdmin ? 'admin-dashboard' : 'dashboard')}
               className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
             >
@@ -64,7 +82,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
             </div>
           )}
           {!isCollapsed && (
-            <button 
+            <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 transition-colors"
             >
@@ -75,7 +93,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
 
         {isCollapsed && (
           <div className="flex justify-center py-2 border-b border-slate-100">
-            <button 
+            <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 transition-colors"
             >
@@ -84,41 +102,20 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           </div>
         )}
 
-        <div className="p-4 border-b border-slate-100 shrink-0 overflow-hidden">
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'mb-5 px-1'}`}>
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0 border border-white/20">
-              <span className="text-white font-black text-sm">
-                {userProfile.name.split(' ').filter(n => !n.startsWith('Dr.')).map(n => n[0]).join('').slice(0, 2)}
-              </span>
-            </div>
-            {!isCollapsed && (
-              <div className="ml-4 overflow-hidden">
-                <p className="text-sm font-black text-slate-900 truncate tracking-tight">{userProfile.name}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">{userProfile.specialization}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
           {menuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => onNavigate(item.id as any)}
               className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                activeMenu === item.id || (activeMenu === 'active-session' && item.id === 'session-form') || (activeMenu === 'report-generator' && item.id === 'dashboard')
-                  ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                isActive(item.id)
+                  ? 'bg-[#0C1E35] text-white shadow-sm'
+                  : 'text-gray-500 hover:bg-slate-50'
               }`}
               title={isCollapsed ? item.label : ''}
             >
               <div className={`${isCollapsed ? '' : 'mr-3'} ${
-                activeMenu === item.id || (activeMenu === 'active-session' && item.id === 'session-form') || (activeMenu === 'report-generator' && item.id === 'dashboard')
-                  ? 'text-blue-600' 
-                  : 'text-slate-400'
+                isActive(item.id) ? 'text-white' : 'text-gray-400'
               }`}>
                 {item.icon}
               </div>
@@ -127,77 +124,42 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 space-y-1 shrink-0">
-          {!isCollapsed && (
-            <motion.div 
-              whileHover={{ scale: 1.02 }}
-              className={`mb-4 p-4 rounded-2xl shadow-lg border border-white/10 relative overflow-hidden group cursor-pointer transition-all duration-200 ${
-                isWarning ? 'bg-gradient-to-br from-orange-500 to-red-600 shadow-orange-500/25' :
-                plan === 'enterprise' ? 'bg-gradient-to-br from-indigo-600 to-purple-700 shadow-indigo-500/20' :
-                'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-blue-500/20'
-              }`}
-              onClick={() => onNavigate('pricing')}
-            >
-              <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full blur-xl -mr-8 -mt-8 group-hover:bg-white/20 transition-colors" />
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-2 h-2 rounded-full animate-pulse ${
-                    isWarning ? 'bg-white' : 'bg-emerald-400'
-                  }`} />
-                  <p className="text-[10px] font-black text-white/80 uppercase tracking-[0.15em]">
-                    {plan === 'subscription' ? 'Masa Aktif' : 
-                     plan === 'enterprise' ? 'Akses Enterprise' : 
-                     trialDaysLeft !== null ? 'Masa Percobaan' : 'Status Akses'}
-                  </p>
-                </div>
-
-                {plan === 'subscription' && (
-                  <>
-                    <p className="text-[11px] text-white font-bold leading-tight mb-3">Langganan berakhir dalam <span className={isWarning ? 'text-white underline underline-offset-2' : 'text-emerald-400'}>{subscriptionDaysLeft} hari</span>.</p>
-                    <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden mb-3">
-                      <motion.div initial={{ width: 0 }} animate={{ width: '85%' }} className={`h-full ${isWarning ? 'bg-white' : 'bg-emerald-400'}`} />
-                    </div>
-                  </>
-                )}
-
-                {plan === 'enterprise' && (
-                  <p className="text-[11px] text-white font-bold leading-tight mb-3">Terhubung via <span className="text-emerald-400">SSO Institusi</span>.</p>
-                )}
-
-                {trialDaysLeft !== null && plan === null && (
-                  <>
-                    <p className="text-[11px] text-white font-bold leading-tight mb-3">Trial berakhir dalam <span className="text-white font-black">{trialDaysLeft} hari</span>.</p>
-                    <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden mb-3">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${(trialDaysLeft/7)*100}%` }} className="h-full bg-white" />
-                    </div>
-                  </>
-                )}
-
-                {plan === null && trialDaysLeft === null && (
-                  <p className="text-[11px] text-white font-bold leading-tight mb-3">Belum ada paket aktif.</p>
-                )}
-
-                <div className="mt-4 py-2.5 px-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-xl border border-white/20 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-wider transition-all duration-200 group-hover:scale-[1.02] active:scale-95 shadow-sm">
-                  {plan === 'subscription' || trialDaysLeft !== null || plan === null ? 'Perpanjang Sekarang' : 'Lihat Detail Paket'}
-                  <ChevronRight className="w-3 h-3 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </div>
-            </motion.div>
-          )}
-          
-          <button 
+        <div className="p-3 border-t border-slate-100 space-y-1 shrink-0">
+          <button
             onClick={() => onNavigate('settings')}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
               activeMenu === 'settings'
-                ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-[#0C1E35] text-white shadow-sm'
+                : 'text-gray-500 hover:bg-slate-50'
             }`}
             title={isCollapsed ? 'Pengaturan' : ''}
           >
-            <Settings className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 ${activeMenu === 'settings' ? 'text-blue-600' : 'text-slate-400'}`} />
+            <Settings className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 ${activeMenu === 'settings' ? 'text-white' : 'text-gray-400'}`} />
             {!isCollapsed && 'Pengaturan'}
           </button>
-          <button 
+
+          <div className={`mt-3 mb-2 ${isCollapsed ? 'px-1' : 'px-2'}`}>
+            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+              <div className="w-10 h-10 bg-[#0C1E35] rounded-full flex items-center justify-center shrink-0">
+                <span className="text-white font-bold text-xs">{getInitials(userProfile.name)}</span>
+              </div>
+              {!isCollapsed && (
+                <div className="overflow-hidden flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900 truncate">{userProfile.name}</p>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold rounded-full ${roleBadge.color}`}>
+                      {roleBadge.label}
+                    </span>
+                    <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold rounded-full ${subChip.color}`}>
+                      {subChip.label}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <button
             onClick={onLogout}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all duration-200`}
             title={isCollapsed ? 'Keluar' : ''}
@@ -206,7 +168,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
             {!isCollapsed && 'Keluar'}
           </button>
 
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-2 mt-2`} title={isOnline ? 'Online - sinkronisasi aktif' : 'Offline - data tersimpan lokal'}>
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-2 mt-1`} title={isOnline ? 'Online' : 'Offline'}>
             <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-slate-300'}`} />
             {!isCollapsed && (
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-2">

@@ -77,7 +77,7 @@ export default function AdminDashboard({
         
         <button 
           onClick={onAddDoctor}
-          className="flex items-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+          className="flex items-center px-5 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all shadow-lg shadow-slate-900/10 active:scale-95"
         >
           <UserPlus className="w-5 h-5 mr-2" />
           Tambah Dokter Baru
@@ -123,7 +123,7 @@ export default function AdminDashboard({
               placeholder="Cari nama, spesialisasi, atau email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0C1E35] transition-all"
             />
           </div>
         </div>
@@ -297,7 +297,7 @@ export default function AdminDashboard({
       </AnimatePresence>
 
       {/* Enterprise Info Footer */}
-      <div className="mt-10 p-6 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-500/20">
+      <div className="mt-10 p-6 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-slate-900/10">
         <div className="flex items-center">
           <div className="p-3 bg-white/10 rounded-2xl mr-4">
             <Building2 className="w-8 h-8" />

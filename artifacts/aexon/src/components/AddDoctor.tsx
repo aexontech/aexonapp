@@ -58,7 +58,7 @@ export default function AddDoctor({ editingDoctor, onBack, onSave }: AddDoctorPr
                 required
                 value={formData.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
-                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-sm"
+                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0C1E35] transition-all font-bold text-sm"
                 placeholder="Contoh: Dr. Budi Santoso, Sp.PD"
               />
             </div>
@@ -69,7 +69,7 @@ export default function AddDoctor({ editingDoctor, onBack, onSave }: AddDoctorPr
                 required
                 value={formData.specialization}
                 onChange={e => setFormData({...formData, specialization: e.target.value})}
-                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-sm"
+                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0C1E35] transition-all font-bold text-sm"
                 placeholder="Contoh: Gastroenterohepatologi"
               />
             </div>
@@ -82,7 +82,7 @@ export default function AddDoctor({ editingDoctor, onBack, onSave }: AddDoctorPr
                   required
                   value={formData.email}
                   onChange={e => setFormData({...formData, email: e.target.value})}
-                  className="w-full pl-12 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-sm"
+                  className="w-full pl-12 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0C1E35] transition-all font-bold text-sm"
                   placeholder="email@rsup.co.id"
                 />
               </div>
@@ -95,7 +95,7 @@ export default function AddDoctor({ editingDoctor, onBack, onSave }: AddDoctorPr
                   type="tel"
                   value={formData.phone}
                   onChange={e => setFormData({...formData, phone: e.target.value})}
-                  className="w-full pl-12 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-sm"
+                  className="w-full pl-12 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0C1E35] transition-all font-bold text-sm"
                   placeholder="0812..."
                 />
               </div>
@@ -145,7 +145,7 @@ export default function AddDoctor({ editingDoctor, onBack, onSave }: AddDoctorPr
           </button>
           <button 
             type="submit"
-            className="flex items-center px-10 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+            className="flex items-center px-10 py-3.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-2xl transition-all shadow-lg shadow-slate-900/10 active:scale-95"
           >
             <Save className="w-5 h-5 mr-2" />
             Simpan Data Dokter

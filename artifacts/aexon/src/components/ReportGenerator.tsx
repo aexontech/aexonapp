@@ -265,7 +265,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
           >
             <ArrowLeft className="w-5 h-5" />
           </motion.button>
-          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 mr-4">
+          <div className="w-12 h-12 bg-[#0C1E35] rounded-2xl flex items-center justify-center shadow-lg shadow-slate-900/10 mr-4">
             <FileText className="w-6 h-6 text-white" />
           </div>
           <div className="flex flex-col">
@@ -279,7 +279,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handlePrint}
-            className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-blue-500/20"
+            className="flex items-center px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-slate-900/10"
           >
             <Printer className="w-4 h-4 mr-2" />
             CETAK LAPORAN
@@ -309,7 +309,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                 key={page.id}
                 className={`group flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border ${
                   activePageId === page.id 
-                    ? 'bg-blue-600 border-blue-500 shadow-xl shadow-blue-500/20 text-white' 
+                    ? 'bg-[#0C1E35] border-blue-500 shadow-xl shadow-slate-900/10 text-white' 
                     : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-100 text-slate-500'
                 } ${isNavCollapsed ? 'justify-center' : ''}`}
                 onClick={() => setActivePageId(page.id)}
@@ -393,14 +393,14 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                   onClick={() => handlePhotoSelect(img)}
                   className={`relative aspect-video rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
                     activePage.selectedPhotos.find(p => p.id === img.id) 
-                      ? 'border-blue-600 shadow-lg shadow-blue-500/20' 
+                      ? 'border-blue-600 shadow-lg shadow-slate-900/10' 
                       : 'border-slate-100 hover:border-blue-500/30'
                   }`}
                 >
                   <img src={img.url} alt="Capture" className="w-full h-full object-cover" />
                   {activePage.selectedPhotos.find(p => p.id === img.id) && (
-                    <div className="absolute inset-0 bg-blue-600/20 flex items-center justify-center">
-                      <div className="bg-blue-600 rounded-full p-1 shadow-lg">
+                    <div className="absolute inset-0 bg-[#0C1E35]/20 flex items-center justify-center">
+                      <div className="bg-[#0C1E35] rounded-full p-1 shadow-lg">
                         <CheckCircle2 className="w-4 h-4 text-white" />
                       </div>
                     </div>
@@ -432,7 +432,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setEditingPhoto(photo)}
-                      className="text-[9px] font-black text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-xl transition-all border border-blue-100 flex items-center gap-2 uppercase tracking-widest"
+                      className="text-[9px] font-black text-blue-600 bg-blue-50 hover:bg-[#0C1E35] hover:text-white px-3 py-2 rounded-xl transition-all border border-blue-100 flex items-center gap-2 uppercase tracking-widest"
                     >
                       <Plus className="w-3 h-3" /> Marker
                     </motion.button>
@@ -472,7 +472,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                   onClick={() => updateActivePage({ reportType: 'clinical' })}
                   className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2 ${
                     activePage.reportType === 'clinical' 
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' 
+                      ? 'bg-[#0C1E35] border-blue-600 text-white shadow-xl shadow-slate-900/10' 
                       : 'bg-white border-slate-100 text-slate-500 hover:border-blue-500/30'
                   }`}
                 >
@@ -484,7 +484,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                   onClick={() => updateActivePage({ reportType: 'academic' })}
                   className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2 ${
                     activePage.reportType === 'academic' 
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' 
+                      ? 'bg-[#0C1E35] border-blue-600 text-white shadow-xl shadow-slate-900/10' 
                       : 'bg-white border-slate-100 text-slate-500 hover:border-blue-500/30'
                   }`}
                 >
@@ -552,7 +552,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handlePrint}
-                className="flex items-center justify-center py-4 px-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-blue-500/20"
+                className="flex items-center justify-center py-4 px-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-slate-900/10"
               >
                 <Printer className="w-4 h-4 mr-2" />
                 Cetak
@@ -747,7 +747,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                         <div className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
                           <img src={photo.url} alt={`Capture ${index + 1}`} className="w-full h-full object-cover" />
                           {page.reportLayout !== 'standard' && (
-                            <div className="absolute top-2 left-2 px-2 py-1 bg-blue-600/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-widest">
+                            <div className="absolute top-2 left-2 px-2 py-1 bg-[#0C1E35]/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-widest">
                               {page.reportLayout === 'beforeAfter' 
                                 ? (index % 2 === 0 ? 'Before' : 'After')
                                 : (index % 2 === 0 ? 'Kanan' : 'Kiri')}

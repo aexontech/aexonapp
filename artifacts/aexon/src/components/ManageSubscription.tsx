@@ -162,7 +162,7 @@ export default function ManageSubscription({ onBack }: ManageSubscriptionProps) 
           </div>
 
           <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600 rounded-full blur-3xl -mr-16 -mt-16 opacity-20 group-hover:opacity-40 transition-opacity" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#0C1E35] rounded-full blur-3xl -mr-16 -mt-16 opacity-20 group-hover:opacity-40 transition-opacity" />
             <div className="relative z-10">
               <h4 className="text-lg font-bold mb-4">Butuh Bantuan?</h4>
               <p className="text-slate-400 text-sm mb-8 leading-relaxed">
@@ -185,7 +185,7 @@ export default function ManageSubscription({ onBack }: ManageSubscriptionProps) 
                 <span>3.2 TB / 5 TB</span>
               </div>
               <div className="w-full h-2 bg-blue-200 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-600 w-[64%]" />
+                <div className="h-full bg-[#0C1E35] w-[64%]" />
               </div>
             </div>
           </div>
@@ -411,7 +411,7 @@ export default function ManageSubscription({ onBack }: ManageSubscriptionProps) 
                       onClick={() => {
                         setActiveModal(null);
                       }}
-                      className="flex-1 py-4 bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20"
+                      className="flex-1 py-4 bg-[#0C1E35] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-[#1a3a5c] transition-all shadow-xl shadow-slate-900/10"
                     >
                       {activeModal === 'seats' ? 'KONFIRMASI PENAMBAHAN' : 'SIMPAN PERUBAHAN'}
                     </button>

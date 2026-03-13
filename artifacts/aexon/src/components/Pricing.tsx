@@ -112,17 +112,17 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
                 whileHover={{ y: -5 }}
                 onClick={() => setSelectedPlan(plan.id)}
                 className={`relative bg-white border rounded-[2.5rem] p-8 flex flex-col w-full md:w-[320px] cursor-pointer transition-all duration-200 ${
-                  selectedPlan === plan.id ? 'border-blue-600 ring-4 ring-blue-500/10 shadow-2xl' : 
+                  selectedPlan === plan.id ? 'border-blue-600 ring-4 ring-[#0C1E35]/20 shadow-2xl' : 
                   plan.popular ? 'border-blue-500 shadow-lg shadow-blue-500/10' : 'border-slate-200 shadow-sm'
                 }`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#0C1E35] text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
                     Paling Populer
                   </div>
                 )}
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 border transition-colors duration-200 ${
-                  selectedPlan === plan.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-blue-50 text-blue-600 border-blue-100'
+                  selectedPlan === plan.id ? 'bg-[#0C1E35] text-white border-blue-600' : 'bg-blue-50 text-blue-600 border-blue-100'
                 }`}>
                   {React.cloneElement(plan.icon as any, { className: `w-7 h-7 ${selectedPlan === plan.id ? 'text-white' : 'text-blue-600'}` })}
                 </div>
@@ -145,8 +145,8 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
 
                 <button className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-200 shadow-lg active:scale-95 ${
                   selectedPlan === plan.id 
-                  ? 'bg-blue-600 text-white shadow-blue-600/25 ring-4 ring-blue-500/20' 
-                  : 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-500/20'
+                  ? 'bg-[#0C1E35] text-white shadow-blue-600/25 ring-4 ring-blue-500/20' 
+                  : 'bg-blue-500 text-white hover:bg-[#0C1E35] shadow-slate-900/10'
                 }`}>
                   {plan.cta}
                 </button>
@@ -215,7 +215,7 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
         >
           <button
             onClick={handleContinue}
-            className="flex items-center justify-center py-4 px-12 rounded-full font-semibold text-lg bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200"
+            className="flex items-center justify-center py-4 px-12 rounded-full font-semibold text-lg bg-[#0C1E35] text-white hover:bg-[#1a3a5c] shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200"
           >
             Lanjutkan ke Dashboard
             <ArrowRight className="w-5 h-5 ml-2" />

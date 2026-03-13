@@ -224,7 +224,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
       </div>
       <div className="flex flex-col items-center text-center">
         <div className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full mb-3">
-          <span className="text-[10px] font-bold text-[#0C1E35] uppercase tracking-[0.2em]">v2.5.0</span>
+          <span className="text-[10px] font-bold text-[#0C1E35] uppercase tracking-[0.2em]">v1.0.0</span>
         </div>
         <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 mb-2">
           Selamat Datang

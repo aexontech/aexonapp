@@ -95,7 +95,7 @@ export default function ICD10Autocomplete({
                 className={`px-4 py-3 cursor-pointer transition-colors border-b border-slate-50 last:border-0 ${idx === highlighted ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
               >
                 <div className="flex items-start gap-3">
-                  <span className="font-black text-blue-600 text-xs font-mono shrink-0 mt-0.5 min-w-[3.5rem]">
+                  <span className="font-black text-[#0C1E35] text-xs font-mono shrink-0 mt-0.5 min-w-[3.5rem]">
                     {highlightMatch(entry.code, query)}
                   </span>
                   <div className="text-sm font-semibold text-slate-900 leading-tight">

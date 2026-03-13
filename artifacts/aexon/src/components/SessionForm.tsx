@@ -110,7 +110,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
     <div className="flex-1 bg-slate-50 flex flex-col items-center p-8 font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar relative">
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <Pattern className="text-blue-500 opacity-[0.03]" />
-        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/5 rounded-full blur-[120px]" />
+        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#0C1E35]/5 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/5 rounded-full blur-[120px]" />
       </div>
 
@@ -144,7 +144,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 via-indigo-500 to-violet-400" />
 
           <div className="flex items-center mb-16">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl flex items-center justify-center mr-8 shadow-2xl shadow-blue-500/20 rotate-3 group-hover:rotate-0 transition-transform">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl flex items-center justify-center mr-8 shadow-2xl shadow-slate-900/10 rotate-3 group-hover:rotate-0 transition-transform">
               <ClipboardList className="w-10 h-10 text-white" />
             </div>
             <div>
@@ -336,7 +336,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                       name="differentialDiagnosis"
                       value={formData.differentialDiagnosis}
                       onChange={handleChange}
-                      className="block w-full px-5 py-4 min-h-[48px] border border-slate-200 rounded-2xl bg-white text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all font-semibold text-sm"
+                      className="block w-full px-5 py-4 min-h-[48px] border border-slate-200 rounded-2xl bg-white text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0C1E35]/50 transition-all font-semibold text-sm"
                       placeholder="Diagnosis banding (opsional)..."
                     />
                   </div>

@@ -221,28 +221,28 @@ export default function ImageEditor({ imageUrl, initialShapes = [], onSave, onCl
           <div className="flex bg-slate-100 rounded-xl p-1 mr-4">
             <button
               onClick={() => setTool('select')}
-              className={`p-2 rounded-lg transition-all ${tool === 'select' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              className={`p-2 rounded-lg transition-all ${tool === 'select' ? 'bg-[#0C1E35] text-white' : 'text-slate-500 hover:text-slate-900'}`}
               title="Pilih"
             >
               <ArrowUpRight className="w-5 h-5 rotate-[-45deg]" />
             </button>
             <button
               onClick={() => setTool('arrow')}
-              className={`p-2 rounded-lg transition-all ${tool === 'arrow' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              className={`p-2 rounded-lg transition-all ${tool === 'arrow' ? 'bg-[#0C1E35] text-white' : 'text-slate-500 hover:text-slate-900'}`}
               title="Panah"
             >
               <ArrowUpRight className="w-5 h-5" />
             </button>
             <button
               onClick={() => setTool('circle')}
-              className={`p-2 rounded-lg transition-all ${tool === 'circle' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              className={`p-2 rounded-lg transition-all ${tool === 'circle' ? 'bg-[#0C1E35] text-white' : 'text-slate-500 hover:text-slate-900'}`}
               title="Lingkaran"
             >
               <CircleIcon className="w-5 h-5" />
             </button>
             <button
               onClick={() => setTool('rect')}
-              className={`p-2 rounded-lg transition-all ${tool === 'rect' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-900'}`}
+              className={`p-2 rounded-lg transition-all ${tool === 'rect' ? 'bg-[#0C1E35] text-white' : 'text-slate-500 hover:text-slate-900'}`}
               title="Persegi"
             >
               <Square className="w-5 h-5" />
@@ -269,7 +269,7 @@ export default function ImageEditor({ imageUrl, initialShapes = [], onSave, onCl
             </button>
             <button
               onClick={handleSave}
-              className="ml-4 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20"
+              className="ml-4 px-6 py-2 bg-[#0C1E35] hover:bg-blue-500 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-slate-900/10"
             >
               <Check className="w-4 h-4" />
               Simpan
