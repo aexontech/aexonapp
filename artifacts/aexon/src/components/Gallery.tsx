@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Download, FileImage, FileVideo, Edit3, Info, Trash2, AlertTriangle, FileArchive } from 'lucide-react';
+import { ArrowLeft, Download, FileImage, FileVideo, Edit3, Info, Trash2, AlertTriangle, FileText } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { Session, Capture, UserProfile } from '../types';
 import ImageEditor from './ImageEditor';
@@ -10,11 +10,12 @@ interface GalleryProps {
   session: Session;
   onBack: () => void;
   onUpdateSession?: (session: Session) => void;
+  onViewReport?: (session: Session) => void;
   userProfile?: UserProfile | null;
   allSessions?: Session[];
 }
 
-export default function Gallery({ session, onBack, onUpdateSession, userProfile, allSessions }: GalleryProps) {
+export default function Gallery({ session, onBack, onUpdateSession, onViewReport, userProfile, allSessions }: GalleryProps) {
   const { showToast } = useToast();
   const [captures, setCaptures] = useState<Capture[]>(session.captures);
   const [editingPhoto, setEditingPhoto] = useState<Capture | null>(null);
@@ -70,37 +71,6 @@ export default function Gallery({ session, onBack, onUpdateSession, userProfile,
     });
   };
 
-  const exportSessionReport = () => {
-    const reportData = {
-      sessionId: session.id,
-      date: session.date,
-      patient: {
-        name: session.patient.name,
-        rmNumber: session.patient.rmNumber,
-        procedures: session.patient.procedures,
-        diagnosis: session.patient.diagnosis,
-        category: session.patient.category
-      },
-      photosCount: photos.length,
-      videosCount: videos.length,
-      operator: session.patient.operator,
-      clinicalNotes: session.clinicalNotes || '',
-      exportedAt: new Date().toISOString(),
-      exportedBy: userProfile?.name || 'Unknown'
-    };
-
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `laporan_sesi_${session.patient.rmNumber}_${session.id.substring(0, 8)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showToast('Laporan sesi berhasil diekspor.', 'success');
-  };
 
   return (
     <div className="flex-1 flex bg-slate-50 h-full overflow-hidden relative">
@@ -138,12 +108,12 @@ export default function Gallery({ session, onBack, onUpdateSession, userProfile,
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={exportSessionReport}
+              onClick={() => onViewReport?.(session)}
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
-              title="Ekspor data laporan sesi"
+              title="Lihat laporan sesi"
             >
-              <FileArchive className="w-3.5 h-3.5" />
-              Laporan
+              <FileText className="w-3.5 h-3.5" />
+              Lihat Laporan
             </motion.button>
             <div className="px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">

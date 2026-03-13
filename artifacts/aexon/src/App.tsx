@@ -461,6 +461,10 @@ function AppContent() {
             setViewingSession(updatedSession);
             handleUpdateSession(updatedSession);
           }}
+          onViewReport={(session) => {
+            setViewingSession(session);
+            setCurrentView('report-generator');
+          }}
           userProfile={userProfile}
           allSessions={sessions}
         />
