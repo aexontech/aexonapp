@@ -49,33 +49,38 @@ export default function Launcher({ onLogin }: LauncherProps) {
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) throw authError;
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('doctor_accounts')
         .select('*')
         .eq('user_id', data.user.id)
         .single();
 
-      if (loginType === 'personal' && profile?.enterprise_id) {
+      if (profileError || !profile) {
+        onLogin('doctor', data.user.email ?? '', data.user.email ?? '', null, null);
+        return;
+      }
+
+      if (loginType === 'personal' && profile.enterprise_id) {
         throw new Error('Tipe login tidak sesuai dengan akun Anda.');
       }
-      if (loginType === 'institusi' && !profile?.enterprise_id) {
+      if (loginType === 'institusi' && !profile.enterprise_id) {
         throw new Error('Tipe login tidak sesuai dengan akun Anda.');
+      }
+
+      if (loginType === 'institusi') {
+        const role = institusiRole === 'admin' ? 'admin' : 'doctor';
+        onLogin(role, data.user.email ?? '', profile.full_name ?? data.user.email ?? '', 'enterprise', null);
+        return;
       }
 
       const { data: subscription } = await supabase
         .from('subscriptions')
         .select('*, product_plans(*), products(*)')
-        .eq('doctor_id', profile?.id)
+        .eq('doctor_id', profile.id)
         .in('status', ['active', 'trial'])
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-
-      if (loginType === 'institusi') {
-        const role = institusiRole === 'admin' ? 'admin' : 'doctor';
-        onLogin(role, data.user.email ?? '', profile?.full_name ?? data.user.email ?? '', 'enterprise', null);
-        return;
-      }
 
       const plan: 'subscription' | 'enterprise' | null = subscription ? 'subscription' : null;
 
@@ -86,7 +91,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
         trialDaysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
       }
 
-      onLogin(profile?.role ?? 'doctor', data.user.email ?? '', profile?.full_name ?? data.user.email ?? '', plan, trialDaysLeft);
+      onLogin(profile.role ?? 'doctor', data.user.email ?? '', profile.full_name ?? data.user.email ?? '', plan, trialDaysLeft);
 
     } catch (err: any) {
       setError(
