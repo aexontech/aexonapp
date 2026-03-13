@@ -56,7 +56,9 @@ export default function Launcher({ onLogin }: LauncherProps) {
         .single();
 
       if (profileError || !profile) {
-        onLogin('doctor', data.user.email ?? '', data.user.email ?? '', null, null);
+        setError('Profil dokter tidak ditemukan. Hubungi administrator.');
+        setIsLoading(false);
+        await supabase.auth.signOut();
         return;
       }
 

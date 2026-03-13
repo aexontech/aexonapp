@@ -219,7 +219,11 @@ function AppContent() {
       localStorage.setItem(eulaKey, JSON.stringify({ accepted: true, timestamp: new Date().toISOString() }));
     }
     setShowEula(false);
-    setCurrentView('dashboard');
+    if (userProfile?.role === 'admin') {
+      setCurrentView('admin-dashboard');
+    } else {
+      setCurrentView('dashboard');
+    }
   };
 
   const handleEulaDecline = () => {
