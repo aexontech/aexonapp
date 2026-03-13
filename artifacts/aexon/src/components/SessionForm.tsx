@@ -140,7 +140,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-[3.5rem] p-12 shadow-2xl shadow-slate-200/50 relative overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-[3.5rem] p-12 shadow-2xl shadow-slate-200/50 relative overflow-visible">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 via-indigo-500 to-violet-400" />
 
           <div className="flex items-center mb-16">
@@ -244,7 +244,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.2 }}
-                className="lg:col-span-3 bg-gradient-to-br from-blue-600 to-indigo-800 rounded-[2.5rem] p-10 shadow-2xl shadow-blue-900/20 space-y-8 relative overflow-hidden group"
+                className="lg:col-span-3 bg-gradient-to-br from-blue-600 to-indigo-800 rounded-[2.5rem] p-10 shadow-2xl shadow-blue-900/20 space-y-8 relative overflow-visible group"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/20 transition-colors" />
                 <h3 className="text-[11px] font-black text-blue-100 uppercase tracking-[0.3em] flex items-center mb-2 relative z-10">
@@ -313,7 +313,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.25 }}
-                className="lg:col-span-2 bg-white border-l-4 border-blue-600 rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 space-y-8 relative overflow-hidden group"
+                className="lg:col-span-2 bg-white border-l-4 border-blue-600 rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 space-y-8 relative overflow-visible group"
               >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-blue-100 transition-colors" />
                 <h3 className="text-[11px] font-black text-blue-700 uppercase tracking-[0.3em] flex items-center relative z-10">

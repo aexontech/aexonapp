@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { searchICD9, ICD9Entry } from '../data/icd9';
+import { searchICD9, IcdEntry } from '../data/icd9';
 
 interface ICD9AutocompleteProps {
   value: string;
@@ -9,14 +9,27 @@ interface ICD9AutocompleteProps {
   className?: string;
 }
 
+function highlightMatch(text: string, query: string) {
+  if (!query || query.length < 2) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-200 text-slate-900 rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
 export default function ICD9Autocomplete({
   value, onChange, index, placeholder, className = ''
 }: ICD9AutocompleteProps) {
   const [query, setQuery] = useState(value);
-  const [results, setResults] = useState<ICD9Entry[]>([]);
+  const [results, setResults] = useState<IcdEntry[]>([]);
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
-  const [selected, setSelected] = useState<ICD9Entry | null>(null);
+  const [selected, setSelected] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,17 +39,17 @@ export default function ICD9Autocomplete({
       if (codeMatch) {
         const found = searchICD9(codeMatch[1], 1);
         if (found.length > 0 && `${found[0].code} - ${found[0].display}` === value) {
-          setSelected(found[0]);
+          setSelected(true);
           return;
         }
       }
     }
-    setSelected(null);
+    setSelected(false);
   }, [value]);
 
   useEffect(() => {
     if (query.length >= 2 && !selected) {
-      setResults(searchICD9(query, 10));
+      setResults(searchICD9(query, 20));
       setOpen(true);
       setHighlighted(0);
     } else {
@@ -53,11 +66,11 @@ export default function ICD9Autocomplete({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleSelect = (entry: ICD9Entry) => {
+  const handleSelect = (entry: IcdEntry) => {
     const val = `${entry.code} - ${entry.display}`;
     setQuery(val);
     onChange(val);
-    setSelected(entry);
+    setSelected(true);
     setOpen(false);
   };
 
@@ -76,43 +89,38 @@ export default function ICD9Autocomplete({
       <input
         type="text"
         value={query}
-        onChange={e => { setQuery(e.target.value); setSelected(null); onChange(e.target.value); }}
+        onChange={e => { setQuery(e.target.value); setSelected(false); onChange(e.target.value); }}
         onKeyDown={handleKeyDown}
         onFocus={() => query.length >= 2 && !selected && setOpen(true)}
         placeholder={placeholder || defaultPlaceholder}
         required={index === 0}
         className="block w-full px-5 py-4 border border-white/20 rounded-2xl bg-white/10 text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-semibold text-sm"
       />
-      {selected && (
-        <div className="mt-1 ml-1">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-white/15 border border-white/20 text-[9px] font-black text-blue-100 uppercase tracking-widest">
-            {selected.category}
-          </span>
+      {open && results.length > 0 && (
+        <div className="absolute z-[9999] w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+          <ul>
+            {results.map((entry, idx) => (
+              <li
+                key={entry.code}
+                onMouseDown={() => handleSelect(entry)}
+                className={`px-4 py-3 cursor-pointer transition-colors border-b border-slate-50 last:border-0 ${idx === highlighted ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="font-black text-blue-600 text-xs font-mono shrink-0 mt-0.5 min-w-[3.5rem]">
+                    {highlightMatch(entry.code, query)}
+                  </span>
+                  <div className="text-sm font-semibold text-slate-900 leading-tight">
+                    {highlightMatch(entry.display, query)}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-      {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl shadow-slate-200/50 overflow-hidden">
-          {results.length > 0 ? (
-            <ul className="max-h-64 overflow-y-auto">
-              {results.map((entry, idx) => (
-                <li
-                  key={entry.code}
-                  onMouseDown={() => handleSelect(entry)}
-                  className={`px-4 py-3 cursor-pointer transition-colors border-b border-slate-50 last:border-0 ${idx === highlighted ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="font-black text-blue-600 text-xs font-mono shrink-0 mt-0.5 min-w-[3rem]">{entry.code}</span>
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900 leading-tight">{entry.display}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">{entry.category}</div>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="px-4 py-3 text-xs text-slate-400 italic">No results. Type procedure manually.</div>
-          )}
+      {open && results.length === 0 && query.length >= 2 && (
+        <div className="absolute z-[9999] w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl">
+          <div className="px-4 py-3 text-xs text-slate-400 italic">Tidak ditemukan. Ketik prosedur secara manual.</div>
         </div>
       )}
     </div>
