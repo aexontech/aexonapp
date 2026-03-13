@@ -19,7 +19,7 @@ import { UserProfile } from '../types';
 
 interface AdminDashboardProps {
   doctors: UserProfile[];
-  enterpriseId?: string;
+  enterprise_id?: string | null;
   onAddDoctor: () => void;
   onEditDoctor: (doctor: UserProfile) => void;
   onDeleteDoctor: (id: string) => void;
@@ -29,7 +29,7 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ 
   doctors, 
-  enterpriseId,
+  enterprise_id,
   onAddDoctor, 
   onEditDoctor, 
   onDeleteDoctor, 
@@ -40,8 +40,8 @@ export default function AdminDashboard({
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
   const [doctorToDelete, setDoctorToDelete] = useState<UserProfile | null>(null);
 
-  const institutionDoctors = enterpriseId 
-    ? doctors.filter(d => d.enterpriseId === enterpriseId)
+  const institutionDoctors = enterprise_id 
+    ? doctors.filter(d => d.enterprise_id === enterprise_id)
     : doctors;
 
   const filteredDoctors = institutionDoctors.filter(d => 

@@ -60,24 +60,24 @@ export default function Launcher({ onLogin }: LauncherProps) {
         return;
       }
 
-      if (loginType === 'personal') {
-        if (profile.enterprise_id) {
-          throw new Error('Akun ini terdaftar sebagai akun institusi. Pilih tab Institusi.');
-        }
+      if (loginType === 'personal' && profile.enterprise_id) {
+        setError('Akun ini terdaftar sebagai akun institusi. Pilih tab Institusi.');
+        setIsLoading(false);
+        return;
       }
-
-      if (loginType === 'institusi') {
-        if (!profile.enterprise_id) {
-          throw new Error('Akun ini bukan akun institusi. Pilih tab Personal.');
-        }
-        if (institusiRole === 'doctor' && profile.role === 'admin') {
-          throw new Error('Akun ini adalah Admin Institusi. Pilih Admin Institusi.');
-        }
-        if (institusiRole === 'admin' && profile.role === 'doctor') {
-          throw new Error('Akun ini adalah Dokter Institusi. Pilih Dokter Institusi.');
-        }
-        const role = institusiRole === 'admin' ? 'admin' : 'doctor';
-        onLogin(role, data.user.email ?? '', profile.full_name ?? data.user.email ?? '', 'enterprise', null, profile.enterprise_id);
+      if (loginType === 'institusi' && !profile.enterprise_id) {
+        setError('Akun ini bukan akun institusi. Pilih tab Personal.');
+        setIsLoading(false);
+        return;
+      }
+      if (loginType === 'institusi' && institusiRole === 'admin' && profile.role !== 'admin') {
+        setError('Akun ini adalah Dokter Institusi. Pilih Dokter Institusi.');
+        setIsLoading(false);
+        return;
+      }
+      if (loginType === 'institusi' && institusiRole === 'doctor' && profile.role !== 'doctor') {
+        setError('Akun ini adalah Admin Institusi. Pilih Admin Institusi.');
+        setIsLoading(false);
         return;
       }
 
@@ -99,7 +99,14 @@ export default function Launcher({ onLogin }: LauncherProps) {
         trialDaysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
       }
 
-      onLogin(profile.role ?? 'doctor', data.user.email ?? '', profile.full_name ?? data.user.email ?? '', plan, trialDaysLeft);
+      onLogin(
+        profile.role ?? 'doctor',
+        data.user.email ?? '',
+        profile.full_name ?? data.user.email ?? '',
+        plan,
+        trialDaysLeft,
+        profile.enterprise_id ?? undefined
+      );
 
     } catch (err: any) {
       setError(

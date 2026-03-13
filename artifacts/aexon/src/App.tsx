@@ -179,54 +179,37 @@ function AppContent() {
     }
   ]);
 
-  const handleLogin = (role: UserRole, email: string, fullName: string, plan: 'subscription' | 'enterprise' | null, trialDaysLeft: number | null, enterpriseId?: string) => {
-    const userId = `DOC-${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  const handleLogin = (
+    role: UserRole, 
+    email: string, 
+    fullName: string, 
+    plan: 'subscription' | 'enterprise' | null, 
+    trialDaysLeft: number | null,
+    enterpriseId?: string
+  ) => {
+    const userId = email.replace(/[^a-zA-Z0-9]/g, '_');
+    
+    setUserProfile({
+      id: userId,
+      name: fullName || email,
+      specialization: 'Spesialis',
+      email: email,
+      phone: '',
+      role: role,
+      status: 'active',
+      enterprise_id: enterpriseId ?? null
+    });
+    
+    setSelectedPlan(plan);
+    
+    if (trialDaysLeft !== null) {
+      setTrialDaysLeft(trialDaysLeft);
+    }
 
     if (role === 'admin') {
-      setUserProfile({
-        id: `ADM-${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-        name: fullName || `Admin`,
-        specialization: 'Hospital Administrator',
-        email: email,
-        phone: '021-1234567',
-        role: 'admin',
-        status: 'active',
-        enterpriseId: enterpriseId
-      });
-      setSelectedPlan('enterprise');
-      setHospitalSettingsList([{
-        id: 'ENT-001',
-        name: 'RSUP Jakarta',
-        address: 'Jl. Diponegoro No. 71, Jakarta Pusat',
-        phone: '021-555000',
-        email: 'enterprise@rsup.co.id',
-        logoUrl: ''
-      }]);
       setCurrentView('admin-dashboard');
     } else {
-      const profile: UserProfile = {
-        id: userId,
-        name: fullName || email,
-        specialization: 'Spesialis Penyakit Dalam',
-        email: email,
-        phone: '08123456789',
-        role: 'doctor',
-        status: 'active',
-        preferences: {
-          fontSize: 'normal'
-        }
-      };
-      setUserProfile(profile);
-      setSelectedPlan(plan);
-      setTrialDaysLeft(trialDaysLeft);
-
-      const eulaKey = `aexon_eula_accepted_${userId}`;
-      const eulaAccepted = localStorage.getItem(eulaKey);
-      if (!eulaAccepted) {
-        setShowEula(true);
-      } else {
-        setCurrentView('dashboard');
-      }
+      setCurrentView('dashboard');
     }
   };
 
@@ -395,7 +378,7 @@ function AppContent() {
       {currentView === 'admin-dashboard' && (
         <AdminDashboard 
           doctors={doctors}
-          enterpriseId={userProfile?.enterpriseId}
+          enterprise_id={userProfile?.enterprise_id}
           onAddDoctor={() => {
             setEditingDoctor(null);
             setCurrentView('add-doctor');
