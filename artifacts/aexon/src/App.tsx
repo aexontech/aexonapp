@@ -166,18 +166,7 @@ function AppContent() {
     }
   };
 
-  const [hospitalSettingsList, setHospitalSettingsList] = useState<HospitalSettings[]>([
-    {
-      id: 'HOSP-001',
-      name: 'Rumah Sakit Umum Pusat',
-      address: 'Jl. Kesehatan No. 1, Jakarta Pusat, DKI Jakarta 10110',
-      phone: '(021) 1234567',
-      fax: '(021) 1234568',
-      website: 'www.rsup.co.id',
-      email: 'info@rsup.co.id',
-      logoUrl: 'https://picsum.photos/seed/hospital/200/200'
-    }
-  ]);
+  const [hospitalSettingsList, setHospitalSettingsList] = useState<HospitalSettings[]>([]);
 
   const handleLogin = (
     role: UserRole, 
@@ -204,6 +193,21 @@ function AppContent() {
     
     if (trialDaysLeft !== null) {
       setTrialDaysLeft(trialDaysLeft);
+    }
+
+    const isEnterpriseUser = plan === 'enterprise';
+    const storageKey = isEnterpriseUser && enterpriseId
+      ? `aexon_hospital_settings_${enterpriseId}`
+      : `aexon_hospital_settings_${userId}`;
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        setHospitalSettingsList(JSON.parse(stored));
+      } else {
+        setHospitalSettingsList([]);
+      }
+    } catch {
+      setHospitalSettingsList([]);
     }
 
     if (role === 'admin') {
@@ -235,8 +239,19 @@ function AppContent() {
   };
 
   const handleUpdateHospitalList = (list: HospitalSettings[]) => {
-    if (selectedPlan !== 'enterprise') {
-      setHospitalSettingsList(list.slice(0, 3));
+    const isEnterpriseUser = selectedPlan === 'enterprise';
+    const storageKey = isEnterpriseUser && userProfile?.enterprise_id
+      ? `aexon_hospital_settings_${userProfile.enterprise_id}`
+      : `aexon_hospital_settings_${userProfile?.id}`;
+
+    if (isEnterpriseUser) {
+      const capped = list.slice(0, 1);
+      setHospitalSettingsList(capped);
+      try { localStorage.setItem(storageKey, JSON.stringify(capped)); } catch {}
+    } else {
+      const capped = list.slice(0, 3);
+      setHospitalSettingsList(capped);
+      try { localStorage.setItem(storageKey, JSON.stringify(capped)); } catch {}
     }
   };
 
@@ -383,6 +398,8 @@ function AppContent() {
         <AdminDashboard 
           doctors={doctors}
           enterprise_id={userProfile?.enterprise_id}
+          hospitalSettingsList={hospitalSettingsList}
+          onUpdateHospitalList={handleUpdateHospitalList}
           onAddDoctor={() => {
             setEditingDoctor(null);
             setCurrentView('add-doctor');

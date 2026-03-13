@@ -106,8 +106,10 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activePageId, pages]);
 
-  const [selectedHospital, setSelectedHospital] = useState<HospitalSettings>(
-    plan === 'enterprise' ? hospitalSettingsList[0] : hospitalSettingsList[0]
+  const isEnterprise = plan === 'enterprise';
+
+  const [selectedHospital, setSelectedHospital] = useState<HospitalSettings | null>(
+    hospitalSettingsList.length > 0 ? hospitalSettingsList[0] : null
   );
 
   const calculateAge = (dob: string) => {
@@ -356,30 +358,51 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
           </div>
 
           <div className="p-8 border-b border-slate-100">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Institusi (Kop Surat)</h3>
-            <div className="relative">
-              <select 
-                disabled={plan === 'enterprise'}
-                value={selectedHospital.id}
-                onChange={(e) => {
-                  const hospital = hospitalSettingsList.find(h => h.id === e.target.value);
-                  if (hospital) setSelectedHospital(hospital);
-                }}
-                className={`w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer ${plan === 'enterprise' ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {hospitalSettingsList.map(h => (
-                  <option key={h.id} value={h.id} className="bg-white">{h.name}</option>
-                ))}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                <Layout className="w-4 h-4 text-slate-400" />
-              </div>
-            </div>
-            <p className="text-[10px] text-slate-400 font-medium italic mt-3">
-              {plan === 'enterprise' 
-                ? 'Kop surat dikunci oleh institusi Anda.' 
-                : 'Pilih institusi untuk kop surat laporan.'}
-            </p>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Kop Surat</h3>
+            {isEnterprise ? (
+              <>
+                {selectedHospital ? (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-sm font-bold text-slate-900">{selectedHospital.name}</p>
+                    {selectedHospital.address && <p className="text-xs text-slate-500 mt-1">{selectedHospital.address}</p>}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                    <p className="text-xs text-amber-700">Kop surat belum dikonfigurasi oleh Admin Institusi.</p>
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-400 font-medium italic mt-3">Kop surat dikunci oleh institusi Anda.</p>
+              </>
+            ) : (
+              <>
+                {hospitalSettingsList.length > 0 ? (
+                  <div className="relative">
+                    <select
+                      value={selectedHospital?.id || ''}
+                      onChange={(e) => {
+                        const hospital = hospitalSettingsList.find(h => h.id === e.target.value);
+                        if (hospital) setSelectedHospital(hospital);
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
+                    >
+                      {hospitalSettingsList.map(h => (
+                        <option key={h.id} value={h.id} className="bg-white">{h.name || 'Kop Surat'}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Layout className="w-4 h-4 text-slate-400" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                    <p className="text-xs text-amber-700">Belum ada kop surat. Tambahkan di Settings → Kop Surat.</p>
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-400 font-medium italic mt-3">Pilih kop surat untuk laporan.</p>
+              </>
+            )}
           </div>
 
           <div className="p-8 border-b border-slate-100">
@@ -614,24 +637,26 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
               {/* Report Header */}
               <div className="border-b-2 border-slate-200 pb-4 mb-4 flex justify-between items-start print-header">
                 <div className="flex items-center">
-                  {page.reportType === 'clinical' && selectedHospital.logoUrl && (
+                  {page.reportType === 'clinical' && selectedHospital?.logoUrl && (
                     <img src={selectedHospital.logoUrl} alt="Hospital Logo" className="h-20 w-auto mr-6 object-contain" />
                   )}
                   <div>
                     <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-1 uppercase">
                       {page.reportType === 'clinical' ? 'Laporan Endoskopi' : 'Academic Case Report'}
                     </h1>
-                    {page.reportType === 'clinical' ? (
+                    {page.reportType === 'clinical' && selectedHospital ? (
                       <div>
                         <p className="text-slate-900 font-black text-base leading-tight">{selectedHospital.name}</p>
                         <p className="text-slate-600 text-xs mt-1 max-w-md leading-relaxed">{selectedHospital.address}</p>
                         <div className="flex flex-wrap gap-x-4 text-slate-500 text-[10px] mt-2 font-bold uppercase tracking-wider">
-                          <span>Telp: {selectedHospital.phone}</span>
+                          {selectedHospital.phone && <span>Telp: {selectedHospital.phone}</span>}
                           {selectedHospital.fax && <span>Fax: {selectedHospital.fax}</span>}
                           {selectedHospital.website && <span>Web: {selectedHospital.website}</span>}
-                          <span>Email: {selectedHospital.email}</span>
+                          {selectedHospital.email && <span>Email: {selectedHospital.email}</span>}
                         </div>
                       </div>
+                    ) : page.reportType === 'clinical' ? (
+                      <p className="text-slate-400 text-xs mt-1 italic">Kop surat belum dikonfigurasi.</p>
                     ) : (
                       <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Aexon Medical Documentation</p>
                     )}

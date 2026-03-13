@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   User,
@@ -21,7 +21,18 @@ import {
   Eye,
   EyeOff,
   Info,
-  Users
+  Users,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Trash2,
+  CalendarClock,
+  ImagePlus,
+  MapPin,
+  Phone,
+  Globe,
+  Mail as MailIcon
 } from 'lucide-react';
 import { UserProfile, HospitalSettings, Session } from '../types';
 import { useToast } from './ToastProvider';
@@ -49,7 +60,7 @@ type ConflictAction = 'skip' | 'overwrite';
 
 export default function Settings({ userProfile, hospitalSettingsList, onUpdateUser, onUpdateHospitalList, onUpdateSessions, onCancelSubscription, plan, sessions }: SettingsProps) {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'profil' | 'keamanan' | 'langganan' | 'backup'>('profil');
+  const [activeTab, setActiveTab] = useState<'profil' | 'keamanan' | 'kop-surat' | 'langganan' | 'backup'>('profil');
 
   const [profileForm, setProfileForm] = useState<UserProfile>(userProfile);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -75,10 +86,107 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [applyToAll, setApplyToAll] = useState(false);
 
+  const [expandedKopIdx, setExpandedKopIdx] = useState<number | null>(0);
+  const [kopSaving, setKopSaving] = useState<number | null>(null);
+  const [kopToDelete, setKopToDelete] = useState<number | null>(null);
+  const [kopForms, setKopForms] = useState<HospitalSettings[]>(hospitalSettingsList);
+
+  useEffect(() => {
+    setKopForms(hospitalSettingsList);
+  }, [hospitalSettingsList]);
+
   const isAdmin = userProfile.role === 'admin';
   const isEnterprise = plan === 'enterprise';
   const isDokterInstitusi = !isAdmin && isEnterprise;
   const isPersonal = !isAdmin && !isEnterprise;
+
+  const COOLDOWN_DAYS = 14;
+
+  const getCooldownInfo = (kopId: string) => {
+    const key = `aexon_kop_cooldown_${userProfile.id}_${kopId}`;
+    try {
+      const stored = localStorage.getItem(key);
+      if (!stored) return { locked: false, unlockDate: null };
+      const { last_changed } = JSON.parse(stored);
+      const lastDate = new Date(last_changed);
+      const now = new Date();
+      const diffMs = now.getTime() - lastDate.getTime();
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      if (diffDays < COOLDOWN_DAYS) {
+        const unlockDate = new Date(lastDate.getTime() + COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+        return { locked: true, unlockDate };
+      }
+      return { locked: false, unlockDate: null };
+    } catch {
+      return { locked: false, unlockDate: null };
+    }
+  };
+
+  const setCooldown = (kopId: string) => {
+    const key = `aexon_kop_cooldown_${userProfile.id}_${kopId}`;
+    localStorage.setItem(key, JSON.stringify({ last_changed: new Date().toISOString() }));
+  };
+
+  const handleKopFieldChange = (idx: number, field: string, value: string) => {
+    setKopForms(prev => prev.map((k, i) => i === idx ? { ...k, [field]: value } : k));
+  };
+
+  const handleSaveKop = (idx: number) => {
+    const kop = kopForms[idx];
+    const kopId = kop.id || `kop-${Date.now()}`;
+    if (!kop.name.trim()) {
+      showToast('Nama RS / Klinik wajib diisi.', 'error');
+      return;
+    }
+
+    const original = hospitalSettingsList.find(h => h.id === kopId);
+    const nameChanged = original && kop.name.trim() !== original.name;
+    const logoChanged = original && (kop.logoUrl || '') !== (original.logoUrl || '');
+
+    if (nameChanged || logoChanged) {
+      const cooldown = getCooldownInfo(kopId);
+      if (cooldown.locked) {
+        showToast(`Nama dan logo masih dalam masa cooldown. Dapat diubah pada ${cooldown.unlockDate!.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.`, 'warning', 5000);
+        return;
+      }
+      setCooldown(kopId);
+    }
+
+    setKopSaving(idx);
+    const updated = [...kopForms];
+    updated[idx] = { ...kop, id: kopId };
+    onUpdateHospitalList(updated);
+    setTimeout(() => {
+      setKopSaving(null);
+      showToast(`Kop Surat ${idx + 1} berhasil disimpan.`, 'success');
+    }, 400);
+  };
+
+  const handleAddKop = () => {
+    if (kopForms.length >= 3) return;
+    const newKop: HospitalSettings = {
+      id: `kop-${Date.now()}`,
+      name: '',
+      address: '',
+      phone: '',
+      fax: '',
+      email: '',
+      website: '',
+      logoUrl: '',
+    };
+    setKopForms([...kopForms, newKop]);
+    setExpandedKopIdx(kopForms.length);
+  };
+
+  const confirmDeleteKop = () => {
+    if (kopToDelete === null) return;
+    const updated = kopForms.filter((_, i) => i !== kopToDelete);
+    setKopForms(updated);
+    onUpdateHospitalList(updated);
+    setKopToDelete(null);
+    showToast('Kop surat berhasil dihapus.', 'success');
+    if (expandedKopIdx === kopToDelete) setExpandedKopIdx(null);
+  };
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfileForm({ ...profileForm, [e.target.name]: e.target.value });
@@ -381,6 +489,10 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
     { id: 'keamanan', label: 'Keamanan', icon: Shield },
   ];
 
+  if (!isAdmin) {
+    visibleTabs.push({ id: 'kop-surat', label: 'Kop Surat', icon: FileText });
+  }
+
   if (!isDokterInstitusi) {
     visibleTabs.push({ id: 'langganan', label: 'Langganan', icon: CreditCard });
   }
@@ -640,6 +752,252 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </button>
               </div>
             </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ═══════════════ TAB: KOP SURAT ═══════════════ */}
+      {activeTab === 'kop-surat' && !isAdmin && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+
+          {isDokterInstitusi && (
+            <>
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
+                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  Kop surat dikelola oleh Admin Institusi Anda. Hubungi admin untuk perubahan.
+                </p>
+              </div>
+
+              {hospitalSettingsList.length > 0 ? (
+                <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-slate-900">{hospitalSettingsList[0].name || 'Kop Surat Institusi'}</h3>
+                      <p className="text-sm text-slate-500">Kop surat yang ditetapkan oleh institusi Anda.</p>
+                    </div>
+                  </div>
+                  <div className="h-px bg-slate-100 mb-6" />
+                  <div className="grid md:grid-cols-2 gap-5">
+                    {[
+                      { label: 'Nama RS / Institusi', value: hospitalSettingsList[0].name },
+                      { label: 'Alamat', value: hospitalSettingsList[0].address },
+                      { label: 'No. Telepon', value: hospitalSettingsList[0].phone },
+                      { label: 'No. Fax', value: hospitalSettingsList[0].fax || '-' },
+                      { label: 'Email', value: hospitalSettingsList[0].email },
+                      { label: 'Website', value: hospitalSettingsList[0].website || '-' },
+                    ].map((field) => (
+                      <div key={field.label} className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{field.label}</label>
+                        <input type="text" value={field.value || ''} readOnly className={readOnlyClass} />
+                      </div>
+                    ))}
+                  </div>
+                  {hospitalSettingsList[0].logoUrl && (
+                    <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Logo Institusi</p>
+                      <img src={hospitalSettingsList[0].logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8 text-center">
+                  <FileText className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                  <p className="text-sm text-slate-500 font-medium">Kop surat belum dikonfigurasi oleh Admin Institusi.</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {isPersonal && (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Kop Surat Praktik</h3>
+                  <p className="text-sm text-slate-500">Kelola kop surat tempat praktik Anda (maks. 3).</p>
+                </div>
+                {kopForms.length < 3 && (
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleAddKop}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tambah Kop Surat
+                  </motion.button>
+                )}
+              </div>
+
+              {kopForms.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
+                  <FileText className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                  <p className="text-sm text-slate-500 font-medium mb-1">Belum ada kop surat.</p>
+                  <p className="text-xs text-slate-400">Klik "Tambah Kop Surat" untuk menambahkan tempat praktik.</p>
+                </div>
+              )}
+
+              {kopForms.map((kop, idx) => {
+                const isExpanded = expandedKopIdx === idx;
+                const cooldown = getCooldownInfo(kop.id);
+                const isSavingThis = kopSaving === idx;
+
+                return (
+                  <div key={kop.id || idx} className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden">
+                    <button
+                      onClick={() => setExpandedKopIdx(isExpanded ? null : idx)}
+                      className="w-full flex items-center justify-between p-5 hover:bg-slate-50/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-[#0C1E35] flex items-center justify-center text-white text-xs font-black">
+                          {idx + 1}
+                        </div>
+                        <div className="text-left">
+                          <h4 className="text-sm font-bold text-slate-900">{kop.name || `Kop Surat ${idx + 1}`}</h4>
+                          {kop.address && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-sm">{kop.address}</p>}
+                        </div>
+                      </div>
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                    </button>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="p-6 pt-0 border-t border-slate-100">
+                            {cooldown.locked && (
+                              <div className="mb-5 p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2">
+                                <CalendarClock className="w-4 h-4 text-amber-500 shrink-0" />
+                                <p className="text-xs text-amber-700">
+                                  Nama dan logo dapat diubah kembali pada <strong>{cooldown.unlockDate!.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+                                </p>
+                              </div>
+                            )}
+
+                            <div className="grid md:grid-cols-2 gap-5 mt-4">
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama RS / Klinik *</label>
+                                <input
+                                  type="text"
+                                  value={kop.name}
+                                  onChange={(e) => handleKopFieldChange(idx, 'name', e.target.value)}
+                                  readOnly={cooldown.locked}
+                                  className={cooldown.locked ? readOnlyClass : inputClass}
+                                  placeholder="Nama rumah sakit atau klinik"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                  <ImagePlus className="w-3 h-3" /> Logo RS (URL)
+                                </label>
+                                <input
+                                  type="url"
+                                  value={kop.logoUrl || ''}
+                                  onChange={(e) => handleKopFieldChange(idx, 'logoUrl', e.target.value)}
+                                  readOnly={cooldown.locked}
+                                  className={cooldown.locked ? readOnlyClass : inputClass}
+                                  placeholder="https://example.com/logo.png"
+                                />
+                              </div>
+                              <div className="md:col-span-2 space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" /> Alamat
+                                </label>
+                                <input
+                                  type="text"
+                                  value={kop.address}
+                                  onChange={(e) => handleKopFieldChange(idx, 'address', e.target.value)}
+                                  className={inputClass}
+                                  placeholder="Jl. Kesehatan No. 1, Jakarta"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                  <Phone className="w-3 h-3" /> No. Telepon
+                                </label>
+                                <input
+                                  type="tel"
+                                  value={kop.phone}
+                                  onChange={(e) => handleKopFieldChange(idx, 'phone', e.target.value)}
+                                  className={inputClass}
+                                  placeholder="(021) 1234567"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. Fax</label>
+                                <input
+                                  type="tel"
+                                  value={kop.fax || ''}
+                                  onChange={(e) => handleKopFieldChange(idx, 'fax', e.target.value)}
+                                  className={inputClass}
+                                  placeholder="(021) 1234568"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                  <MailIcon className="w-3 h-3" /> Email RS
+                                </label>
+                                <input
+                                  type="email"
+                                  value={kop.email}
+                                  onChange={(e) => handleKopFieldChange(idx, 'email', e.target.value)}
+                                  className={inputClass}
+                                  placeholder="info@rumahsakit.co.id"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                  <Globe className="w-3 h-3" /> Website RS
+                                </label>
+                                <input
+                                  type="url"
+                                  value={kop.website || ''}
+                                  onChange={(e) => handleKopFieldChange(idx, 'website', e.target.value)}
+                                  className={inputClass}
+                                  placeholder="www.rumahsakit.co.id"
+                                />
+                              </div>
+                            </div>
+
+                            {kop.logoUrl && (
+                              <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Preview Logo</p>
+                                <img src={kop.logoUrl} alt="Logo" className="h-16 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              </div>
+                            )}
+
+                            <div className="mt-6 flex items-center justify-between">
+                              <button
+                                onClick={() => setKopToDelete(idx)}
+                                className="flex items-center gap-2 px-4 py-2 text-red-500 hover:bg-red-50 text-xs font-bold rounded-xl transition-all"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Hapus Kop Surat
+                              </button>
+                              <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleSaveKop(idx)}
+                                disabled={isSavingThis}
+                                className="flex items-center gap-2 px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all disabled:opacity-50"
+                              >
+                                {isSavingThis ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                {isSavingThis ? 'Menyimpan...' : 'Simpan'}
+                              </motion.button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </>
           )}
         </motion.div>
       )}
@@ -1001,6 +1359,17 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         title="Hapus Semua Data Lokal?"
         message="Apakah Anda yakin ingin menghapus semua riwayat sesi lokal Anda? Tindakan ini tidak dapat dibatalkan. Disarankan untuk membuat backup terlebih dahulu."
         confirmText="Ya, Hapus Semua"
+        cancelText="Batalkan"
+        variant="danger"
+      />
+
+      <ConfirmModal
+        isOpen={kopToDelete !== null}
+        onConfirm={confirmDeleteKop}
+        onCancel={() => setKopToDelete(null)}
+        title="Hapus Kop Surat?"
+        message={`Apakah Anda yakin ingin menghapus Kop Surat ${kopToDelete !== null ? kopToDelete + 1 : ''}? Data kop surat ini akan dihapus secara permanen.`}
+        confirmText="Ya, Hapus"
         cancelText="Batalkan"
         variant="danger"
       />
