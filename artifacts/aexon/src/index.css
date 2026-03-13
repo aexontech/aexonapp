@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0C1E35;
+  --color-blue-50: #EBF4F8;
+  --color-blue-600: #1A52A8;
+  --color-blue-700: #0C3E8A;
+  --color-muted: #7A94A8;
+}
+
+@layer base {
+  html {
+    font-size: 18px;
+    letter-spacing: 0.01em;
+  }
+}
+
+@layer utilities {
+  .font-aexon {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+}

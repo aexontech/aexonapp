@@ -50,6 +50,18 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 
 ## Packages
 
+### `artifacts/aexon` (`@workspace/aexon`)
+
+Aexon Endoscopy — React 19 + Vite + TypeScript desktop app for endoscopy session management. Frontend-only (no backend API), uses localStorage for data persistence.
+
+- Entry: `src/main.tsx`, main component: `src/App.tsx`
+- Key components: Launcher (login), Dashboard, SessionForm, EndoscopyApp (active session), ReportGenerator, Gallery, Settings, AdminDashboard
+- UI stack: Tailwind CSS v4, Framer Motion (`motion/react`), Lucide icons, Konva (image editor)
+- Types: `src/types.ts` — PatientData, Session, Capture, UserProfile, HospitalSettings
+- Trial: 7-day trial period, navigation guard active during recording sessions
+- Session ID: generated once via `useMemo` (not on every render)
+- No Gemini API key exposed in the client bundle
+
 ### `artifacts/api-server` (`@workspace/api-server`)
 
 Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
