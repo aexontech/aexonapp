@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, Eye, EyeOff, ChevronLeft, Loader2, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ChevronLeft, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Logo } from './Logo';
 import { supabase } from '../lib/supabase';
+
+type LoginType = 'doctor' | 'admin' | 'enterprise';
 
 interface LauncherProps {
   onLogin: (role: 'doctor' | 'admin', email: string, fullName: string, plan: 'subscription' | 'enterprise' | null, trialDaysLeft: number | null) => void;
 }
 
+const loginTypes: { key: LoginType; label: string }[] = [
+  { key: 'doctor', label: 'Dokter' },
+  { key: 'admin', label: 'Admin' },
+  { key: 'enterprise', label: 'Enterprise' },
+];
+
 export default function Launcher({ onLogin }: LauncherProps) {
+  const [loginType, setLoginType] = useState<LoginType>('doctor');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -44,6 +53,13 @@ export default function Launcher({ onLogin }: LauncherProps) {
         .limit(1)
         .single();
 
+      const role: 'doctor' | 'admin' = loginType === 'admin' ? 'admin' : 'doctor';
+
+      if (loginType === 'enterprise') {
+        onLogin(role, data.user.email ?? '', profile?.full_name ?? data.user.email ?? '', 'enterprise', null);
+        return;
+      }
+
       const plan: 'subscription' | 'enterprise' | null = subscription?.status === 'active' ? 'subscription' :
                    subscription?.status === 'trial' ? 'subscription' : null;
 
@@ -54,7 +70,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
         trialDaysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
       }
 
-      onLogin('doctor', data.user.email ?? '', profile?.full_name ?? data.user.email ?? '', plan, trialDaysLeft);
+      onLogin(role, data.user.email ?? '', profile?.full_name ?? data.user.email ?? '', plan, trialDaysLeft);
 
     } catch (err: any) {
       setError(err.message === 'Invalid login credentials'
@@ -212,6 +228,23 @@ export default function Launcher({ onLogin }: LauncherProps) {
                 Masuk ke sistem manajemen endoskopi
               </p>
             </div>
+          </div>
+
+          <div className="flex gap-2 mb-6">
+            {loginTypes.map((lt) => (
+              <button
+                key={lt.key}
+                type="button"
+                onClick={() => { setLoginType(lt.key); setError(''); }}
+                className={`flex-1 py-2 px-3 rounded-full text-xs font-semibold transition-all duration-200 ${
+                  loginType === lt.key
+                    ? 'bg-[#0D9488] text-white shadow-sm'
+                    : 'bg-transparent border border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500'
+                }`}
+              >
+                {lt.label}
+              </button>
+            ))}
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
