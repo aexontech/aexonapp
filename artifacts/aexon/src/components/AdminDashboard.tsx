@@ -19,6 +19,7 @@ import { UserProfile } from '../types';
 
 interface AdminDashboardProps {
   doctors: UserProfile[];
+  enterpriseId?: string;
   onAddDoctor: () => void;
   onEditDoctor: (doctor: UserProfile) => void;
   onDeleteDoctor: (id: string) => void;
@@ -28,6 +29,7 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ 
   doctors, 
+  enterpriseId,
   onAddDoctor, 
   onEditDoctor, 
   onDeleteDoctor, 
@@ -38,7 +40,11 @@ export default function AdminDashboard({
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
   const [doctorToDelete, setDoctorToDelete] = useState<UserProfile | null>(null);
 
-  const filteredDoctors = doctors.filter(d => 
+  const institutionDoctors = enterpriseId 
+    ? doctors.filter(d => d.enterpriseId === enterpriseId)
+    : doctors;
+
+  const filteredDoctors = institutionDoctors.filter(d => 
     d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     d.specialization.toLowerCase().includes(searchTerm.toLowerCase()) ||
     d.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -57,8 +63,8 @@ export default function AdminDashboard({
   };
 
   const stats = [
-    { label: 'Total Dokter', value: doctors.length.toString(), icon: Users, color: 'blue' },
-    { label: 'Aktif Hari Ini', value: doctors.filter(d => d.status === 'active').length.toString(), icon: Activity, color: 'emerald' },
+    { label: 'Total Dokter', value: institutionDoctors.length.toString(), icon: Users, color: 'blue' },
+    { label: 'Aktif Hari Ini', value: institutionDoctors.filter(d => d.status === 'active').length.toString(), icon: Activity, color: 'emerald' },
     { label: 'Sesi Selesai', value: '142', icon: CheckCircle2, color: 'indigo' },
     { label: 'Kapasitas Disk', value: '64%', icon: BarChart3, color: 'amber' },
   ];
@@ -300,7 +306,7 @@ export default function AdminDashboard({
           </div>
           <div>
             <h4 className="text-lg font-bold">Enterprise Plan: RSUP Jakarta</h4>
-            <p className="text-blue-100 text-sm opacity-80">Lisensi Aktif hingga 12 Des 2026 • {doctors.length}/50 Akun Terpakai</p>
+            <p className="text-blue-100 text-sm opacity-80">Lisensi Aktif hingga 12 Des 2026 • {institutionDoctors.length}/50 Akun Terpakai</p>
           </div>
         </div>
         <button 

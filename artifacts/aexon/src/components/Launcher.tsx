@@ -9,7 +9,7 @@ type InstitusiRole = 'doctor' | 'admin';
 type ViewMode = 'login' | 'forgot' | 'register';
 
 interface LauncherProps {
-  onLogin: (role: 'doctor' | 'admin', email: string, fullName: string, plan: 'subscription' | 'enterprise' | null, trialDaysLeft: number | null) => void;
+  onLogin: (role: 'doctor' | 'admin', email: string, fullName: string, plan: 'subscription' | 'enterprise' | null, trialDaysLeft: number | null, enterpriseId?: string) => void;
 }
 
 export default function Launcher({ onLogin }: LauncherProps) {
@@ -60,16 +60,24 @@ export default function Launcher({ onLogin }: LauncherProps) {
         return;
       }
 
-      if (loginType === 'personal' && profile.enterprise_id) {
-        throw new Error('Tipe login tidak sesuai dengan akun Anda.');
-      }
-      if (loginType === 'institusi' && !profile.enterprise_id) {
-        throw new Error('Tipe login tidak sesuai dengan akun Anda.');
+      if (loginType === 'personal') {
+        if (profile.enterprise_id) {
+          throw new Error('Akun ini terdaftar sebagai akun institusi. Pilih tab Institusi.');
+        }
       }
 
       if (loginType === 'institusi') {
+        if (!profile.enterprise_id) {
+          throw new Error('Akun ini bukan akun institusi. Pilih tab Personal.');
+        }
+        if (institusiRole === 'doctor' && profile.role === 'admin') {
+          throw new Error('Akun ini adalah Admin Institusi. Pilih Admin Institusi.');
+        }
+        if (institusiRole === 'admin' && profile.role === 'doctor') {
+          throw new Error('Akun ini adalah Dokter Institusi. Pilih Dokter Institusi.');
+        }
         const role = institusiRole === 'admin' ? 'admin' : 'doctor';
-        onLogin(role, data.user.email ?? '', profile.full_name ?? data.user.email ?? '', 'enterprise', null);
+        onLogin(role, data.user.email ?? '', profile.full_name ?? data.user.email ?? '', 'enterprise', null, profile.enterprise_id);
         return;
       }
 

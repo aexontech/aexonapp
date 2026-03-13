@@ -179,7 +179,7 @@ function AppContent() {
     }
   ]);
 
-  const handleLogin = (role: UserRole, email: string, fullName: string, plan: 'subscription' | 'enterprise' | null, trialDaysLeft: number | null) => {
+  const handleLogin = (role: UserRole, email: string, fullName: string, plan: 'subscription' | 'enterprise' | null, trialDaysLeft: number | null, enterpriseId?: string) => {
     const userId = `DOC-${email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
 
     if (role === 'admin') {
@@ -190,7 +190,8 @@ function AppContent() {
         email: email,
         phone: '021-1234567',
         role: 'admin',
-        status: 'active'
+        status: 'active',
+        enterpriseId: enterpriseId
       });
       setSelectedPlan('enterprise');
       setHospitalSettingsList([{
@@ -394,6 +395,7 @@ function AppContent() {
       {currentView === 'admin-dashboard' && (
         <AdminDashboard 
           doctors={doctors}
+          enterpriseId={userProfile?.enterpriseId}
           onAddDoctor={() => {
             setEditingDoctor(null);
             setCurrentView('add-doctor');

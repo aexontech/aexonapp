@@ -60,6 +60,7 @@ export interface UserProfile {
   sipNumber?: string;
   nameChangeRequested?: boolean;
   lastNameChangeDate?: string;
+  enterpriseId?: string;
   preferences?: {
     fontSize: 'normal' | 'large' | 'extra-large';
   };
