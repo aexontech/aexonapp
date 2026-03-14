@@ -185,13 +185,49 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
   };
 
   const handleEmail = () => {
-    const subject = encodeURIComponent(`Laporan Endoskopi - ${session.patient.name}`);
-    const body = encodeURIComponent(`Halo,\n\nBerikut adalah laporan endoskopi untuk pasien ${session.patient.name} (${session.patient.rmNumber}).\n\nTanggal: ${session.date.toLocaleDateString('id-ID')}\nOperator: ${session.patient.operator}\n\nSalam,\n${userProfile.name}`);
+    const subject = encodeURIComponent(`Laporan Endoskopi - ${session.patient.name} - ${session.date.toLocaleDateString('id-ID')}`);
+    const procedures = session.patient.procedures?.join(', ') || '-';
+    const diagnosis = session.patient.diagnosis || '-';
+    const body = encodeURIComponent(
+      `Yth. Sejawat,\n\n` +
+      `Berikut ringkasan laporan endoskopi:\n\n` +
+      `INFORMASI PASIEN\n` +
+      `Nama Pasien  : ${session.patient.name}\n` +
+      `No. RM       : ${session.patient.rmNumber}\n` +
+      `Tanggal      : ${session.date.toLocaleDateString('id-ID')}\n` +
+      `Operator     : ${session.patient.operator}\n` +
+      `Perujuk      : ${session.patient.referringDoctor || '-'}\n\n` +
+      `HASIL PEMERIKSAAN\n` +
+      `Prosedur     : ${procedures}\n` +
+      `Diagnosis    : ${diagnosis}\n` +
+      `Jumlah Foto  : ${session.captures.filter(c => c.type === 'image').length}\n` +
+      `Jumlah Video : ${session.captures.filter(c => c.type === 'video').length}\n\n` +
+      `Laporan lengkap beserta dokumentasi foto terlampir.\n\n` +
+      `Salam,\n${userProfile.name}`
+    );
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent(`Halo,\n\nBerikut adalah laporan endoskopi untuk pasien *${session.patient.name}* (${session.patient.rmNumber}).\n\nTanggal: ${session.date.toLocaleDateString('id-ID')}\nOperator: ${session.patient.operator}\n\nSalam,\n${userProfile.name}`);
+    const procedures = session.patient.procedures?.join(', ') || '-';
+    const diagnosis = session.patient.diagnosis || '-';
+    const text = encodeURIComponent(
+      `Yth. Sejawat,\n\n` +
+      `Berikut ringkasan laporan endoskopi:\n\n` +
+      `*INFORMASI PASIEN*\n` +
+      `Nama Pasien : *${session.patient.name}*\n` +
+      `No. RM : ${session.patient.rmNumber}\n` +
+      `Tanggal : ${session.date.toLocaleDateString('id-ID')}\n` +
+      `Operator : ${session.patient.operator}\n` +
+      `Perujuk : ${session.patient.referringDoctor || '-'}\n\n` +
+      `*HASIL PEMERIKSAAN*\n` +
+      `Prosedur : ${procedures}\n` +
+      `Diagnosis : ${diagnosis}\n` +
+      `Jumlah Foto : ${session.captures.filter(c => c.type === 'image').length}\n` +
+      `Jumlah Video : ${session.captures.filter(c => c.type === 'video').length}\n\n` +
+      `Laporan lengkap beserta dokumentasi foto terlampir.\n\n` +
+      `Salam,\n${userProfile.name}`
+    );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
@@ -209,55 +245,83 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
   };
 
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col font-sans text-slate-900 h-full overflow-hidden relative">
+    <div className="flex-1 bg-slate-50 flex flex-col font-sans text-slate-900 h-full overflow-hidden relative print:overflow-visible print:h-auto print:bg-white">
       <style dangerouslySetInnerHTML={{ __html: `
         @page {
           size: ${activePage.pageSize === 'F4' ? '215mm 330mm' : activePage.pageSize === 'Letter' ? 'letter' : 'A4'} ${activePage.orientation};
           margin: 0;
         }
-          @media print {
-            body { margin: 0; background: white !important; }
-            .print-container { 
-              width: 100% !important; 
-              min-height: 100% !important; 
-              box-shadow: none !important; 
-              margin: 0 !important; 
-              padding: 8mm !important; 
-              page-break-after: always;
-              background: white !important;
-              color: black !important;
-            }
-            .print-container:last-child {
-              page-break-after: auto;
-            }
-            .print-container * {
-              line-height: 1.1 !important;
-            }
-            .print-header {
-              margin-bottom: 3mm !important;
-              padding-bottom: 2mm !important;
-            }
-            .print-section-title {
-              font-size: 12pt !important;
-              margin-bottom: 2mm !important;
-            }
-            .print-grid {
-              gap: 2mm !important;
-            }
-            .print-patient-info {
-              margin-bottom: 4mm !important;
-              padding: 3mm !important;
-            }
+        @media print {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            overflow: visible !important;
+            height: auto !important;
           }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #root > div > div {
+            overflow: visible !important;
+            height: auto !important;
+          }
+          .print-container { 
+            width: 100% !important; 
+            min-height: 100% !important; 
+            box-shadow: none !important; 
+            margin: 0 !important; 
+            padding: 10mm !important; 
+            page-break-after: always;
+            background: white !important;
+            color: black !important;
+            opacity: 1 !important;
+            filter: none !important;
+            transform: none !important;
+            ring: none !important;
+          }
+          .print-container:last-child {
+            page-break-after: auto;
+          }
+          .print-container * {
+            line-height: 1.2 !important;
+          }
+          .print-header {
+            margin-bottom: 3mm !important;
+            padding-bottom: 2mm !important;
+          }
+          .print-section-title {
+            font-size: 12pt !important;
+            margin-bottom: 2mm !important;
+          }
+          .print-grid {
+            gap: 2mm !important;
+          }
+          .print-patient-info {
+            margin-bottom: 4mm !important;
+            padding: 3mm !important;
+          }
+          .print-grid img {
+            max-width: 100% !important;
+            height: auto !important;
+          }
+          .print-photo-card img {
+            break-inside: avoid;
+          }
+          .print-section {
+            break-inside: avoid;
+          }
+        }
       `}} />
       
       {/* Background Elements */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none print:hidden">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_70%)]" />
       </div>
 
       {/* Header */}
-      <header className="h-20 border-b border-slate-200 bg-white/80 backdrop-blur-3xl flex items-center justify-between px-8 shrink-0 z-50 relative">
+      <header className="h-20 border-b border-slate-200 bg-white/80 backdrop-blur-3xl flex items-center justify-between px-8 shrink-0 z-50 relative print:hidden">
         <div className="flex items-center">
           <motion.button 
             whileHover={{ scale: 1.1, x: -2 }}
@@ -289,7 +353,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden relative z-10">
+      <div className="flex-1 flex overflow-hidden relative z-10 print:overflow-visible print:block">
         {/* Sidebar Navigation */}
         <div className={`${isNavCollapsed ? 'w-24' : 'w-64'} bg-white border-r border-slate-200 flex flex-col overflow-hidden transition-all duration-300 print:hidden`}>
           <div className="p-6 border-b border-slate-100 flex items-center justify-center">
@@ -621,7 +685,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
         </div>
 
         {/* Print Preview Area */}
-        <div className="flex-1 bg-slate-200 overflow-y-auto p-12 flex flex-col items-center gap-12 print:p-0 print:bg-white print:block custom-scrollbar">
+        <div className="flex-1 bg-slate-200 overflow-y-auto p-12 flex flex-col items-center gap-12 print:p-0 print:bg-white print:block print:overflow-visible custom-scrollbar">
           {pages.map((page) => (
             <div 
               key={page.id}

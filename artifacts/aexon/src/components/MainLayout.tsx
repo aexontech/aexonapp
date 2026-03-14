@@ -71,8 +71,8 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
   const subStatus = getSubscriptionStatus();
 
   return (
-    <div className="h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden relative">
-      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-100 flex flex-col h-full z-40 transition-all duration-300 ease-in-out shrink-0`}>
+    <div className="h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden relative print:overflow-visible print:h-auto print:bg-white print:block">
+      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-100 flex flex-col h-full z-40 transition-all duration-300 ease-in-out shrink-0 print:hidden`}>
         <div className={`h-16 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-4'} border-b border-slate-100 shrink-0`}>
           <div
             onClick={() => onNavigate(isAdmin ? 'admin-dashboard' : 'dashboard')}

@@ -25,3 +25,17 @@
     letter-spacing: -0.01em;
   }
 }
+
+@media print {
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  #root > div {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
