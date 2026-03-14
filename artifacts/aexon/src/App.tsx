@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Launcher from './components/Launcher';
 import Pricing from './components/Pricing';
 import MainLayout from './components/MainLayout';
@@ -11,6 +11,7 @@ import Settings from './components/Settings';
 import Gallery from './components/Gallery';
 import AddDoctor from './components/AddDoctor';
 import ManageSubscription from './components/ManageSubscription';
+import AdminKopSurat from './components/AdminKopSurat';
 import EulaModal from './components/EulaModal';
 import ConfirmModal from './components/ConfirmModal';
 import ToastProvider, { useToast } from './components/ToastProvider';
@@ -21,7 +22,7 @@ import { AlertTriangle } from 'lucide-react';
 function AppContent() {
   const { showToast } = useToast();
 
-  const [currentView, setCurrentView] = useState<'launcher' | 'pricing' | 'dashboard' | 'admin-dashboard' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'add-doctor' | 'manage-subscription'>('launcher');
+  const [currentView, setCurrentView] = useState<'launcher' | 'pricing' | 'dashboard' | 'admin-dashboard' | 'admin-kop-surat' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'add-doctor' | 'manage-subscription'>('launcher');
   const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | null>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   
@@ -398,8 +399,6 @@ function AppContent() {
         <AdminDashboard 
           doctors={doctors}
           enterprise_id={userProfile?.enterprise_id}
-          hospitalSettingsList={hospitalSettingsList}
-          onUpdateHospitalList={handleUpdateHospitalList}
           onAddDoctor={() => {
             setEditingDoctor(null);
             setCurrentView('add-doctor');
@@ -429,6 +428,14 @@ function AppContent() {
             }
             setCurrentView('admin-dashboard');
           }}
+        />
+      )}
+
+      {currentView === 'admin-kop-surat' && (
+        <AdminKopSurat
+          hospitalSettingsList={hospitalSettingsList}
+          onUpdateHospitalList={handleUpdateHospitalList}
+          enterprise_id={userProfile?.enterprise_id}
         />
       )}
 
@@ -482,8 +489,6 @@ function AppContent() {
             setViewingSession(session);
             setCurrentView('report-generator');
           }}
-          userProfile={userProfile}
-          allSessions={sessions}
         />
       )}
 

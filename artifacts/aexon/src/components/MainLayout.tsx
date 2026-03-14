@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { FileText, Plus, CalendarDays, Settings, LogOut, ChevronLeft, ChevronRight, Wifi, WifiOff } from 'lucide-react';
+import { FileText, Plus, Settings, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Home } from 'lucide-react';
 import { UserProfile } from '../types';
 import { Logo } from './Logo';
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  activeMenu: 'dashboard' | 'admin-dashboard' | 'pricing' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'launcher' | 'add-doctor' | 'manage-subscription';
+  activeMenu: 'dashboard' | 'admin-dashboard' | 'admin-kop-surat' | 'pricing' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'launcher' | 'add-doctor' | 'manage-subscription';
   onNavigate: (menu: any) => void;
   onLogout: () => void;
   plan: 'subscription' | 'enterprise' | null;
@@ -18,6 +17,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const isAdmin = userProfile.role === 'admin';
+  const isEnterprise = plan === 'enterprise';
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -31,37 +31,44 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
   }, []);
 
   const menuItems = isAdmin ? [
-    { id: 'admin-dashboard', label: 'Admin Console', icon: <FileText className="w-5 h-5" /> },
-    { id: 'settings', label: 'Enterprise Settings', icon: <Settings className="w-5 h-5" /> },
+    { id: 'admin-dashboard', label: 'Admin Console', icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: 'admin-kop-surat', label: 'Kop Surat Institusi', icon: <FileText className="w-5 h-5" /> },
   ] : [
-    { id: 'dashboard', label: 'Beranda', icon: <Logo mSize={20} wSize={0} /> },
+    { id: 'dashboard', label: 'Beranda', icon: <Home className="w-5 h-5" /> },
     { id: 'session-form', label: 'Mulai Sesi Baru', icon: <Plus className="w-5 h-5" /> },
-    { id: 'pricing', label: 'Paket & Berlangganan', icon: <CalendarDays className="w-5 h-5" /> },
   ];
 
   const isActive = (itemId: string) =>
     activeMenu === itemId ||
     (activeMenu === 'active-session' && itemId === 'session-form') ||
-    (activeMenu === 'report-generator' && itemId === 'dashboard');
+    (activeMenu === 'report-generator' && itemId === 'dashboard') ||
+    (activeMenu === 'add-doctor' && itemId === 'admin-dashboard') ||
+    (activeMenu === 'manage-subscription' && itemId === 'admin-dashboard');
 
   const getInitials = (name: string) =>
     name.split(' ').filter(n => !n.startsWith('Dr.')).map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const getRoleBadge = () => {
     if (isAdmin) return { label: 'Admin Institusi', color: 'bg-purple-100 text-purple-700' };
-    if (plan === 'enterprise') return { label: 'Dokter Institusi', color: 'bg-teal-100 text-teal-700' };
+    if (isEnterprise) return { label: 'Dokter Institusi', color: 'bg-teal-100 text-teal-700' };
     return { label: 'Personal', color: 'bg-blue-100 text-blue-700' };
   };
 
-  const getSubscriptionChip = () => {
-    if (plan === 'subscription') return { label: 'Aktif', color: 'bg-emerald-100 text-emerald-700' };
-    if (plan === 'enterprise') return { label: 'Aktif', color: 'bg-emerald-100 text-emerald-700' };
-    if (trialDaysLeft !== null && trialDaysLeft > 0) return { label: `Trial ${trialDaysLeft} hari`, color: 'bg-yellow-100 text-yellow-700' };
-    return { label: 'Tidak Aktif', color: 'bg-red-100 text-red-700' };
+  const getSubscriptionStatus = () => {
+    if (isAdmin || plan === 'subscription' || plan === 'enterprise') {
+      return { state: 'active' as const, label: 'Aktif', sublabel: 'Langganan aktif', dotColor: 'bg-emerald-500', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200', textColor: 'text-emerald-700', pulse: false, showCta: false };
+    }
+    if (trialDaysLeft !== null && trialDaysLeft > 0 && trialDaysLeft <= 7) {
+      return { state: 'warning' as const, label: `Trial — ${trialDaysLeft} hari lagi`, sublabel: 'Segera berlangganan', dotColor: 'bg-orange-500', bgColor: 'bg-orange-50', borderColor: 'border-orange-200', textColor: 'text-orange-700', pulse: true, showCta: true, ctaLabel: 'Segera Berlangganan', ctaBg: 'bg-orange-500 hover:bg-orange-600' };
+    }
+    if (trialDaysLeft !== null && trialDaysLeft > 7) {
+      return { state: 'trial' as const, label: `Trial — ${trialDaysLeft} hari lagi`, sublabel: '', dotColor: 'bg-yellow-500', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-100', textColor: 'text-yellow-700', pulse: false, showCta: false };
+    }
+    return { state: 'inactive' as const, label: 'Tidak Aktif', sublabel: 'Berlangganan Sekarang', dotColor: 'bg-red-500', bgColor: 'bg-red-50', borderColor: 'border-red-200', textColor: 'text-red-700', pulse: true, showCta: true, ctaLabel: 'Berlangganan Sekarang', ctaBg: 'bg-[#0C1E35] hover:bg-[#1a3a5c]' };
   };
 
   const roleBadge = getRoleBadge();
-  const subChip = getSubscriptionChip();
+  const subStatus = getSubscriptionStatus();
 
   return (
     <div className="h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden relative">
@@ -102,7 +109,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           </div>
         )}
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 p-3 space-y-1">
           {menuItems.map((item) => (
             <button
               key={item.id}
@@ -125,6 +132,30 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
         </nav>
 
         <div className="p-3 border-t border-slate-100 space-y-1 shrink-0">
+          {isCollapsed ? (
+            <div className="flex justify-center py-2" title={subStatus.label}>
+              <div className={`w-2.5 h-2.5 rounded-full ${subStatus.dotColor} ${subStatus.pulse ? 'animate-pulse' : ''}`} />
+            </div>
+          ) : (
+            <div className={`${subStatus.bgColor} border ${subStatus.borderColor} rounded-xl p-3 mb-1`}>
+              <div className="flex items-center gap-2">
+                <div className={`w-2.5 h-2.5 rounded-full ${subStatus.dotColor} shrink-0 ${subStatus.pulse ? 'animate-pulse' : ''}`} />
+                <span className={`text-xs font-semibold ${subStatus.textColor}`}>{subStatus.label}</span>
+              </div>
+              {subStatus.sublabel && !subStatus.showCta && (
+                <p className={`text-[10px] ${subStatus.textColor} opacity-75 mt-1 ml-[18px]`}>{subStatus.sublabel}</p>
+              )}
+              {subStatus.showCta && (
+                <button
+                  onClick={() => onNavigate('settings')}
+                  className={`w-full mt-2 px-3 py-1.5 ${(subStatus as any).ctaBg} text-white text-[10px] font-bold rounded-lg transition-colors`}
+                >
+                  {(subStatus as any).ctaLabel}
+                </button>
+              )}
+            </div>
+          )}
+
           <button
             onClick={() => onNavigate('settings')}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
@@ -146,14 +177,9 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
               {!isCollapsed && (
                 <div className="overflow-hidden flex-1 min-w-0">
                   <p className="text-sm font-bold text-slate-900 truncate">{userProfile.name}</p>
-                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold rounded-full ${roleBadge.color}`}>
-                      {roleBadge.label}
-                    </span>
-                    <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold rounded-full ${subChip.color}`}>
-                      {subChip.label}
-                    </span>
-                  </div>
+                  <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold rounded-full mt-1 ${roleBadge.color}`}>
+                    {roleBadge.label}
+                  </span>
                 </div>
               )}
             </div>

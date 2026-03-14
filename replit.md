@@ -55,7 +55,7 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 Aexon Endoscopy — React 19 + Vite + TypeScript desktop app for endoscopy session management. Frontend-only (no backend API), uses localStorage for data persistence.
 
 - Entry: `src/main.tsx`, main component: `src/App.tsx`
-- Key components: Launcher (login), Dashboard, SessionForm, EndoscopyApp (active session), ReportGenerator, Gallery, Settings, AdminDashboard
+- Key components: Launcher (login), Dashboard, SessionForm, EndoscopyApp (active session), ReportGenerator, Gallery, Settings, AdminDashboard, AdminKopSurat
 - UI stack: Tailwind CSS v4, Framer Motion (`motion/react`), Lucide icons, Konva (image editor)
 - Fonts: Plus Jakarta Sans (body text) + Outfit (brand "Aexon" wordmark only), loaded in index.html. `.font-aexon` utility class uses Outfit bold.
 - Auth: Supabase email+password via `src/lib/supabase.ts`. Requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY env vars. Falls back gracefully when not configured.
@@ -70,7 +70,7 @@ Aexon Endoscopy — React 19 + Vite + TypeScript desktop app for endoscopy sessi
 - Encryption: XOR cipher in `src/lib/storage.ts` (saveUserData/loadUserData)
 - Subscription: subscription-only model (no tokens), gating via hasActiveAccess
 - Settings (Settings.tsx): 5-tab layout (Profil / Keamanan / Kop Surat / Langganan / Backup). Profil: avatar initials, name, email(read-only), specialization, STR, SIP, phone — saves to Supabase doctor_accounts via auth.getUser() UUID. Keamanan: change password via supabase.auth.updateUser({ password }), data cleanup. Kop Surat: Personal=editable up to 3 collapsible cards with 14-day cooldown on name/logo, Dokter Institusi=read-only card, Admin=no tab. Langganan: Personal shows plan+billing+CTA; Dokter Institusi hides tab entirely; Admin shows enterprise plan+seat count. Backup: existing ZIP backup/restore with conflict resolution.
-- Kop Surat (Hospital Letterhead): Personal accounts: up to 3 kop surat in Settings→Kop Surat tab. Each has: name, logo URL, address, phone, fax, email, website. Name/logo have 14-day cooldown after change (stored in `aexon_kop_cooldown_[userId]_[kopId]`). Dokter Institusi: read-only view of institution kop in same tab. Admin Institusi: manages single institution kop in AdminDashboard (no cooldown). All kop data stored in localStorage: `aexon_hospital_settings_[userId]` (personal) or `aexon_hospital_settings_[enterpriseId]` (institution). ReportGenerator: Personal gets dropdown selector, enterprise users get locked auto-select.
+- Kop Surat (Hospital Letterhead): Personal accounts: up to 3 kop surat in Settings→Kop Surat tab. Each has: name, logo URL, address, phone, fax, email, website. Name/logo have 14-day cooldown after change (stored in `aexon_kop_cooldown_[userId]_[kopId]`). Dokter Institusi: read-only view of institution kop in same tab. Admin Institusi: manages single institution kop via standalone AdminKopSurat page (nav: Kop Surat Institusi). All kop data stored in localStorage: `aexon_hospital_settings_[userId]` (personal) or `aexon_hospital_settings_[enterpriseId]` (institution). ReportGenerator: Personal gets dropdown selector, enterprise users get locked auto-select.
 - Backup/Restore: Settings Backup tab with date-range filter, ZIP export/import, conflict modal for duplicates
 - Gallery export: bulk/individual photo download, session report JSON
 - Types: `src/types.ts` — PatientData, Session, Capture, UserProfile, HospitalSettings

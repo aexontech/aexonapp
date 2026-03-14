@@ -89,7 +89,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
   ];
 
   return (
-    <div className="flex-1 relative overflow-y-auto h-full custom-scrollbar bg-slate-50 px-8 lg:px-12 py-10">
+    <div className="flex-1 relative overflow-y-auto h-full custom-scrollbar bg-slate-50 px-8 py-8">
       {showSubscriptionBanner && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -121,10 +121,10 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
         className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mb-10 relative z-10"
       >
         <div>
-          <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
             Selamat datang,
           </h2>
-          <h2 className="text-4xl font-extrabold tracking-tight text-[#0C1E35] leading-tight">
+          <h2 className="text-2xl font-bold tracking-tight text-[#0C1E35] leading-tight">
             {userProfile.name}
           </h2>
           <div className="flex items-center gap-3 mt-2">
@@ -134,28 +134,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
           </div>
         </div>
 
-        {hasActiveAccess && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onNewSession}
-            className={`flex items-center gap-2 px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#0C1E35]/20 ${sessions.length === 0 ? 'animate-pulse' : ''}`}
-          >
-            <Plus className="w-5 h-5" />
-            Mulai Sesi Baru
-          </motion.button>
-        )}
-        {!hasActiveAccess && (
-          <button
-            onClick={onNewSession}
-            disabled
-            className="flex items-center gap-2 px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-bold text-sm cursor-not-allowed"
-            title="Diperlukan langganan aktif"
-          >
-            <Lock className="w-4 h-4" />
-            Mulai Sesi Baru
-          </button>
-        )}
+        
       </motion.div>
 
       <motion.div
@@ -199,9 +178,29 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
               <Stethoscope className="w-10 h-10 text-slate-300" />
             </div>
             <h3 className="text-xl font-bold text-slate-700 mb-2 tracking-tight">Belum ada sesi tercatat</h3>
-            <p className="text-sm text-slate-400 font-medium max-w-sm mx-auto">
+            <p className="text-sm text-slate-400 font-medium max-w-sm mx-auto mb-6">
               Mulai sesi pertama Anda untuk mendokumentasikan prosedur endoskopi
             </p>
+            {hasActiveAccess ? (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onNewSession}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl font-semibold text-sm transition-colors shadow-lg shadow-[#0C1E35]/20"
+              >
+                <Plus className="w-5 h-5" />
+                Mulai Sesi Baru
+              </motion.button>
+            ) : (
+              <button
+                disabled
+                className="inline-flex items-center gap-2 px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-semibold text-sm cursor-not-allowed"
+                title="Diperlukan langganan aktif"
+              >
+                <Lock className="w-4 h-4" />
+                Mulai Sesi Baru
+              </button>
+            )}
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

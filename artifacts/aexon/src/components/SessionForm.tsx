@@ -124,15 +124,15 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
           <motion.button 
             whileHover={{ x: -4 }}
             onClick={onCancel}
-            className="flex items-center px-6 py-3 bg-white hover:bg-slate-50 text-slate-400 hover:text-slate-900 rounded-2xl transition-all border border-slate-200 shadow-sm text-[10px] font-black uppercase tracking-[0.2em]"
+            className="flex items-center px-4 py-2.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold transition-colors"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
-            KEMBALI KE DASHBOARD
+            Kembali
           </motion.button>
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-end">
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Sesi Baru</span>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">ID: {sessionId}</span>
+              <span className="text-xs font-medium text-slate-500">Sesi Baru</span>
+              <span className="text-xs font-medium text-slate-400">ID: {sessionId}</span>
             </div>
             <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center">
               <Activity className="w-5 h-5 text-blue-600" />
@@ -140,16 +140,14 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-[3.5rem] p-12 shadow-2xl shadow-slate-200/50 relative overflow-visible">
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 via-indigo-500 to-violet-400" />
-
-          <div className="flex items-center mb-16">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl flex items-center justify-center mr-8 shadow-2xl shadow-slate-900/10 rotate-3 group-hover:rotate-0 transition-transform">
-              <ClipboardList className="w-10 h-10 text-white" />
+        <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm relative overflow-visible">
+          <div className="flex items-center mb-10">
+            <div className="w-14 h-14 bg-[#0C1E35] rounded-2xl flex items-center justify-center mr-6">
+              <ClipboardList className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-5xl font-black text-slate-900 tracking-tighter leading-none mb-3">Registrasi Sesi</h2>
-              <p className="text-slate-500 text-base font-medium">Lengkapi data klinis pasien untuk memulai prosedur endoskopi.</p>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Registrasi Sesi</h2>
+              <p className="text-sm text-slate-500">Lengkapi data klinis pasien untuk memulai prosedur endoskopi.</p>
             </div>
           </div>
 
@@ -159,59 +157,58 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="bg-gradient-to-br from-blue-600 to-indigo-800 rounded-[2.5rem] p-10 shadow-2xl shadow-blue-900/20 space-y-8 relative overflow-hidden group"
+              className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/20 transition-colors" />
-              <div className="flex items-center justify-between mb-2 relative z-10">
-                <h3 className="text-[11px] font-black text-blue-100 uppercase tracking-[0.3em] flex items-center">
-                  <User className="w-4 h-4 mr-3" />
-                  IDENTITAS PASIEN
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center">
+                  <User className="w-4 h-4 mr-2" />
+                  Identitas Pasien
                 </h3>
-                <span className="text-[9px] font-bold text-blue-200 uppercase tracking-widest">Wajib Diisi *</span>
+                <span className="text-xs font-medium text-slate-400">Wajib Diisi *</span>
               </div>
               
-              <div className="grid md:grid-cols-2 gap-8 relative z-10">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-blue-200 uppercase tracking-[0.15em] ml-1">Nama Lengkap *</label>
+              <div className="grid md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-500">Nama Lengkap *</label>
                   <input
                     type="text"
                     name="name"
                     required
                     value={formData.name}
                     onChange={handleChange}
-                    className="block w-full px-6 py-4.5 border border-white/20 rounded-2xl bg-white/10 text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-bold text-sm"
+                    className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
                     placeholder="Contoh: Budi Santoso"
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-blue-200 uppercase tracking-[0.15em] ml-1">No. Rekam Medis *</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-500">No. Rekam Medis *</label>
                   <input
                     type="text"
                     name="rmNumber"
                     required
                     value={formData.rmNumber}
                     onChange={handleChange}
-                    className="block w-full px-6 py-4.5 border border-white/20 rounded-2xl bg-white/10 text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-bold text-sm"
+                    className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
                     placeholder="RM-XXXXXX"
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-blue-200 uppercase tracking-[0.15em] ml-1">Tanggal Lahir</label>
-                  <div className="flex items-center gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-500">Tanggal Lahir</label>
+                  <div className="flex items-center gap-3">
                     <input
                       type="date"
                       name="dob"
                       value={formData.dob}
                       onChange={handleChange}
-                      className="block w-full px-6 py-4.5 border border-white/20 rounded-2xl bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-bold text-sm [color-scheme:dark]"
+                      className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
                     />
                     {age !== null && (
                       <motion.span
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="shrink-0 px-4 py-2 bg-white/20 rounded-xl text-white font-black text-xs whitespace-nowrap"
+                        className="shrink-0 px-3 py-1.5 bg-[#0C1E35] rounded-lg text-white font-semibold text-xs whitespace-nowrap"
                       >
                         {age} thn
                       </motion.span>
@@ -219,39 +216,38 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-blue-200 uppercase tracking-[0.15em] ml-1">Jenis Kelamin</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-500">Jenis Kelamin</label>
                   <div className="relative">
                     <select
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
-                      className="block w-full px-6 py-4.5 border border-white/20 rounded-2xl bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-bold text-sm appearance-none"
+                      className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150 appearance-none"
                     >
-                      <option value="Laki-laki" className="text-slate-900">Laki-laki</option>
-                      <option value="Perempuan" className="text-slate-900">Perempuan</option>
+                      <option value="Laki-laki">Laki-laki</option>
+                      <option value="Perempuan">Perempuan</option>
                     </select>
-                    <div className="absolute inset-y-0 right-0 pr-6 flex items-center pointer-events-none">
-                      <ArrowRight className="w-4 h-4 text-blue-200 rotate-90" />
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                      <ArrowRight className="w-4 h-4 text-slate-400 rotate-90" />
                     </div>
                   </div>
                 </div>
               </div>
             </motion.div>
 
-            <div className="grid lg:grid-cols-5 gap-8">
+            <div className="grid lg:grid-cols-5 gap-6">
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.2 }}
-                className="lg:col-span-3 bg-gradient-to-br from-blue-600 to-indigo-800 rounded-[2.5rem] p-10 shadow-2xl shadow-blue-900/20 space-y-8 relative overflow-visible group"
+                className="lg:col-span-3 bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/20 transition-colors" />
-                <h3 className="text-[11px] font-black text-blue-100 uppercase tracking-[0.3em] flex items-center mb-2 relative z-10">
-                  <Activity className="w-4 h-4 mr-3" />
-                  PROSEDUR & TINDAKAN (ICD-9-CM)
+                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center mb-2">
+                  <Activity className="w-4 h-4 mr-2" />
+                  Prosedur & Tindakan (ICD-9-CM)
                 </h3>
-                <div className="space-y-4 relative z-10">
+                <div className="space-y-4">
                   <AnimatePresence mode="popLayout">
                     {formData.procedures_icd9.map((proc, index) => (
                       <motion.div
@@ -262,10 +258,10 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                         transition={{ duration: 0.2 }}
                         className="flex items-start gap-3"
                       >
-                        <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-black text-sm mt-1 ${
+                        <div className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center font-semibold text-sm mt-1 ${
                           index === 0 
-                            ? 'bg-white/25 text-white' 
-                            : 'bg-white/10 text-blue-200'
+                            ? 'bg-[#0C1E35] text-white' 
+                            : 'bg-slate-200 text-slate-600'
                         }`}>
                           {index + 1}
                         </div>
@@ -282,13 +278,13 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                             whileTap={{ scale: 0.9 }}
                             type="button"
                             onClick={() => removeProcedure(index)}
-                            className="w-10 h-10 shrink-0 rounded-xl bg-white/10 hover:bg-red-500/30 border border-white/20 flex items-center justify-center text-blue-200 hover:text-white transition-all mt-1"
+                            className="w-9 h-9 shrink-0 rounded-lg bg-slate-100 hover:bg-red-50 border border-slate-200 hover:border-red-200 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all mt-1"
                           >
                             <X className="w-4 h-4" />
                           </motion.button>
                         )}
                         {index === 0 && (
-                          <div className="w-10 shrink-0" />
+                          <div className="w-9 shrink-0" />
                         )}
                       </motion.div>
                     ))}
@@ -300,7 +296,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                       whileTap={{ scale: 0.98 }}
                       type="button"
                       onClick={addProcedure}
-                      className="ml-[52px] flex items-center gap-2 px-5 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-blue-100 hover:text-white transition-all text-xs font-black uppercase tracking-widest"
+                      className="ml-12 flex items-center gap-2 px-4 py-2.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                       Tambah Tindakan
@@ -313,15 +309,14 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.25 }}
-                className="lg:col-span-2 bg-white border-l-4 border-blue-600 rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 space-y-8 relative overflow-visible group"
+                className="lg:col-span-2 bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
               >
-                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-blue-100 transition-colors" />
-                <h3 className="text-[11px] font-black text-blue-700 uppercase tracking-[0.3em] flex items-center relative z-10">
-                  <Stethoscope className="w-4 h-4 mr-3 text-blue-600" />
-                  DIAGNOSIS (ICD-10)
+                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center">
+                  <Stethoscope className="w-4 h-4 mr-2" />
+                  Diagnosis (ICD-10)
                 </h3>
 
-                <div className="space-y-6 relative z-10">
+                <div className="space-y-5">
                   <ICD10Autocomplete
                     value={formData.diagnosis_icd10}
                     onChange={(val) => updateField('diagnosis_icd10', val)}
@@ -329,14 +324,14 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                     required={formData.category === 'Kamar Operasi'}
                   />
 
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] ml-1 block mb-2">Diagnosis Banding</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-500 block">Diagnosis Banding</label>
                     <input
                       type="text"
                       name="differentialDiagnosis"
                       value={formData.differentialDiagnosis}
                       onChange={handleChange}
-                      className="block w-full px-5 py-4 min-h-[48px] border border-slate-200 rounded-2xl bg-white text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0C1E35]/50 transition-all font-semibold text-sm"
+                      className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
                       placeholder="Diagnosis banding (opsional)..."
                     />
                   </div>
@@ -348,36 +343,35 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.3 }}
-              className="bg-gradient-to-br from-blue-600 to-indigo-800 rounded-[2.5rem] p-10 shadow-2xl shadow-blue-900/20 relative overflow-hidden group"
+              className="bg-slate-50 rounded-2xl p-6 border border-slate-100"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/20 transition-colors" />
-              <h3 className="text-[11px] font-black text-blue-100 uppercase tracking-[0.3em] flex items-center mb-8 relative z-10">
-                <Building2 className="w-4 h-4 mr-3" />
-                ADMINISTRASI
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center mb-6">
+                <Building2 className="w-4 h-4 mr-2" />
+                Administrasi
               </h3>
-              <div className="grid md:grid-cols-3 gap-8 relative z-10">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-blue-200 uppercase tracking-[0.15em] ml-1">Operator / Dokter</label>
-                  <div className="px-5 py-4.5 bg-white/10 border border-white/20 rounded-2xl text-white font-black text-sm flex items-center shadow-sm">
+              <div className="grid md:grid-cols-3 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-500">Operator / Dokter</label>
+                  <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-sm flex items-center cursor-not-allowed">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full mr-3 animate-pulse" />
                     {userProfile.name}
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-blue-200 uppercase tracking-[0.15em] ml-1">Kategori Layanan</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-500">Kategori Layanan</label>
                   <div className="relative">
                     <select
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
-                      className="block w-full px-5 py-4.5 border border-white/20 rounded-2xl bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-bold text-sm appearance-none"
+                      className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150 appearance-none"
                     >
-                      <option value="Poli" className="text-slate-900">Poli Klinik</option>
-                      <option value="Kamar Operasi" className="text-slate-900">Kamar Operasi (OK)</option>
-                      <option value="IGD" className="text-slate-900">IGD</option>
+                      <option value="Poli">Poli Klinik</option>
+                      <option value="Kamar Operasi">Kamar Operasi (OK)</option>
+                      <option value="IGD">IGD</option>
                     </select>
-                    <div className="absolute inset-y-0 right-0 pr-6 flex items-center pointer-events-none">
-                      <ArrowRight className="w-4 h-4 text-blue-200 rotate-90" />
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                      <ArrowRight className="w-4 h-4 text-slate-400 rotate-90" />
                     </div>
                   </div>
                 </div>
@@ -388,22 +382,20 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="w-full bg-red-50 border border-red-200 text-red-600 text-xs font-bold p-4 rounded-2xl text-center"
+                        className="w-full bg-red-50 border border-red-200 text-red-600 text-xs font-semibold p-3 rounded-xl text-center"
                       >
                         {validationError}
                       </motion.div>
                     )}
                   </AnimatePresence>
                   <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="w-full flex items-center justify-center py-5 px-8 rounded-2xl font-black text-blue-700 bg-white hover:bg-blue-50 shadow-lg shadow-blue-900/10 transition-all group/btn relative overflow-hidden"
+                    className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl font-semibold text-sm text-white bg-[#0C1E35] hover:bg-[#1a3a5c] transition-colors"
                   >
-                    <span className="relative z-10 flex items-center gap-3 tracking-[0.2em] uppercase text-xs">
-                      MULAI SESI
-                      <ArrowRight className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" />
-                    </span>
+                    Mulai Sesi
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </motion.button>
                 </div>
               </div>

@@ -9,25 +9,15 @@ import {
   Activity, 
   Calendar,
   Mail,
-  Phone,
   CheckCircle2,
   XCircle,
-  Building2,
-  FileText,
-  Save,
-  Loader2,
-  ImagePlus,
-  Globe,
-  MapPin
+  Building2
 } from 'lucide-react';
-import { UserProfile, HospitalSettings } from '../types';
-import { useToast } from './ToastProvider';
+import { UserProfile } from '../types';
 
 interface AdminDashboardProps {
   doctors: UserProfile[];
   enterprise_id?: string | null;
-  hospitalSettingsList: HospitalSettings[];
-  onUpdateHospitalList: (list: HospitalSettings[]) => void;
   onAddDoctor: () => void;
   onEditDoctor: (doctor: UserProfile) => void;
   onDeleteDoctor: (id: string) => void;
@@ -38,38 +28,15 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ 
   doctors, 
   enterprise_id,
-  hospitalSettingsList,
-  onUpdateHospitalList,
   onAddDoctor, 
   onEditDoctor, 
   onDeleteDoctor, 
   onToggleDoctorStatus, 
   onManageSubscription 
 }: AdminDashboardProps) {
-  const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
   const [doctorToDelete, setDoctorToDelete] = useState<UserProfile | null>(null);
-
-  const existingKop = hospitalSettingsList[0] || null;
-  const [kopForm, setKopForm] = useState<{
-    name: string;
-    logoUrl: string;
-    address: string;
-    phone: string;
-    fax: string;
-    email: string;
-    website: string;
-  }>({
-    name: existingKop?.name || '',
-    logoUrl: existingKop?.logoUrl || '',
-    address: existingKop?.address || '',
-    phone: existingKop?.phone || '',
-    fax: existingKop?.fax || '',
-    email: existingKop?.email || '',
-    website: existingKop?.website || '',
-  });
-  const [kopSaving, setKopSaving] = useState(false);
 
   const institutionDoctors = enterprise_id 
     ? doctors.filter(d => d.enterprise_id === enterprise_id)
@@ -93,48 +60,18 @@ export default function AdminDashboard({
     }
   };
 
-  const handleSaveKop = () => {
-    if (!kopForm.name.trim()) {
-      showToast('Nama RS / Institusi wajib diisi.', 'error');
-      return;
-    }
-    setKopSaving(true);
-    const kopData: HospitalSettings = {
-      id: existingKop?.id || `kop-inst-${Date.now()}`,
-      name: kopForm.name.trim(),
-      logoUrl: kopForm.logoUrl.trim() || undefined,
-      address: kopForm.address.trim(),
-      phone: kopForm.phone.trim(),
-      fax: kopForm.fax.trim() || undefined,
-      email: kopForm.email.trim(),
-      website: kopForm.website.trim() || undefined,
-      enterpriseId: enterprise_id || undefined,
-    };
-    onUpdateHospitalList([kopData]);
-    setTimeout(() => {
-      setKopSaving(false);
-      showToast('Kop surat institusi berhasil disimpan.', 'success');
-    }, 400);
-  };
-
-  const handleKopChange = (field: string, value: string) => {
-    setKopForm(prev => ({ ...prev, [field]: value }));
-  };
-
   const stats = [
     { label: 'Total Dokter', value: institutionDoctors.length.toString(), icon: Users, color: 'blue' },
     { label: 'Aktif Hari Ini', value: institutionDoctors.filter(d => d.status === 'active').length.toString(), icon: Activity, color: 'emerald' },
     { label: 'Sesi Selesai', value: '142', icon: CheckCircle2, color: 'indigo' },
   ];
 
-  const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium";
-
   return (
     <div className="flex-1 p-8 max-w-7xl mx-auto w-full font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar">
       <div className="flex justify-between items-center mb-10">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-1">Enterprise Admin Console</h2>
-          <p className="text-slate-500 text-sm">Manajemen akun tenaga medis dan monitoring sistem korporat.</p>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Enterprise Admin Console</h2>
+          <p className="text-sm text-slate-500">Manajemen akun tenaga medis dan monitoring sistem korporat.</p>
         </div>
         
         <button 
@@ -154,12 +91,12 @@ export default function AdminDashboard({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group"
+            className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-slate-200 transition-all duration-200"
           >
             <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 bg-${stat.color}-500/5 rounded-full blur-2xl group-hover:bg-${stat.color}-500/10 transition-colors`} />
             <div className="flex items-center justify-between relative z-10">
               <div>
-                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">{stat.label}</p>
+                <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">{stat.label}</p>
                 <h3 className="text-3xl font-black text-slate-900">{stat.value}</h3>
               </div>
               <div className={`p-3 bg-${stat.color}-50 rounded-xl text-${stat.color}-600`}>
@@ -170,122 +107,7 @@ export default function AdminDashboard({
         ))}
       </div>
 
-      {/* Kop Surat Institusi */}
-      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm mb-10">
-        <div className="p-6 border-b border-slate-100">
-          <h3 className="text-lg font-bold text-slate-900 flex items-center">
-            <FileText className="w-5 h-5 mr-2 text-indigo-600" />
-            Kop Surat Institusi
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">Kop surat ini akan digunakan oleh semua dokter di institusi Anda.</p>
-        </div>
-        <div className="p-6">
-          <div className="grid md:grid-cols-2 gap-5">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama RS / Institusi *</label>
-              <input
-                type="text"
-                value={kopForm.name}
-                onChange={(e) => handleKopChange('name', e.target.value)}
-                placeholder="Nama rumah sakit atau klinik"
-                className={inputClass + " placeholder:text-slate-300"}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
-                <ImagePlus className="w-3 h-3" /> Logo URL
-              </label>
-              <input
-                type="url"
-                value={kopForm.logoUrl}
-                onChange={(e) => handleKopChange('logoUrl', e.target.value)}
-                placeholder="https://example.com/logo.png"
-                className={inputClass + " placeholder:text-slate-300"}
-              />
-            </div>
-            <div className="md:col-span-2 space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> Alamat Lengkap
-              </label>
-              <input
-                type="text"
-                value={kopForm.address}
-                onChange={(e) => handleKopChange('address', e.target.value)}
-                placeholder="Jl. Kesehatan No. 1, Jakarta"
-                className={inputClass + " placeholder:text-slate-300"}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
-                <Phone className="w-3 h-3" /> No. Telepon
-              </label>
-              <input
-                type="tel"
-                value={kopForm.phone}
-                onChange={(e) => handleKopChange('phone', e.target.value)}
-                placeholder="(021) 1234567"
-                className={inputClass + " placeholder:text-slate-300"}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. Fax</label>
-              <input
-                type="tel"
-                value={kopForm.fax}
-                onChange={(e) => handleKopChange('fax', e.target.value)}
-                placeholder="(021) 1234568"
-                className={inputClass + " placeholder:text-slate-300"}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
-                <Mail className="w-3 h-3" /> Email RS
-              </label>
-              <input
-                type="email"
-                value={kopForm.email}
-                onChange={(e) => handleKopChange('email', e.target.value)}
-                placeholder="info@rumahsakit.co.id"
-                className={inputClass + " placeholder:text-slate-300"}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
-                <Globe className="w-3 h-3" /> Website
-              </label>
-              <input
-                type="url"
-                value={kopForm.website}
-                onChange={(e) => handleKopChange('website', e.target.value)}
-                placeholder="www.rumahsakit.co.id"
-                className={inputClass + " placeholder:text-slate-300"}
-              />
-            </div>
-          </div>
-
-          {kopForm.logoUrl && (
-            <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Preview Logo</p>
-              <img src={kopForm.logoUrl} alt="Logo Preview" className="h-16 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            </div>
-          )}
-
-          <div className="mt-6 flex justify-end">
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={handleSaveKop}
-              disabled={kopSaving}
-              className="flex items-center gap-2 px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all disabled:opacity-50"
-            >
-              {kopSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {kopSaving ? 'Menyimpan...' : 'Simpan Kop Surat'}
-            </motion.button>
-          </div>
-        </div>
-      </div>
-
-      {/* Doctor Management Table */}
-      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
         <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h3 className="text-lg font-bold text-slate-900 flex items-center">
             <ShieldCheck className="w-5 h-5 mr-2 text-blue-600" />

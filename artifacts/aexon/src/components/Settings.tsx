@@ -497,10 +497,10 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
     visibleTabs.push({ id: 'langganan', label: 'Langganan', icon: CreditCard });
   }
 
-  visibleTabs.push({ id: 'backup', label: 'Backup', icon: HardDrive });
+  visibleTabs.push({ id: 'backup', label: 'Backup & Restore', icon: HardDrive });
 
-  const inputClass = "w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm font-medium";
-  const readOnlyClass = "w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed text-sm font-medium";
+  const inputClass = "w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150";
+  const readOnlyClass = "w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed text-sm";
 
   return (
     <div className="flex-1 p-8 max-w-5xl mx-auto w-full font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar">
@@ -509,15 +509,15 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         <p className="text-slate-500 text-sm">Kelola profil, keamanan, dan preferensi akun Anda.</p>
       </div>
 
-      <div className="flex gap-2 mb-8 border-b border-slate-100 pb-0">
+      <div className="bg-slate-100 rounded-2xl p-1 inline-flex gap-1 mb-6">
         {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-bold transition-all border-b-2 -mb-px ${
+            className={`flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition-colors ${
               activeTab === tab.id
-                ? 'border-[#0C1E35] text-[#0C1E35]'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                ? 'bg-white text-slate-900 font-semibold shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 cursor-pointer'
             }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -573,7 +573,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             <form onSubmit={handleSaveProfile} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap & Gelar</label>
+                  <label className="text-xs font-medium text-slate-500 ml-1">Nama Lengkap & Gelar</label>
                   <input
                     type="text"
                     name="name"
@@ -587,7 +587,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   )}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
+                  <label className="text-xs font-medium text-slate-500 ml-1">Email</label>
                   <input
                     type="email"
                     value={profileForm.email}
@@ -596,7 +596,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Spesialisasi</label>
+                  <label className="text-xs font-medium text-slate-500 ml-1">Spesialisasi</label>
                   <input
                     type="text"
                     name="specialization"
@@ -609,7 +609,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 {!isDokterInstitusi && (
                   <>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nomor WhatsApp</label>
+                      <label className="text-xs font-medium text-slate-500 ml-1">Nomor WhatsApp</label>
                       <input
                         type="tel"
                         name="phone"
@@ -619,7 +619,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. STR (Surat Tanda Registrasi)</label>
+                      <label className="text-xs font-medium text-slate-500 ml-1">No. STR (Surat Tanda Registrasi)</label>
                       <input
                         type="text"
                         name="strNumber"
@@ -630,7 +630,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. SIP (Surat Izin Praktik)</label>
+                      <label className="text-xs font-medium text-slate-500 ml-1">No. SIP (Surat Izin Praktik)</label>
                       <input
                         type="text"
                         name="sipNumber"
@@ -677,7 +677,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
             <form onSubmit={handleChangePassword} className="max-w-md space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password Saat Ini</label>
+                <label className="text-xs font-medium text-slate-500 ml-1">Password Saat Ini</label>
                 <div className="relative">
                   <input
                     type={showCurrentPass ? 'text' : 'password'}
@@ -692,7 +692,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password Baru</label>
+                <label className="text-xs font-medium text-slate-500 ml-1">Password Baru</label>
                 <div className="relative">
                   <input
                     type={showNewPass ? 'text' : 'password'}
@@ -707,7 +707,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Konfirmasi Password Baru</label>
+                <label className="text-xs font-medium text-slate-500 ml-1">Konfirmasi Password Baru</label>
                 <div className="relative">
                   <input
                     type={showConfirmPass ? 'text' : 'password'}
@@ -791,14 +791,14 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                       { label: 'Website', value: hospitalSettingsList[0].website || '-' },
                     ].map((field) => (
                       <div key={field.label} className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">{field.label}</label>
+                        <label className="text-xs font-medium text-slate-500 ml-1">{field.label}</label>
                         <input type="text" value={field.value || ''} readOnly className={readOnlyClass} />
                       </div>
                     ))}
                   </div>
                   {hospitalSettingsList[0].logoUrl && (
                     <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Logo Institusi</p>
+                      <p className="text-xs font-medium text-slate-500 mb-2">Logo Institusi</p>
                       <img src={hospitalSettingsList[0].logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
                     </div>
                   )}
@@ -882,7 +882,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
                             <div className="grid md:grid-cols-2 gap-5 mt-4">
                               <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama RS / Klinik *</label>
+                                <label className="text-xs font-medium text-slate-500 ml-1">Nama RS / Klinik *</label>
                                 <input
                                   type="text"
                                   value={kop.name}
@@ -893,7 +893,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 />
                               </div>
                               <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
                                   <ImagePlus className="w-3 h-3" /> Logo RS (URL)
                                 </label>
                                 <input
@@ -906,7 +906,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 />
                               </div>
                               <div className="md:col-span-2 space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
                                   <MapPin className="w-3 h-3" /> Alamat
                                 </label>
                                 <input
@@ -918,7 +918,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 />
                               </div>
                               <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
                                   <Phone className="w-3 h-3" /> No. Telepon
                                 </label>
                                 <input
@@ -930,7 +930,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 />
                               </div>
                               <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. Fax</label>
+                                <label className="text-xs font-medium text-slate-500 ml-1">No. Fax</label>
                                 <input
                                   type="tel"
                                   value={kop.fax || ''}
@@ -940,7 +940,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 />
                               </div>
                               <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
                                   <MailIcon className="w-3 h-3" /> Email RS
                                 </label>
                                 <input
@@ -952,7 +952,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 />
                               </div>
                               <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
                                   <Globe className="w-3 h-3" /> Website RS
                                 </label>
                                 <input
@@ -967,7 +967,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
                             {kop.logoUrl && (
                               <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Preview Logo</p>
+                                <p className="text-xs font-medium text-slate-500 mb-2">Preview Logo</p>
                                 <img src={kop.logoUrl} alt="Logo" className="h-16 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                               </div>
                             )}
@@ -1070,15 +1070,15 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="p-5 bg-slate-50 rounded-xl text-center">
                     <p className="text-2xl font-black text-[#0C1E35]">10</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total Seat</p>
+                    <p className="text-xs font-medium text-slate-500 mt-1">Total Seat</p>
                   </div>
                   <div className="p-5 bg-emerald-50 rounded-xl text-center">
                     <p className="text-2xl font-black text-emerald-600">7</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Terpakai</p>
+                    <p className="text-xs font-medium text-slate-500 mt-1">Terpakai</p>
                   </div>
                   <div className="p-5 bg-blue-50 rounded-xl text-center">
                     <p className="text-2xl font-black text-blue-600">3</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Tersedia</p>
+                    <p className="text-xs font-medium text-slate-500 mt-1">Tersedia</p>
                   </div>
                 </div>
 
@@ -1088,10 +1088,10 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     <table className="w-full text-left text-sm">
                       <thead className="bg-slate-50">
                         <tr>
-                          <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nama</th>
-                          <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Spesialisasi</th>
-                          <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
-                          <th className="px-5 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aksi</th>
+                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Nama</th>
+                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Spesialisasi</th>
+                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Status</th>
+                          <th className="px-5 py-3 text-right text-xs font-medium text-slate-500">Aksi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
@@ -1210,10 +1210,10 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tanggal</th>
-                        <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Deskripsi</th>
-                        <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jumlah</th>
-                        <th className="px-5 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                        <th className="px-5 py-3 text-xs font-medium text-slate-500">Tanggal</th>
+                        <th className="px-5 py-3 text-xs font-medium text-slate-500">Deskripsi</th>
+                        <th className="px-5 py-3 text-xs font-medium text-slate-500">Jumlah</th>
+                        <th className="px-5 py-3 text-right text-xs font-medium text-slate-500">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -1285,7 +1285,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
             <div className="grid grid-cols-2 gap-4 mb-5">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Dari Tanggal</label>
+                <label className="text-xs font-medium text-slate-500 ml-1">Dari Tanggal</label>
                 <input
                   type="date"
                   value={backupDateFrom}
@@ -1294,7 +1294,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Sampai Tanggal</label>
+                <label className="text-xs font-medium text-slate-500 ml-1">Sampai Tanggal</label>
                 <input
                   type="date"
                   value={backupDateTo}
@@ -1442,7 +1442,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Data Lokal</p>
+                  <p className="text-xs font-medium text-slate-500 mb-2">Data Lokal</p>
                   <p className="text-sm font-bold text-slate-900">{restoreConflicts[currentConflictIdx].existingSession.patient.name}</p>
                   <p className="text-xs text-slate-500 mt-1">{new Date(restoreConflicts[currentConflictIdx].existingSession.date).toLocaleDateString('id-ID')}</p>
                 </div>
