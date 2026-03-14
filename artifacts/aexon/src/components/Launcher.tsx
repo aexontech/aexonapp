@@ -83,22 +83,29 @@ export default function Launcher({ onLogin }: LauncherProps) {
         return;
       }
 
-      const { data: subscription } = await supabase
-        .from('subscriptions')
-        .select('*, product_plans(*), products(*)')
-        .eq('doctor_id', profile.id)
-        .in('status', ['active', 'trial'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      const plan: 'subscription' | 'enterprise' | null = subscription ? 'subscription' : null;
-
+      let plan: 'subscription' | 'enterprise' | null = null;
       let trialDaysLeft: number | null = null;
-      if (subscription?.status === 'trial' && subscription?.current_period_end) {
-        const end = new Date(subscription.current_period_end);
-        const now = new Date();
-        trialDaysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+      if (profile.enterprise_id) {
+        plan = 'enterprise';
+      } else {
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select('*, product_plans(*), products(*)')
+          .eq('doctor_id', profile.id)
+          .in('status', ['active', 'trial'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (subscription) {
+          plan = 'subscription';
+          if (subscription.status === 'trial' && subscription.current_period_end) {
+            const end = new Date(subscription.current_period_end);
+            const now = new Date();
+            trialDaysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+          }
+        }
       }
 
       onLogin(
