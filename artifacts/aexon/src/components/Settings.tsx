@@ -1641,7 +1641,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   image={cropImageSrc}
                   crop={cropState}
                   zoom={cropZoom}
-                  aspect={3}
+                  aspect={1}
                   onCropChange={setCropState}
                   onZoomChange={setCropZoom}
                   onCropComplete={onCropComplete}
