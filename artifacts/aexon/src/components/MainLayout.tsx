@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Settings, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, Home } from 'lucide-react';
+import { FileText, Plus, Settings, LogOut, ChevronLeft, ChevronRight, LayoutDashboard } from 'lucide-react';
 import { UserProfile } from '../types';
 import { Logo } from './Logo';
 
@@ -34,7 +34,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
     { id: 'admin-dashboard', label: 'Admin Console', icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'admin-kop-surat', label: 'Kop Surat Institusi', icon: <FileText className="w-5 h-5" /> },
   ] : [
-    { id: 'dashboard', label: 'Beranda', icon: <Home className="w-5 h-5" /> },
+    { id: 'dashboard', label: 'Beranda', icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: 'session-form', label: 'Mulai Sesi Baru', icon: <Plus className="w-5 h-5" /> },
   ];
 
