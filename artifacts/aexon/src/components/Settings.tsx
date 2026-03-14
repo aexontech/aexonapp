@@ -35,7 +35,11 @@ import {
   Mail as MailIcon,
   ZoomIn,
   ZoomOut,
-  Crop
+  Crop,
+  Clock,
+  Star,
+  MessageCircle,
+  ExternalLink
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
@@ -131,6 +135,12 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const logoInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [selectedPlanOption, setSelectedPlanOption] = useState<string | null>(null);
+  const [showPaymentInfoModal, setShowPaymentInfoModal] = useState(false);
+  const [billingHistory, setBillingHistory] = useState<any[]>([]);
+  const [billingLoading, setBillingLoading] = useState(false);
+
   useEffect(() => {
     setKopForms(hospitalSettingsList);
   }, [hospitalSettingsList]);
@@ -139,6 +149,21 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const isEnterprise = plan === 'enterprise';
   const isDokterInstitusi = !isAdmin && isEnterprise;
   const isPersonal = !isAdmin && !isEnterprise;
+
+  useEffect(() => {
+    if (activeTab === 'langganan' && isPersonal) {
+      setBillingLoading(true);
+      supabase
+        .from('payment_logs')
+        .select('*')
+        .eq('doctor_id', userProfile.id)
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data) setBillingHistory(data);
+          setBillingLoading(false);
+        });
+    }
+  }, [activeTab, isPersonal, userProfile.id]);
 
   const COOLDOWN_DAYS = 14;
 
@@ -1259,113 +1284,125 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
           {/* ── PERSONAL: plan status + billing + CTA ── */}
           {isPersonal && (
-            <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-[#0C1E35]" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900">Langganan & Pembayaran</h3>
-                  <p className="text-sm text-slate-500">Kelola paket aktif dan riwayat transaksi.</p>
-                </div>
-              </div>
-
-              <div className="h-px bg-slate-100 mb-6" />
-
-              <div className="p-6 bg-[#0C1E35] rounded-2xl text-white mb-8">
-                <div className="flex justify-between items-start mb-8">
-                  <div>
-                    <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest block mb-1">Paket Saat Ini</span>
-                    <h4 className="text-2xl font-black">
-                      {plan === 'subscription' ? 'Annual Subscription' : 'Trial Period'}
-                    </h4>
-                  </div>
-                  <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                    plan === 'subscription' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-yellow-500/20 text-yellow-300'
-                  }`}>
-                    {plan === 'subscription' ? 'Aktif' : 'Trial'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Terdaftar</p>
-                    <p className="text-sm font-bold">12 Des 2025</p>
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-[#0C1E35]" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Metode Bayar</p>
-                    <p className="text-sm font-bold">•••• 4242</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Tagihan Berikutnya</p>
-                    <p className="text-sm font-bold">12 Des 2026</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total</p>
-                    <p className="text-sm font-bold">Rp 5.999.000</p>
+                    <h3 className="text-lg font-black text-slate-900">Langganan & Pembayaran</h3>
+                    <p className="text-sm text-slate-500">Kelola paket aktif dan riwayat transaksi.</p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="h-px bg-slate-100 mb-6" />
+
+                <div className="p-6 bg-[#0C1E35] rounded-2xl text-white mb-8">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest block mb-1">Paket Saat Ini</span>
+                      <h4 className="text-2xl font-black">
+                        {plan === 'subscription' ? 'Annual Subscription' : 'Trial Period'}
+                      </h4>
+                    </div>
+                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                      plan === 'subscription' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-yellow-500/20 text-yellow-300'
+                    }`}>
+                      {plan === 'subscription' ? 'Aktif' : 'Trial'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Terdaftar</p>
+                      <p className="text-sm font-bold">12 Des 2025</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Berlaku Hingga</p>
+                      <p className="text-sm font-bold">12 Des 2026</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Status</p>
+                      <p className="text-sm font-bold">{plan === 'subscription' ? 'Aktif' : 'Trial'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-blue-50 rounded-xl border border-blue-100 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-[#0C1E35]">Perpanjang Langganan</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Jangan sampai akses Anda terputus.</p>
+                  </div>
                   <button
-                    onClick={() => showToast('Mengarahkan ke halaman pembayaran...', 'info')}
-                    className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition-all border border-white/10"
+                    onClick={() => { setSelectedPlanOption(null); setShowPlanModal(true); }}
+                    className="px-5 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
                   >
-                    Update Pembayaran
-                  </button>
-                  <button
-                    onClick={onCancelSubscription}
-                    className="px-5 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-bold rounded-xl transition-all border border-red-400/20"
-                  >
-                    Batalkan Langganan
+                    Perpanjang Sekarang
                   </button>
                 </div>
               </div>
 
-              <div className="mb-2">
-                <h4 className="text-sm font-bold text-slate-900 mb-4">Riwayat Transaksi</h4>
-                <div className="rounded-xl border border-slate-100 overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-5 py-3 text-xs font-medium text-slate-500">Tanggal</th>
-                        <th className="px-5 py-3 text-xs font-medium text-slate-500">Deskripsi</th>
-                        <th className="px-5 py-3 text-xs font-medium text-slate-500">Jumlah</th>
-                        <th className="px-5 py-3 text-right text-xs font-medium text-slate-500">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {[
-                        { date: '12 Des 2025', desc: 'Annual Subscription', amount: 'Rp 5.999.000', status: 'Selesai' },
-                        { date: '12 Des 2024', desc: 'Annual Subscription', amount: 'Rp 5.999.000', status: 'Selesai' },
-                      ].map((t, i) => (
-                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-5 py-3 font-medium text-slate-600">{t.date}</td>
-                          <td className="px-5 py-3 font-bold text-slate-900">{t.desc}</td>
-                          <td className="px-5 py-3 font-bold text-slate-900">{t.amount}</td>
-                          <td className="px-5 py-3 text-right">
-                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full">
-                              {t.status}
-                            </span>
-                          </td>
+              <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
+                <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Riwayat Pembayaran</h4>
+                {billingLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
+                  </div>
+                ) : billingHistory.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <CreditCard className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-slate-400">Belum ada riwayat pembayaran</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-slate-100 overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Tanggal</th>
+                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Paket</th>
+                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Jumlah</th>
+                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Status</th>
+                          <th className="px-5 py-3 text-right text-xs font-medium text-slate-500">Aksi</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="mt-6 p-5 bg-blue-50 rounded-xl border border-blue-100 flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-[#0C1E35]">Perpanjang Langganan</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">Jangan sampai akses Anda terputus.</p>
-                </div>
-                <button
-                  onClick={() => showToast('Mengarahkan ke halaman perpanjangan...', 'info')}
-                  className="px-5 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
-                >
-                  Perpanjang Sekarang
-                </button>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {billingHistory.map((row: any, i: number) => {
+                          const statusMap: Record<string, { label: string; cls: string }> = {
+                            paid: { label: 'Lunas', cls: 'bg-emerald-50 text-emerald-600' },
+                            pending: { label: 'Pending', cls: 'bg-yellow-50 text-yellow-600' },
+                            failed: { label: 'Gagal', cls: 'bg-red-50 text-red-600' },
+                          };
+                          const st = statusMap[row.status] || statusMap['pending'];
+                          return (
+                            <tr key={row.id || i} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-5 py-3 font-medium text-slate-600">
+                                {new Date(row.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </td>
+                              <td className="px-5 py-3 font-bold text-slate-900">{row.plan_name || row.package || '-'}</td>
+                              <td className="px-5 py-3 font-bold text-slate-900">
+                                {row.amount ? `Rp ${Number(row.amount).toLocaleString('id-ID')}` : '-'}
+                              </td>
+                              <td className="px-5 py-3">
+                                <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full ${st.cls}`}>
+                                  {st.label}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3 text-right">
+                                <button
+                                  onClick={() => showToast('Fitur invoice segera hadir', 'info')}
+                                  className="text-xs text-[#0C1E35] hover:text-[#1a3a5c] font-bold transition-colors"
+                                >
+                                  Unduh Invoice
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1683,6 +1720,145 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPlanModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowPlanModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Pilih Paket</h3>
+                  <p className="text-sm text-slate-500 mt-0.5">Pilih paket yang sesuai kebutuhan Anda</p>
+                </div>
+                <button onClick={() => setShowPlanModal(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-colors">
+                  <X className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { id: 'basic', name: 'BASIC', price: 'Rp 299.000', period: '/bulan', features: ['1 akun dokter', 'Laporan standar', 'Penyimpanan 5 GB', 'Dukungan email'] },
+                    { id: 'pro', name: 'PRO', price: 'Rp 599.000', period: '/bulan', popular: true, features: ['1 akun dokter', 'Laporan kustom', 'Penyimpanan 25 GB', 'Dukungan prioritas', 'Export PDF'] },
+                    { id: 'klinik', name: 'KLINIK', price: 'Rp 1.299.000', period: '/bulan', features: ['5 akun dokter', 'Semua fitur PRO', 'Penyimpanan 100 GB', 'Admin dashboard', 'Kop surat institusi'] },
+                  ].map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => setSelectedPlanOption(p.id)}
+                      className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200 ${
+                        selectedPlanOption === p.id
+                          ? 'border-[#0C1E35] bg-[#0C1E35]/5 shadow-md'
+                          : 'border-slate-100 hover:border-slate-200 hover:shadow-sm'
+                      }`}
+                    >
+                      {p.popular && (
+                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-[#0C1E35] text-white text-[10px] font-bold rounded-full flex items-center gap-1">
+                          <Star className="w-3 h-3" /> Populer
+                        </span>
+                      )}
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{p.name}</h4>
+                      <div className="flex items-baseline gap-1 mb-4">
+                        <span className="text-2xl font-black text-slate-900">{p.price}</span>
+                        <span className="text-xs text-slate-400">{p.period}</span>
+                      </div>
+                      <ul className="space-y-2">
+                        {p.features.map((f, fi) => (
+                          <li key={fi} className="flex items-center gap-2 text-xs text-slate-600">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowPlanModal(false)}
+                    className="px-5 py-2.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    disabled={!selectedPlanOption}
+                    onClick={() => { setShowPlanModal(false); setShowPaymentInfoModal(true); }}
+                    className="px-6 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Lanjutkan Pembayaran
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPaymentInfoModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowPaymentInfoModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-8 text-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <Clock className="w-8 h-8 text-[#0C1E35]" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 mb-2">Pembayaran Segera Hadir</h3>
+              <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                Sistem pembayaran otomatis sedang dikembangkan. Untuk berlangganan, silakan hubungi tim Aexon:
+              </p>
+              <div className="space-y-3 mb-6">
+                <a
+                  href="https://wa.me/6281234567890"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-3 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-sm transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  WhatsApp
+                  <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                </a>
+                <a
+                  href="mailto:hello@aexon.id"
+                  className="flex items-center justify-center gap-3 w-full py-3 border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold rounded-xl text-sm transition-colors"
+                >
+                  <MailIcon className="w-4 h-4" />
+                  hello@aexon.id
+                  <ExternalLink className="w-3.5 h-3.5 opacity-40" />
+                </a>
+              </div>
+              <button
+                onClick={() => setShowPaymentInfoModal(false)}
+                className="text-sm text-slate-400 hover:text-slate-600 font-semibold transition-colors"
+              >
+                Tutup
+              </button>
             </motion.div>
           </motion.div>
         )}
