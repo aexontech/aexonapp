@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { FileText, Printer, CheckCircle2, FileImage, ShieldAlert, ArrowLeft, Mail, MessageCircle, Info, AlertTriangle, Download, Video, Camera, Layout, Columns, Grid, Plus, Trash2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { FileText, Printer, CheckCircle2, FileImage, ShieldAlert, ArrowLeft, Mail, MessageCircle, Info, AlertTriangle, Download, Video, Camera, Layout, Columns, Grid, Plus, Trash2, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { Session, Capture, HospitalSettings, UserProfile } from '../types';
 import ImageEditor from './ImageEditor';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface ReportPage {
   id: string;
@@ -41,9 +43,11 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
     }
   ]);
   const [activePageId, setActivePageId] = useState<string>('page-1');
-  const [isNavCollapsed] = useState(true); // Permanently folded as requested
+  const [isNavCollapsed] = useState(true);
   const [editingPhoto, setEditingPhoto] = useState<Capture | null>(null);
   const [pageToDelete, setPageToDelete] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const printAreaRef = useRef<HTMLDivElement>(null);
 
   const activePage = pages.find(p => p.id === activePageId) || pages[0];
 
@@ -180,8 +184,66 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
     window.print();
   };
 
-  const handleSavePDF = () => {
-    window.print();
+  const handleSavePDF = async () => {
+    if (!printAreaRef.current || isSaving) return;
+    setIsSaving(true);
+    try {
+      const pageElements = printAreaRef.current.querySelectorAll('.print-container') as NodeListOf<HTMLElement>;
+      if (pageElements.length === 0) return;
+
+      const savedStyles: string[] = [];
+      pageElements.forEach((el) => {
+        savedStyles.push(el.style.cssText);
+        el.style.opacity = '1';
+        el.style.filter = 'none';
+        el.style.transform = 'none';
+        el.style.boxShadow = 'none';
+        (el as any).style.outline = 'none';
+      });
+
+      let pdf: jsPDF | null = null;
+
+      for (let i = 0; i < pageElements.length; i++) {
+        const el = pageElements[i];
+        const page = pages[i];
+        const isLandscape = page.orientation === 'landscape';
+        const format = page.pageSize === 'F4' ? [215, 330] as [number, number] : page.pageSize === 'Letter' ? 'letter' as const : 'a4' as const;
+
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+        if (i === 0) {
+          pdf = new jsPDF({
+            orientation: isLandscape ? 'landscape' : 'portrait',
+            unit: 'mm',
+            format: format,
+          });
+        } else {
+          pdf!.addPage(format, isLandscape ? 'landscape' : 'portrait');
+        }
+
+        const pdfWidth = pdf!.internal.pageSize.getWidth();
+        const pdfHeight = pdf!.internal.pageSize.getHeight();
+        pdf!.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      }
+
+      pageElements.forEach((el, i) => {
+        el.style.cssText = savedStyles[i];
+      });
+
+      const fileName = `Laporan_Endoskopi_${session.patient.name.replace(/\s+/g, '_')}_${session.date.toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`;
+      pdf!.save(fileName);
+    } catch (err) {
+      console.error('PDF save error:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEmail = () => {
@@ -645,13 +707,14 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                 Cetak
               </motion.button>
               <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: isSaving ? 1 : 1.02 }}
+                whileTap={{ scale: isSaving ? 1 : 0.98 }}
                 onClick={handleSavePDF}
-                className="flex items-center justify-center py-4 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-indigo-500/20"
+                disabled={isSaving}
+                className="flex items-center justify-center py-4 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-60"
               >
-                <Download className="w-4 h-4 mr-2" />
-                Simpan
+                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                {isSaving ? 'Menyimpan...' : 'Simpan PDF'}
               </motion.button>
             </div>
 
@@ -685,7 +748,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
         </div>
 
         {/* Print Preview Area */}
-        <div className="flex-1 bg-slate-200 overflow-y-auto p-12 flex flex-col items-center gap-12 print:p-0 print:bg-white print:block print:overflow-visible custom-scrollbar">
+        <div ref={printAreaRef} className="flex-1 bg-slate-200 overflow-y-auto p-12 flex flex-col items-center gap-12 print:p-0 print:bg-white print:block print:overflow-visible custom-scrollbar">
           {pages.map((page) => (
             <div 
               key={page.id}
@@ -698,21 +761,24 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
               }}
             >
               
+              {/* Navy Top Accent Bar */}
+              <div className="absolute top-0 left-0 right-0 h-2 bg-[#0C1E35]" />
+
               {/* Report Header */}
-              <div className="border-b-2 border-slate-200 pb-4 mb-4 flex justify-between items-start print-header">
+              <div className="border-b-2 border-[#0C1E35] pb-4 mb-4 flex justify-between items-start print-header mt-2">
                 <div className="flex items-center">
                   {page.reportType === 'clinical' && selectedHospital?.logoUrl && (
                     <img src={selectedHospital.logoUrl} alt="Hospital Logo" className="h-20 w-auto mr-6 object-contain" />
                   )}
                   <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-1 uppercase">
+                    <h1 className="text-2xl font-black text-[#0C1E35] tracking-tight mb-1 uppercase">
                       {page.reportType === 'clinical' ? 'Laporan Endoskopi' : 'Academic Case Report'}
                     </h1>
                     {page.reportType === 'clinical' && selectedHospital ? (
                       <div>
-                        <p className="text-slate-900 font-black text-base leading-tight">{selectedHospital.name}</p>
+                        <p className="text-[#0C1E35] font-black text-base leading-tight">{selectedHospital.name}</p>
                         <p className="text-slate-600 text-xs mt-1 max-w-md leading-relaxed">{selectedHospital.address}</p>
-                        <div className="flex flex-wrap gap-x-4 text-slate-500 text-[10px] mt-2 font-bold uppercase tracking-wider">
+                        <div className="flex flex-wrap gap-x-4 text-[#0C1E35]/60 text-[10px] mt-2 font-bold uppercase tracking-wider">
                           {selectedHospital.phone && <span>Telp: {selectedHospital.phone}</span>}
                           {selectedHospital.fax && <span>Fax: {selectedHospital.fax}</span>}
                           {selectedHospital.website && <span>Web: {selectedHospital.website}</span>}
@@ -722,17 +788,17 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                     ) : page.reportType === 'clinical' ? (
                       <p className="text-slate-400 text-xs mt-1 italic">Kop surat belum dikonfigurasi.</p>
                     ) : (
-                      <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Aexon Medical Documentation</p>
+                      <p className="text-[#0C1E35]/60 font-bold text-sm uppercase tracking-widest">Aexon Medical Documentation</p>
                     )}
                   </div>
                 </div>
-                <div className="text-right bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Waktu Tindakan</p>
-                  <p className="text-xs font-black text-slate-900">
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-[#0C1E35]/50 uppercase tracking-widest mb-1">Waktu Tindakan</p>
+                  <p className="text-xs font-black text-[#0C1E35]">
                     {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                   {page.reportType === 'clinical' && (
-                    <p className="text-[10px] font-bold text-blue-600 mt-0.5">
+                    <p className="text-[10px] font-bold text-[#0C1E35]/70 mt-0.5">
                       Pukul {session.date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
                     </p>
                   )}
@@ -740,55 +806,55 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
               </div>
 
               {/* Patient Data / Redacted Data */}
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 print-patient-info">
+              <div className="bg-[#0C1E35]/[0.03] border border-[#0C1E35]/10 rounded-lg p-3 mb-4 print-patient-info">
                 {page.reportType === 'clinical' ? (
                   <div className="grid grid-cols-3 gap-y-1.5 gap-x-6 text-[10px]">
                     <div>
-                      <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Nama Pasien</span>
-                      <span className="font-bold text-slate-900 text-xs">{session.patient.name}</span>
+                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Nama Pasien</span>
+                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.name}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">No. Rekam Medis</span>
-                      <span className="font-bold text-slate-900 text-xs">{session.patient.rmNumber}</span>
+                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">No. Rekam Medis</span>
+                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.rmNumber}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Jenis Kelamin</span>
-                      <span className="font-bold text-slate-900 text-xs">{session.patient.gender}</span>
+                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Jenis Kelamin</span>
+                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.gender}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Tanggal Lahir</span>
-                      <span className="font-bold text-slate-900 text-xs">{session.patient.dob}</span>
+                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Tanggal Lahir</span>
+                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.dob}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Usia Pasien</span>
-                      <span className="font-bold text-slate-900 text-xs">{calculateAge(session.patient.dob)}</span>
+                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Usia Pasien</span>
+                      <span className="font-bold text-[#0C1E35] text-xs">{calculateAge(session.patient.dob)}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Kategori / Lokasi</span>
-                      <span className="font-bold text-slate-900 text-xs">{session.patient.category}</span>
+                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Kategori / Lokasi</span>
+                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.category}</span>
                     </div>
-                    <div className="col-span-3 pt-1.5 border-t border-slate-200 mt-1 grid grid-cols-2 gap-4">
+                    <div className="col-span-3 pt-1.5 border-t border-[#0C1E35]/10 mt-1 grid grid-cols-2 gap-4">
                       <div>
-                        <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Dokter Operator</span>
-                        <span className="font-bold text-slate-900 text-xs">{session.patient.operator}</span>
+                        <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Dokter Operator</span>
+                        <span className="font-bold text-[#0C1E35] text-xs">{session.patient.operator}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Tindakan</span>
-                        <ul className="list-disc list-inside font-bold text-slate-900 text-[10px]">
+                        <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Tindakan</span>
+                        <ul className="list-disc list-inside font-bold text-[#0C1E35] text-[10px]">
                           {session.patient.procedures.filter(p => p).map((p, i) => (
                             <li key={i}>{p}</li>
                           ))}
                         </ul>
                       </div>
-                      <div className="col-span-2 pt-1.5 border-t border-slate-100">
+                      <div className="col-span-2 pt-1.5 border-t border-[#0C1E35]/10">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Diagnosis Utama</span>
-                            <span className="font-bold text-slate-900 text-[10px]">{session.patient.diagnosis || '-'}</span>
+                            <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Diagnosis Utama</span>
+                            <span className="font-bold text-[#0C1E35] text-[10px]">{session.patient.diagnosis || '-'}</span>
                           </div>
                           <div>
-                            <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Diagnosis Banding</span>
-                            <span className="font-bold text-slate-900 text-[10px]">{session.patient.differentialDiagnosis || '-'}</span>
+                            <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Diagnosis Banding</span>
+                            <span className="font-bold text-[#0C1E35] text-[10px]">{session.patient.differentialDiagnosis || '-'}</span>
                           </div>
                         </div>
                       </div>
@@ -824,7 +890,8 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
 
               {/* Photo Grid */}
               <div className="mb-4 print-section">
-                <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-1 mb-2 print-section-title">
+                <h3 className="text-sm font-bold text-[#0C1E35] border-b-2 border-[#0C1E35]/20 pb-1 mb-2 print-section-title flex items-center">
+                  <span className="w-1 h-4 bg-[#0C1E35] rounded-full mr-2 inline-block" />
                   {page.reportLayout === 'beforeAfter' ? 'Dokumentasi Before / After Surgery' : 
                    page.reportLayout === 'rightLeft' ? 'Dokumentasi Perbandingan Kanan / Kiri' : 
                    'Dokumentasi Visual'}
@@ -833,7 +900,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                   <div className={`grid gap-3 print-grid ${page.reportLayout === 'standard' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     {page.selectedPhotos.map((photo, index) => (
                       <div key={photo.id} className="space-y-1.5 print-photo-card">
-                        <div className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                        <div className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-[#0C1E35]/15">
                           <img src={photo.url} alt={`Capture ${index + 1}`} className="w-full h-full object-cover" />
                           {page.reportLayout !== 'standard' && (
                             <div className="absolute top-2 left-2 px-2 py-1 bg-[#0C1E35]/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-widest">
@@ -844,7 +911,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                           )}
                         </div>
                         {page.photoCaptions[photo.id] && (
-                          <div className="bg-slate-50 border border-slate-100 rounded-md p-1.5 min-h-[30px]">
+                          <div className="bg-[#0C1E35]/[0.03] border border-[#0C1E35]/10 rounded-md p-1.5 min-h-[30px]">
                             <p className="text-[8px] leading-tight font-medium text-slate-700 whitespace-pre-wrap break-words">
                               {page.photoCaptions[photo.id]}
                             </p>
@@ -863,7 +930,10 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
               {/* Video Documentation Section */}
               {activePage.selectedVideos.length > 0 && (
                 <div className="mb-4 print-section">
-                  <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-1 mb-2 print-section-title">Dokumentasi Video</h3>
+                  <h3 className="text-sm font-bold text-[#0C1E35] border-b-2 border-[#0C1E35]/20 pb-1 mb-2 print-section-title flex items-center">
+                    <span className="w-1 h-4 bg-[#0C1E35] rounded-full mr-2 inline-block" />
+                    Dokumentasi Video
+                  </h3>
                   <div className="grid grid-cols-2 gap-3 print-grid">
                     {activePage.selectedVideos.map((video, index) => (
                       <div key={video.id} className="space-y-1.5 print-photo-card">
@@ -887,7 +957,10 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
 
               {/* Clinical Notes */}
               <div className="mb-4 flex-1 print-section">
-                <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-1 mb-2 print-section-title">Catatan Klinis</h3>
+                <h3 className="text-sm font-bold text-[#0C1E35] border-b-2 border-[#0C1E35]/20 pb-1 mb-2 print-section-title flex items-center">
+                  <span className="w-1 h-4 bg-[#0C1E35] rounded-full mr-2 inline-block" />
+                  Catatan Klinis
+                </h3>
                 <div className="prose prose-sm prose-slate max-w-none text-[10px]">
                   {page.clinicalNotes ? (
                     <p className="whitespace-pre-wrap text-slate-700 leading-tight">{page.clinicalNotes}</p>
@@ -901,17 +974,22 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
               {page.reportType === 'clinical' && (
                 <div className="mt-auto pt-4 flex justify-end">
                   <div className="text-center w-48">
-                    <p className="text-[10px] text-slate-600 mb-8">Dokter Pemeriksa,</p>
-                    <div className="border-b border-slate-400 mb-1"></div>
-                    <p className="font-bold text-slate-900 text-xs">{session.patient.operator}</p>
+                    <p className="text-[10px] text-[#0C1E35]/60 mb-8">Dokter Pemeriksa,</p>
+                    <div className="border-b-2 border-[#0C1E35]/30 mb-1" />
+                    <p className="font-bold text-[#0C1E35] text-xs">{session.patient.operator}</p>
                   </div>
                 </div>
               )}
 
               {/* Footer */}
-              <div className="mt-8 pt-3 border-t border-slate-200 text-center text-[10px] text-slate-400">
-                <p>Generated by <span className="font-aexon">Aexon</span> Endoscopy System • {new Date().toLocaleString('id-ID')} • Halaman {pages.indexOf(page) + 1} dari {pages.length}</p>
+              <div className="mt-8 pt-3 border-t-2 border-[#0C1E35]/15 text-center text-[10px] text-[#0C1E35]/40 flex items-center justify-center gap-2">
+                <span className="w-6 h-[2px] bg-[#0C1E35]/20 inline-block" />
+                <p>Dihasilkan oleh <span className="font-aexon text-[#0C1E35]/60">Aexon</span> • {new Date().toLocaleString('id-ID')} • Halaman {pages.indexOf(page) + 1} dari {pages.length}</p>
+                <span className="w-6 h-[2px] bg-[#0C1E35]/20 inline-block" />
               </div>
+
+              {/* Navy Bottom Accent */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#0C1E35]/30" />
             </div>
           ))}
         </div>

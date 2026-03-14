@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   User,
@@ -32,13 +32,45 @@ import {
   MapPin,
   Phone,
   Globe,
-  Mail as MailIcon
+  Mail as MailIcon,
+  ZoomIn,
+  ZoomOut,
+  Crop
 } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+import type { Area } from 'react-easy-crop';
 import { UserProfile, HospitalSettings, Session } from '../types';
 import { useToast } from './ToastProvider';
 import ConfirmModal from './ConfirmModal';
 import { saveUserData, loadUserData, getLocalStorageUsage } from '../lib/storage';
 import { supabase } from '../lib/supabase';
+
+async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = reject;
+    image.src = imageSrc;
+  });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+  return canvas.toDataURL('image/png');
+}
 
 interface SettingsProps {
   userProfile: UserProfile;
@@ -91,6 +123,14 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const [kopToDelete, setKopToDelete] = useState<number | null>(null);
   const [kopForms, setKopForms] = useState<HospitalSettings[]>(hospitalSettingsList);
 
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropKopIdx, setCropKopIdx] = useState<number | null>(null);
+  const [cropState, setCropState] = useState({ x: 0, y: 0 });
+  const [cropZoom, setCropZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const logoInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+
   useEffect(() => {
     setKopForms(hospitalSettingsList);
   }, [hospitalSettingsList]);
@@ -129,6 +169,47 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
   const handleKopFieldChange = (idx: number, field: string, value: string) => {
     setKopForms(prev => prev.map((k, i) => i === idx ? { ...k, [field]: value } : k));
+  };
+
+  const handleLogoFileSelect = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+      showToast('Format file harus .jpg atau .png', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Ukuran file maksimal 5 MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropKopIdx(idx);
+      setCropState({ x: 0, y: 0 });
+      setCropZoom(1);
+      setCroppedAreaPixels(null);
+      setCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
+    setCroppedAreaPixels(croppedPixels);
+  }, []);
+
+  const handleCropConfirm = async () => {
+    if (!cropImageSrc || croppedAreaPixels === null || cropKopIdx === null) return;
+    try {
+      const croppedDataUrl = await getCroppedImg(cropImageSrc, croppedAreaPixels);
+      handleKopFieldChange(cropKopIdx, 'logoUrl', croppedDataUrl);
+      setCropModalOpen(false);
+      setCropImageSrc(null);
+      showToast('Logo berhasil dipotong dan diterapkan.', 'success');
+    } catch {
+      showToast('Gagal memproses gambar.', 'error');
+    }
   };
 
   const handleSaveKop = (idx: number) => {
@@ -894,16 +975,55 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                               </div>
                               <div className="space-y-2">
                                 <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
-                                  <ImagePlus className="w-3 h-3" /> Logo RS (URL)
+                                  <ImagePlus className="w-3 h-3" /> Logo RS / Institusi
                                 </label>
                                 <input
-                                  type="url"
-                                  value={kop.logoUrl || ''}
-                                  onChange={(e) => handleKopFieldChange(idx, 'logoUrl', e.target.value)}
-                                  readOnly={cooldown.locked}
-                                  className={cooldown.locked ? readOnlyClass : inputClass}
-                                  placeholder="https://example.com/logo.png"
+                                  type="file"
+                                  accept=".jpg,.jpeg,.png"
+                                  ref={(el) => { if (el) logoInputRefs.current.set(idx, el); }}
+                                  onChange={(e) => handleLogoFileSelect(idx, e)}
+                                  className="hidden"
                                 />
+                                <div className="flex items-center gap-3">
+                                  {kop.logoUrl ? (
+                                    <div className="h-12 w-12 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 shrink-0">
+                                      <img src={kop.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                    </div>
+                                  ) : (
+                                    <div className="h-12 w-12 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 shrink-0">
+                                      <ImagePlus className="w-5 h-5 text-slate-300" />
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (!cooldown.locked) {
+                                        const input = logoInputRefs.current.get(idx);
+                                        if (input) input.click();
+                                      }
+                                    }}
+                                    disabled={cooldown.locked}
+                                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
+                                      cooldown.locked
+                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                        : 'bg-[#0C1E35]/5 hover:bg-[#0C1E35]/10 text-[#0C1E35] border border-[#0C1E35]/15'
+                                    }`}
+                                  >
+                                    <Upload className="w-3.5 h-3.5" />
+                                    {kop.logoUrl ? 'Ganti Logo' : 'Upload Logo'}
+                                  </button>
+                                  {kop.logoUrl && !cooldown.locked && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleKopFieldChange(idx, 'logoUrl', '')}
+                                      className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                      title="Hapus logo"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-400 ml-1">Format: .jpg, .png (maks. 5 MB)</p>
                               </div>
                               <div className="md:col-span-2 space-y-2">
                                 <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
@@ -968,7 +1088,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                             {kop.logoUrl && (
                               <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
                                 <p className="text-xs font-medium text-slate-500 mb-2">Preview Logo</p>
-                                <img src={kop.logoUrl} alt="Logo" className="h-16 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                <img src={kop.logoUrl} alt="Logo" className="h-20 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                               </div>
                             )}
 
@@ -1476,6 +1596,94 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 >
                   {applyToAll ? 'Timpa Semua' : 'Timpa'}
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {cropModalOpen && cropImageSrc && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+            onClick={() => setCropModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#0C1E35]/10 rounded-xl flex items-center justify-center">
+                    <Crop className="w-5 h-5 text-[#0C1E35]" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Crop & Zoom Logo</h3>
+                    <p className="text-xs text-slate-500">Sesuaikan area logo yang akan digunakan.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCropModalOpen(false)}
+                  className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="relative w-full h-80 bg-slate-900">
+                <Cropper
+                  image={cropImageSrc}
+                  crop={cropState}
+                  zoom={cropZoom}
+                  aspect={3}
+                  onCropChange={setCropState}
+                  onZoomChange={setCropZoom}
+                  onCropComplete={onCropComplete}
+                  showGrid={true}
+                  style={{
+                    containerStyle: { background: '#0f172a' },
+                    cropAreaStyle: { border: '2px solid #0C1E35' },
+                  }}
+                />
+              </div>
+
+              <div className="p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <ZoomOut className="w-4 h-4 text-slate-400 shrink-0" />
+                  <input
+                    type="range"
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    value={cropZoom}
+                    onChange={(e) => setCropZoom(Number(e.target.value))}
+                    className="flex-1 accent-[#0C1E35] h-1.5"
+                  />
+                  <ZoomIn className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="text-xs font-bold text-slate-500 w-10 text-right">{Math.round(cropZoom * 100)}%</span>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setCropModalOpen(false)}
+                    className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleCropConfirm}
+                    className="flex-1 py-3 px-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Terapkan Logo
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

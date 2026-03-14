@@ -26,6 +26,11 @@
   }
 }
 
+@page {
+  margin: 0;
+  size: auto;
+}
+
 @media print {
   html, body, #root {
     height: auto !important;
