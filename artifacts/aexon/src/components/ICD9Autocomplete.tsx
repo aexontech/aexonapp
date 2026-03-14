@@ -94,7 +94,7 @@ export default function ICD9Autocomplete({
         onFocus={() => query.length >= 2 && !selected && setOpen(true)}
         placeholder={placeholder || defaultPlaceholder}
         required={index === 0}
-        className="block w-full px-5 py-4 border border-white/20 rounded-2xl bg-white/10 text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all font-semibold text-sm"
+        className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
       />
       {open && results.length > 0 && (
         <div className="absolute z-[9999] w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
