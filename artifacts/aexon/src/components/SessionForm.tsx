@@ -236,135 +236,133 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
               </div>
             </motion.div>
 
-            <div className="grid lg:grid-cols-5 gap-6">
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.2 }}
-                className="lg:col-span-3 bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
-              >
-                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center mb-2">
-                  <Activity className="w-4 h-4 mr-2" />
-                  Prosedur & Tindakan (ICD-9-CM)
-                </h3>
-                <div className="space-y-4">
-                  <AnimatePresence mode="popLayout">
-                    {formData.procedures_icd9.map((proc, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex items-start gap-3"
-                      >
-                        <div className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center font-semibold text-sm mt-1 ${
-                          index === 0 
-                            ? 'bg-[#0C1E35] text-white' 
-                            : 'bg-slate-200 text-slate-600'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <ICD9Autocomplete
-                            value={proc}
-                            onChange={(val) => updateProcedure(index, val)}
-                            index={index}
-                          />
-                        </div>
-                        {index > 0 && (
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            type="button"
-                            onClick={() => removeProcedure(index)}
-                            className="w-9 h-9 shrink-0 rounded-lg bg-slate-100 hover:bg-red-50 border border-slate-200 hover:border-red-200 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all mt-1"
-                          >
-                            <X className="w-4 h-4" />
-                          </motion.button>
-                        )}
-                        {index === 0 && (
-                          <div className="w-9 shrink-0" />
-                        )}
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
+            >
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center">
+                <Stethoscope className="w-4 h-4 mr-2" />
+                Diagnosis (ICD-10)
+              </h3>
 
-                  {formData.procedures_icd9.length < 5 && (
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      type="button"
-                      onClick={addProcedure}
-                      className="ml-12 flex items-center gap-2 px-4 py-2.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Tambah Tindakan
-                    </motion.button>
-                  )}
-                </div>
-              </motion.div>
+              <div className="grid md:grid-cols-2 gap-5">
+                <ICD10Autocomplete
+                  value={formData.diagnosis_icd10}
+                  onChange={(val) => updateField('diagnosis_icd10', val)}
+                  label="Diagnosis Utama (ICD-10)"
+                  required={formData.category === 'Kamar Operasi'}
+                />
 
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.25 }}
-                className="lg:col-span-2 bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
-              >
-                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center">
-                  <Stethoscope className="w-4 h-4 mr-2" />
-                  Diagnosis (ICD-10)
-                </h3>
-
-                <div className="space-y-5">
-                  <ICD10Autocomplete
-                    value={formData.diagnosis_icd10}
-                    onChange={(val) => updateField('diagnosis_icd10', val)}
-                    label="Diagnosis Utama (ICD-10)"
-                    required={formData.category === 'Kamar Operasi'}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-500 block">Diagnosis Banding</label>
+                  <input
+                    type="text"
+                    name="differentialDiagnosis"
+                    value={formData.differentialDiagnosis}
+                    onChange={handleChange}
+                    className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
+                    placeholder="Diagnosis banding (opsional)..."
                   />
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-500 block">Diagnosis Banding</label>
-                    <input
-                      type="text"
-                      name="differentialDiagnosis"
-                      value={formData.differentialDiagnosis}
-                      onChange={handleChange}
-                      className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
-                      placeholder="Diagnosis banding (opsional)..."
-                    />
-                  </div>
                 </div>
-              </motion.div>
-            </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.25 }}
+              className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
+            >
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center mb-2">
+                <Activity className="w-4 h-4 mr-2" />
+                Prosedur & Tindakan (ICD-9-CM)
+              </h3>
+              <div className="space-y-4">
+                <AnimatePresence mode="popLayout">
+                  {formData.procedures_icd9.map((proc, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-start gap-3"
+                    >
+                      <div className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center font-semibold text-sm mt-1 ${
+                        index === 0 
+                          ? 'bg-[#0C1E35] text-white' 
+                          : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <ICD9Autocomplete
+                          value={proc}
+                          onChange={(val) => updateProcedure(index, val)}
+                          index={index}
+                        />
+                      </div>
+                      {index > 0 && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          type="button"
+                          onClick={() => removeProcedure(index)}
+                          className="w-9 h-9 shrink-0 rounded-lg bg-slate-100 hover:bg-red-50 border border-slate-200 hover:border-red-200 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all mt-1"
+                        >
+                          <X className="w-4 h-4" />
+                        </motion.button>
+                      )}
+                      {index === 0 && (
+                        <div className="w-9 shrink-0" />
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+
+                {formData.procedures_icd9.length < 5 && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={addProcedure}
+                    className="ml-12 flex items-center gap-2 px-4 py-2.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tambah Tindakan
+                  </motion.button>
+                )}
+              </div>
+            </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.3 }}
-              className="bg-slate-50 rounded-2xl p-6 border border-slate-100"
+              className="bg-slate-50 rounded-2xl p-5 border border-slate-100"
             >
-              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center mb-6">
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center mb-4">
                 <Building2 className="w-4 h-4 mr-2" />
                 Administrasi
               </h3>
-              <div className="grid md:grid-cols-3 gap-5">
-                <div className="space-y-1.5">
+              <div className="flex items-end gap-4">
+                <div className="flex-1 space-y-1.5">
                   <label className="text-xs font-medium text-slate-500">Operator / Dokter</label>
-                  <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-sm flex items-center cursor-not-allowed">
+                  <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-sm flex items-center cursor-not-allowed">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full mr-3 animate-pulse" />
                     {userProfile.name}
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="flex-1 space-y-1.5">
                   <label className="text-xs font-medium text-slate-500">Kategori Layanan</label>
                   <div className="relative">
                     <select
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
-                      className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150 appearance-none"
+                      className="block w-full px-4 py-2 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150 appearance-none"
                     >
                       <option value="Poli">Poli Klinik</option>
                       <option value="Kamar Operasi">Kamar Operasi (OK)</option>
@@ -375,14 +373,14 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-3">
+                <div className="shrink-0 flex flex-col items-end gap-2">
                   <AnimatePresence>
                     {validationError && (
                       <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="w-full bg-red-50 border border-red-200 text-red-600 text-xs font-semibold p-3 rounded-xl text-center"
+                        className="bg-red-50 border border-red-200 text-red-600 text-xs font-semibold p-2.5 rounded-xl text-center whitespace-nowrap"
                       >
                         {validationError}
                       </motion.div>
@@ -392,7 +390,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl font-semibold text-sm text-white bg-[#0C1E35] hover:bg-[#1a3a5c] transition-colors"
+                    className="flex items-center justify-center py-2 px-6 rounded-xl font-semibold text-sm text-white bg-[#0C1E35] hover:bg-[#1a3a5c] transition-colors"
                   >
                     Mulai Sesi
                     <ArrowRight className="w-4 h-4 ml-2" />
