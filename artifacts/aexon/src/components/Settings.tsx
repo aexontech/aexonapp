@@ -625,19 +625,17 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       {activeTab === 'profil' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-            <div className="flex items-center gap-5 mb-8">
-              <div className="w-20 h-20 rounded-2xl bg-[#0C1E35] flex items-center justify-center">
-                <span className="text-white font-black text-xl">{getInitials(profileForm.name)}</span>
+            <div className="flex flex-col items-center mb-8">
+              <div className="w-16 h-16 rounded-full bg-[#0C1E35] flex items-center justify-center mb-3">
+                <span className="text-white font-black text-lg">{getInitials(profileForm.name)}</span>
               </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900">{profileForm.name}</h3>
-                <p className="text-sm text-slate-500">{profileForm.specialization}</p>
-                {isDokterInstitusi && (
-                  <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-teal-50 text-teal-700">
-                    Dokter Institusi
-                  </span>
-                )}
-              </div>
+              <h3 className="text-xl font-black text-slate-900">{profileForm.name}</h3>
+              <p className="text-sm text-slate-500">{profileForm.specialization}</p>
+              {isDokterInstitusi && (
+                <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-teal-50 text-teal-700">
+                  Dokter Institusi
+                </span>
+              )}
             </div>
 
             {isDokterInstitusi && (

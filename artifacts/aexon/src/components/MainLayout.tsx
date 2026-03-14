@@ -132,22 +132,6 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
         </nav>
 
         <div className="p-3 border-t border-slate-100 space-y-1 shrink-0">
-          <div className={`mb-2 ${isCollapsed ? 'px-1' : 'px-2'}`}>
-            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-              <div className="w-10 h-10 bg-[#0C1E35] rounded-full flex items-center justify-center shrink-0">
-                <span className="text-white font-bold text-xs">{getInitials(userProfile.name)}</span>
-              </div>
-              {!isCollapsed && (
-                <div className="overflow-hidden flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{userProfile.name}</p>
-                  <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold rounded-full mt-1 ${roleBadge.color}`}>
-                    {roleBadge.label}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
           {isCollapsed ? (
             <div className="flex justify-center py-2" title={subStatus.label}>
               <div className={`w-2.5 h-2.5 rounded-full ${subStatus.dotColor} ${subStatus.pulse ? 'animate-pulse' : ''}`} />
@@ -155,27 +139,13 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           ) : (
             <div className={`relative overflow-hidden rounded-xl border ${subStatus.borderColor} mb-1`}>
               <div className={`absolute inset-0 ${subStatus.bgColor}`} />
-              <div className="relative p-3.5">
-                <div className="flex items-center gap-2.5 mb-1.5">
-                  <div className={`w-7 h-7 rounded-lg ${subStatus.state === 'active' ? 'bg-emerald-500' : subStatus.state === 'warning' ? 'bg-orange-500' : subStatus.state === 'trial' ? 'bg-yellow-500' : 'bg-red-500'} flex items-center justify-center shadow-sm`}>
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      {subStatus.state === 'active' ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      )}
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className={`text-xs font-bold ${subStatus.textColor} block leading-tight`}>{subStatus.label}</span>
-                    <span className={`text-[9px] ${subStatus.textColor} opacity-60 uppercase tracking-wider font-semibold`}>Langganan</span>
-                  </div>
-                  {subStatus.pulse && (
-                    <div className={`w-2 h-2 rounded-full ${subStatus.dotColor} animate-pulse shrink-0`} />
-                  )}
+              <div className="relative p-3">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-2.5 h-2.5 rounded-full ${subStatus.dotColor} ${subStatus.pulse ? 'animate-pulse' : ''} shrink-0`} />
+                  <span className={`text-xs font-semibold ${subStatus.textColor} leading-tight`}>{subStatus.label}</span>
                 </div>
                 {subStatus.sublabel && !subStatus.showCta && (
-                  <p className={`text-[10px] ${subStatus.textColor} opacity-70 ml-[38px]`}>{subStatus.sublabel}</p>
+                  <p className={`text-[10px] ${subStatus.textColor} opacity-70 mt-1 ml-[18px]`}>{subStatus.sublabel}</p>
                 )}
                 {subStatus.showCta && (
                   <button
@@ -201,6 +171,22 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
             <Settings className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 ${activeMenu === 'settings' ? 'text-white' : 'text-gray-400'}`} />
             {!isCollapsed && 'Pengaturan'}
           </button>
+
+          <div className={`${isCollapsed ? 'px-1' : 'px-2'} py-2`}>
+            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+              <div className="w-9 h-9 bg-[#0C1E35] rounded-full flex items-center justify-center shrink-0">
+                <span className="text-white font-bold text-[10px]">{getInitials(userProfile.name)}</span>
+              </div>
+              {!isCollapsed && (
+                <div className="overflow-hidden flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">{userProfile.name}</p>
+                  <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold rounded-full ${roleBadge.color}`}>
+                    {roleBadge.label}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
 
           <button
             onClick={onLogout}

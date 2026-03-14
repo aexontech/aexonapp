@@ -1,0 +1,180 @@
+You are improving the Aexon Endoscopy App. Read ALL existing files carefully. 
+Apply these UI and sidebar improvements:
+
+═══════════════════════════════════════
+1. SIDEBAR — VISUAL OVERHAUL (MainLayout.tsx)
+═══════════════════════════════════════
+
+REMOVE: "Paket & Berlangganan" menu item entirely from nav items.
+Replace with a subscription status chip in the bottom section only.
+
+SIDEBAR STRUCTURE (top to bottom):
+┌─────────────────────────────┐
+│ [Logo] Aexon    [collapse]  │  ← header, border-b
+├─────────────────────────────┤
+│  [icon] Beranda             │  ← nav items
+│  [icon] Mulai Sesi Baru     │
+├─────────────────────────────┤
+│                             │  ← flex-1 spacer
+├─────────────────────────────┤
+│ ┌─────────────────────────┐ │  ← subscription status card
+│ │ ● Aktif                 │ │    (see spec below)
+│ └─────────────────────────┘ │
+│  [icon] Pengaturan          │
+│  [avatar] Nama — badge      │
+│  [icon] Keluar              │
+│  ● online/offline dot       │
+└─────────────────────────────┘
+
+SUBSCRIPTION STATUS CHIP (in sidebar bottom, above Pengaturan):
+Show a compact status card — NOT a menu item, just informational:
+
+State 1 — AKTIF (plan === 'subscription' || plan === 'enterprise'):
+- Green dot + "Aktif" label
+- If expanded sidebar: show small text "Langganan aktif"
+- Background: bg-emerald-50, border border-emerald-200, rounded-xl
+- Text: text-emerald-700 font-semibold text-xs
+- NO CTA button
+
+State 2 — WARNING H-7 (trialDaysLeft !== null && trialDaysLeft <= 7 && trialDaysLeft > 0):
+- Orange dot (animate-pulse) + "Trial — X hari lagi" 
+- If expanded: show "Segera berlangganan" CTA button
+- CTA: small orange button → onClick: onNavigate('settings') 
+  (settings has subscription tab)
+- Background: bg-orange-50, border border-orange-200, rounded-xl
+- Text: text-orange-700 font-semibold text-xs
+
+State 3 — TRIAL NORMAL (trialDaysLeft > 7):
+- Yellow dot + "Trial — X hari lagi"
+- Background: bg-yellow-50, border border-yellow-100, rounded-xl
+- Text: text-yellow-700 text-xs
+- NO CTA button
+
+State 4 — TIDAK AKTIF (plan === null && !trialDaysLeft):
+- Red dot (animate-pulse) + "Tidak Aktif"
+- If expanded: show "Berlangganan Sekarang" CTA button (red/navy)
+- CTA: small navy button → onClick: onNavigate('settings')
+- Background: bg-red-50, border border-red-200, rounded-xl
+- Text: text-red-700 font-semibold text-xs
+
+COLLAPSED SIDEBAR behavior:
+- Show only the colored dot (no text, no button)
+- Tooltip on hover: show full status text
+- Dot sizes: w-2.5 h-2.5, animate-pulse for warning and inactive states
+
+ADMIN INSTITUSI exception:
+- Always show "Aktif" green chip (enterprise never expires from sidebar perspective)
+- No CTA needed
+
+DOKTER INSTITUSI exception:
+- Show "Aktif" if enterprise plan active
+- Show "Tidak Aktif" if no plan (should not happen normally)
+
+═══════════════════════════════════════
+2. SIDEBAR NAV ITEMS — CLEANUP
+═══════════════════════════════════════
+Doctor (personal + institusi) nav items:
+- Beranda (home icon or Logo mark)
+- Mulai Sesi Baru (Plus icon)
+
+Admin nav items:
+- Admin Console (LayoutDashboard icon)
+- Kop Surat Institusi (FileText icon) → navigates to new kop surat section
+
+Bottom (all accounts):
+- Subscription status chip (poin 1)
+- Pengaturan (Settings icon)
+- User info (avatar + name + role badge)
+- Keluar (LogOut icon, red)
+- Online/offline indicator
+
+═══════════════════════════════════════
+3. GLOBAL UI REVISI — ALL PAGES
+═══════════════════════════════════════
+Apply these consistent visual improvements across ALL components:
+
+TYPOGRAPHY:
+- Page titles: text-2xl font-bold text-slate-900 tracking-tight
+- Section headers: text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4
+- Body: text-sm text-slate-600
+- Labels: text-xs font-medium text-slate-500
+
+CARDS:
+- All cards: bg-white rounded-2xl border border-slate-100 shadow-sm p-6
+- Hover cards: hover:shadow-md hover:border-slate-200 transition-all duration-200
+- No excessive shadows — keep it flat and clean
+
+BUTTONS:
+- Primary: bg-[#0C1E35] text-white hover:bg-[#1a3a5c] rounded-xl px-4 py-2.5 
+  text-sm font-semibold transition-colors
+- Secondary: border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl 
+  px-4 py-2.5 text-sm font-semibold transition-colors
+- Danger: bg-red-600 text-white hover:bg-red-700 rounded-xl
+- Ghost: text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-xl
+
+INPUTS:
+- border border-slate-200 rounded-xl bg-white px-4 py-2.5 text-sm
+- focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35]
+- transition-colors duration-150
+
+BADGES/CHIPS:
+- Rounded-full, px-2.5 py-0.5, text-xs font-semibold
+- Keep existing color system (blue=Personal, teal=Dokter Institusi, purple=Admin)
+
+PAGES TO UPDATE:
+Apply above rules consistently to:
+- Dashboard.tsx: stats cards, session list cards, empty state
+- SessionForm.tsx: form cards, input fields, submit button
+- EndoscopyApp.tsx: control buttons, gallery items
+- ReportGenerator.tsx: settings panel, page cards
+- Settings.tsx: tab buttons, form sections, save buttons
+- AdminDashboard.tsx: doctor list cards, stats
+- Gallery.tsx: toolbar buttons, image cards
+
+REMOVE teal as primary color everywhere except:
+- Success states (toasts, checkmarks)
+- Keep teal ONLY for: bg-emerald-* success indicators
+- Primary action color = navy #0C1E35
+
+═══════════════════════════════════════
+4. DASHBOARD — FINAL CLEANUP
+═══════════════════════════════════════
+- Remove "Mulai Sesi Baru" duplicate button from dashboard body
+  (it's already in sidebar nav)
+- Keep ONE CTA only: the empty state button when sessions.length === 0
+- Stats row: 3 cards (Total Sesi, Sesi Bulan Ini, Total Media) — keep existing
+- Recent sessions: show patient name as main title (already done — verify it's working)
+- Page padding: px-8 py-8 consistent
+- Welcome greeting: "Selamat datang," + userProfile.name in navy font-bold
+
+═══════════════════════════════════════
+5. SETTINGS PAGE — TAB UI FIX
+═══════════════════════════════════════
+Tab bar styling:
+- Container: bg-slate-100 rounded-2xl p-1 inline-flex gap-1 mb-6
+- Active tab: bg-white text-slate-900 font-semibold shadow-sm rounded-xl px-4 py-2
+- Inactive tab: text-slate-500 hover:text-slate-700 px-4 py-2 rounded-xl 
+  transition-colors cursor-pointer
+- Tab labels: "Profil", "Keamanan", "Langganan", "Backup & Restore"
+- For Dokter Institusi: hide "Langganan" tab, show info card instead
+
+PROFIL TAB:
+- Avatar circle (initials, navy bg, w-16 h-16) centered at top of form
+- Fields in 2-column grid where possible
+- Read-only fields (email for all, name for dokter institusi): 
+  bg-slate-50 text-slate-500 cursor-not-allowed
+
+KEAMANAN TAB:
+- Clean password change form
+- Show/hide toggles on all password fields
+- Validation feedback inline
+
+LANGGANAN TAB (Personal only):
+- Current plan card with status chip
+- Masa aktif with days remaining + progress bar
+- "Perpanjang Sekarang" button → existing modal
+- Billing history section (empty state for now)
+
+BACKUP TAB:
+- Keep all existing backup/restore functionality unchanged
+- Just apply consistent card styling
