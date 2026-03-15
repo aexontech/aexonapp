@@ -18,9 +18,12 @@ export default function Gallery({ session, onBack, onUpdateSession, onViewReport
   const [captures, setCaptures] = useState<Capture[]>(session.captures);
   const [editingPhoto, setEditingPhoto] = useState<Capture | null>(null);
   const [mediaToDelete, setMediaToDelete] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'photos' | 'videos'>('photos');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const photos = captures.filter(c => c.type === 'image');
   const videos = captures.filter(c => c.type === 'video');
+  const activeItems = activeTab === 'photos' ? photos : videos;
 
   const updateCaptures = (newCaptures: Capture[]) => {
     setCaptures(newCaptures);
@@ -69,255 +72,267 @@ export default function Gallery({ session, onBack, onUpdateSession, onViewReport
     });
   };
 
+  const exportSelected = () => {
+    if (selectedIds.length === 0) return;
+    const sel = captures.filter(c => selectedIds.includes(c.id));
+    sel.forEach((cap, i) => {
+      setTimeout(() => {
+        downloadMedia(cap.url, cap.type);
+      }, i * 300);
+    });
+    setSelectedIds([]);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const tabItems: { id: 'photos' | 'videos'; label: string; count: number }[] = [
+    { id: 'photos', label: 'Foto', count: photos.length },
+    { id: 'videos', label: 'Video', count: videos.length },
+  ];
 
   return (
-    <div className="flex-1 flex bg-[#0C1E35] h-full overflow-hidden relative">
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[100px]" />
-      </div>
-
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
-        <header className="h-20 border-b border-white/10 bg-white/5 backdrop-blur-3xl flex items-center justify-between px-8 shrink-0 z-10">
-          <div className="flex items-center gap-6">
-            <motion.button 
-              whileHover={{ scale: 1.1, x: -2 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={onBack}
-              className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white/60 hover:text-white transition-all border border-white/10"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </motion.button>
-            <div className="flex flex-col">
-              <span className="text-xs font-medium text-white/50">Media Archive</span>
-              <h1 className="font-aexon text-2xl text-white tracking-tight leading-none">Galeri Sesi</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={exportBulkPhotos}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white text-[#0C1E35] hover:bg-white/90 rounded-xl text-sm font-semibold transition-colors"
-              title="Download semua foto"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Ekspor Foto ({photos.length})
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onViewReport?.(session)}
-              className="flex items-center gap-2 px-4 py-2.5 border border-white/20 text-white hover:bg-white/10 rounded-xl text-sm font-semibold transition-colors"
-              title="Lihat laporan sesi"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              Lihat Laporan
-            </motion.button>
-            <div className="px-4 py-2 bg-white/10 rounded-xl border border-white/10">
-              <span className="text-sm font-semibold text-white/60 uppercase tracking-wider">
-                SESSION ID: <span className="text-white">{session.id.substring(0, 8)}</span>
-              </span>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          <div className="max-w-7xl mx-auto space-y-10">
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/10">
-                    <FileImage className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Koleksi Foto <span className="text-white/30 ml-2">({photos.length})</span></h2>
-                </div>
-              </div>
-              
-              {photos.length === 0 ? (
-                <div className="bg-white/5 border border-dashed border-white/10 rounded-2xl p-16 text-center">
-                  <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <FileImage className="w-8 h-8 text-white/20" />
-                  </div>
-                  <p className="text-sm text-white/40">Tidak ada foto dalam sesi ini</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                  {photos.map((photo, i) => (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      key={photo.id}
-                      className="group relative bg-white/5 rounded-2xl overflow-hidden border border-white/10 hover:border-white/20 transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
-                    >
-                      <div className="aspect-video bg-black/20 relative">
-                        <img src={photo.url} alt="Capture" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm">
-                          <motion.button 
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setEditingPhoto(photo)}
-                            className="p-3 bg-white text-[#0C1E35] hover:bg-white/90 rounded-2xl transition-all shadow-xl"
-                            title="Edit Marker"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </motion.button>
-                          <motion.button 
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => downloadMedia(photo.url, 'image')}
-                            className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all shadow-xl border border-white/10"
-                            title="Download"
-                          >
-                            <Download className="w-4 h-4" />
-                          </motion.button>
-                          <motion.button 
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setMediaToDelete(photo.id)}
-                            className="p-3 bg-red-600 hover:bg-red-500 rounded-2xl text-white transition-all shadow-xl"
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </motion.button>
-                        </div>
-                      </div>
-                      <div className="p-5 flex justify-between items-center">
-                        <span className="text-xs text-white/40">{photo.timestamp.toLocaleTimeString()}</span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/10">
-                    <FileVideo className="w-5 h-5 text-red-400" />
-                  </div>
-                  <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Rekaman Video <span className="text-white/30 ml-2">({videos.length})</span></h2>
-                </div>
-              </div>
-
-              {videos.length === 0 ? (
-                <div className="bg-white/5 border border-dashed border-white/10 rounded-2xl p-16 text-center">
-                  <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <FileVideo className="w-8 h-8 text-white/20" />
-                  </div>
-                  <p className="text-sm text-white/40">Tidak ada rekaman video dalam sesi ini</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {videos.map((video, i) => (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      key={video.id}
-                      className="group relative bg-white/5 rounded-2xl overflow-hidden border border-white/10 hover:border-white/20 transition-all hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
-                    >
-                      <div className="aspect-video bg-black/20 relative">
-                        <video src={video.url} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm">
-                          <motion.button 
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => downloadMedia(video.url, 'video')}
-                            className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all shadow-xl border border-white/10"
-                            title="Download"
-                          >
-                            <Download className="w-4 h-4" />
-                          </motion.button>
-                          <motion.button 
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setMediaToDelete(video.id)}
-                            className="p-3 bg-red-600 hover:bg-red-500 rounded-2xl text-white transition-all shadow-xl"
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </motion.button>
-                        </div>
-                      </div>
-                      <div className="p-5 flex justify-between items-center">
-                        <span className="text-xs text-white/40">{video.timestamp.toLocaleTimeString()}</span>
-                        <span className="px-2.5 py-0.5 bg-red-500/20 text-red-400 text-xs font-semibold rounded-full border border-red-500/20">H.265</span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
-        </main>
-      </div>
-
-      <div className="w-96 bg-[#0a1929] border-l border-white/10 flex flex-col h-full overflow-hidden shrink-0 relative z-20">
-        <div className="p-6 border-b border-white/10 shrink-0">
-          <h3 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Informasi Sesi</h3>
-          <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/10">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-medium text-white/40">Nama Pasien</span>
-              <span className="text-sm font-bold text-white">{session.patient.name}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-medium text-white/40">No. Rekam Medis</span>
-              <span className="text-sm font-bold text-white">{session.patient.rmNumber}</span>
-            </div>
-            <div className="h-px bg-white/10 my-1" />
-            <div className="flex justify-between items-start">
-              <span className="text-xs font-medium text-white/40">Tanggal</span>
-              <span className="text-xs text-white/70 text-right">{session.date.toLocaleDateString('id-ID')}</span>
-            </div>
-            <div className="flex justify-between items-start">
-              <span className="text-xs font-medium text-white/40">Prosedur</span>
-              <span className="text-xs text-white/70 text-right max-w-[140px] truncate">{session.patient.procedures.join(', ') || '-'}</span>
-            </div>
-            <div className="flex justify-between items-start">
-              <span className="text-xs font-medium text-white/40">Diagnosis</span>
-              <span className="text-xs text-white/70 text-right max-w-[140px] truncate">{session.patient.diagnosis || '-'}</span>
-            </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#F8FAFC', overflow: 'hidden', position: 'relative' }}>
+      <header style={{ backgroundColor: '#fff', borderBottom: '1px solid #E2E8F0', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onBack}
+            style={{ padding: 10, backgroundColor: '#fff', border: '1px solid #0C1E35', borderRadius: 12, color: '#0C1E35', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 150ms' }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; }}
+          >
+            <ArrowLeft style={{ width: 18, height: 18 }} />
+          </motion.button>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', marginBottom: 2 }}>
+              {session.patient.procedures.join(', ') || 'Prosedur'} &middot; {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+            <h1 className="font-aexon" style={{ fontSize: 18, fontWeight: 800, color: '#0C1E35', lineHeight: 1.2 }}>{session.patient.name}</h1>
           </div>
         </div>
 
-        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar">
-          <div>
-            <h4 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Statistik Media</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center hover:bg-white/10 transition-all duration-200">
-                <FileImage className="w-5 h-5 text-blue-400 mb-2" />
-                <span className="text-2xl font-bold text-white">{photos.length}</span>
-                <span className="text-xs font-medium text-white/50 mt-1">Foto</span>
-              </div>
-              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center hover:bg-white/10 transition-all duration-200">
-                <FileVideo className="w-5 h-5 text-red-400 mb-2" />
-                <span className="text-2xl font-bold text-white">{videos.length}</span>
-                <span className="text-xs font-medium text-white/50 mt-1">Video</span>
-              </div>
-            </div>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4 }}>
+          {tabItems.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setSelectedIds([]); }}
+              style={{
+                padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: activeTab === tab.id ? 700 : 500,
+                backgroundColor: activeTab === tab.id ? '#fff' : 'transparent',
+                color: activeTab === tab.id ? '#0C1E35' : '#94A3B8',
+                boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 150ms', fontFamily: 'Outfit, sans-serif',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              {tab.label}
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+                backgroundColor: activeTab === tab.id ? '#EFF6FF' : '#E2E8F0',
+                color: activeTab === tab.id ? '#0C1E35' : '#94A3B8',
+              }}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
 
-          <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-            <h4 className="text-xs font-medium text-white/40 mb-2">Catatan Sesi</h4>
-            <p className="text-xs text-white/50 leading-relaxed">
-              Data sesi ini telah tersimpan secara aman di penyimpanan lokal dan dapat diakses kapan saja melalui dashboard riwayat.
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {selectedIds.length > 0 ? (
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={exportSelected}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', backgroundColor: '#0C1E35', color: '#fff', border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Outfit, sans-serif' }}
+            >
+              <Download style={{ width: 14, height: 14 }} />
+              Export Pilihan ({selectedIds.length})
+            </motion.button>
+          ) : (
+            <>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={exportBulkPhotos}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', backgroundColor: '#fff', color: '#0C1E35', border: '1px solid #0C1E35', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif' }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; }}
+              >
+                <Download style={{ width: 14, height: 14 }} />
+                Ekspor Foto ({photos.length})
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => onViewReport?.(session)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', backgroundColor: '#fff', color: '#0C1E35', border: '1px solid #0C1E35', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif' }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; }}
+              >
+                <FileText style={{ width: 14, height: 14 }} />
+                Lihat Laporan
+              </motion.button>
+            </>
+          )}
+        </div>
+      </header>
+
+      <main className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        {activeItems.length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, backgroundColor: '#EFF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              {activeTab === 'photos' ? <FileImage style={{ width: 28, height: 28, color: '#94A3B8' }} /> : <FileVideo style={{ width: 28, height: 28, color: '#94A3B8' }} />}
+            </div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#94A3B8', marginBottom: 4 }}>
+              Tidak ada {activeTab === 'photos' ? 'foto' : 'video'} dalam sesi ini
+            </p>
+            <p style={{ fontSize: 12, color: '#CBD5E1' }}>
+              Media akan muncul di sini setelah Anda melakukan capture
             </p>
           </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+            {activeItems.map((item, i) => {
+              const isSelected = selectedIds.includes(item.id);
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  key={item.id}
+                  style={{
+                    backgroundColor: isSelected ? '#EFF6FF' : '#fff',
+                    borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
+                    border: isSelected ? '2px solid #0C1E35' : '2px solid #E2E8F0',
+                    transition: 'all 150ms',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.borderColor = '#0C1E35'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; } }}
+                  onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none'; } }}
+                >
+                  <div style={{ position: 'relative', aspectRatio: '16/10', backgroundColor: '#F1F5F9' }}>
+                    {item.type === 'image' ? (
+                      <img src={item.url} alt="Capture" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <video src={item.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    )}
+
+                    <div
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
+                      style={{
+                        position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 8,
+                        border: isSelected ? 'none' : '2px solid rgba(255,255,255,0.6)',
+                        backgroundColor: isSelected ? '#0C1E35' : 'rgba(0,0,0,0.2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', zIndex: 5,
+                      }}
+                    >
+                      {isSelected && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        position: 'absolute', inset: 0,
+                        background: 'rgba(0,0,0,0.45)',
+                        opacity: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        transition: 'opacity 150ms', backdropFilter: 'blur(2px)',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = '0'; }}
+                    >
+                      {item.type === 'image' && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => { e.stopPropagation(); setEditingPhoto(item); }}
+                          style={{ padding: 10, backgroundColor: '#fff', color: '#0C1E35', borderRadius: 12, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                        >
+                          <Edit3 style={{ width: 16, height: 16 }} />
+                        </motion.button>
+                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => { e.stopPropagation(); downloadMedia(item.url, item.type); }}
+                        style={{ padding: 10, backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 12, border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Download style={{ width: 16, height: 16 }} />
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => { e.stopPropagation(); setMediaToDelete(item.id); }}
+                        style={{ padding: 10, backgroundColor: '#EF4444', color: '#fff', borderRadius: 12, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Trash2 style={{ width: 16, height: 16 }} />
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>{item.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#64748B', padding: '2px 8px', backgroundColor: '#F1F5F9', borderRadius: 6 }}>
+                      {item.type === 'image' ? 'PNG' : 'MP4'}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      <div style={{ backgroundColor: '#fff', borderTop: '1px solid #E2E8F0', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={exportBulkPhotos}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px',
+              backgroundColor: '#0D9488', color: '#fff', border: 'none', borderRadius: 12,
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(13,148,136,0.2)',
+              transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#0F766E'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0D9488'; }}
+          >
+            <Download style={{ width: 16, height: 16 }} />
+            Export Pasien
+          </button>
+          <button
+            onClick={() => onViewReport?.(session)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px',
+              backgroundColor: '#0C1E35', color: '#fff', border: 'none', borderRadius: 12,
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(12,30,53,0.25)',
+              transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
+          >
+            <FileText style={{ width: 16, height: 16 }} />
+            Lihat Laporan
+          </button>
         </div>
 
-        <div className="p-6 border-t border-white/10">
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onBack}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-[#0C1E35] text-sm font-bold rounded-xl hover:bg-white/90 transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Kembali ke Dashboard
-          </motion.button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '8px 14px' }}>
+            <span style={{ fontSize: 11, color: '#64748B' }}>
+              <strong style={{ color: '#0C1E35' }}>{photos.length}</strong> foto &middot; <strong style={{ color: '#0C1E35' }}>{videos.length}</strong> video
+            </span>
+          </div>
+          <div style={{ backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, padding: '8px 14px' }}>
+            <span style={{ fontSize: 11, color: '#94A3B8' }}>
+              Session: <strong style={{ color: '#0C1E35' }}>{session.id.substring(0, 8)}</strong>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -335,38 +350,42 @@ export default function Gallery({ session, onBack, onUpdateSession, onViewReport
 
       <AnimatePresence>
         {mediaToDelete && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMediaToDelete(null)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-2xl p-8 shadow-xl overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              style={{ position: 'relative', width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 20, padding: 32, boxShadow: '0 25px 50px rgba(0,0,0,0.15)', overflow: 'hidden' }}
             >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-4 border border-red-100">
-                  <AlertTriangle className="w-7 h-7 text-red-600" />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <div style={{ width: 56, height: 56, backgroundColor: '#FEF2F2', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid #FECACA' }}>
+                  <AlertTriangle style={{ width: 28, height: 28, color: '#DC2626' }} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Hapus Media?</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-8">
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0C1E35', marginBottom: 8 }}>Hapus Media?</h3>
+                <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, marginBottom: 28 }}>
                   Apakah Anda yakin ingin menghapus media ini? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
                 </p>
-                <div className="flex gap-3 w-full">
+                <div style={{ display: 'flex', gap: 12, width: '100%' }}>
                   <button
                     onClick={() => setMediaToDelete(null)}
-                    className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm rounded-xl transition-all"
+                    style={{ flex: 1, padding: '12px 0', backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 700, fontSize: 13, borderRadius: 12, border: 'none', cursor: 'pointer', transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#E2E8F0'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F1F5F9'; }}
                   >
                     Batal
                   </button>
                   <button
                     onClick={confirmDeleteMedia}
-                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl transition-all"
+                    style={{ flex: 1, padding: '12px 0', backgroundColor: '#DC2626', color: '#fff', fontWeight: 700, fontSize: 13, borderRadius: 12, border: 'none', cursor: 'pointer', transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#B91C1C'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#DC2626'; }}
                   >
                     Hapus Permanen
                   </button>

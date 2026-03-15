@@ -38,7 +38,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
     brightness: 100,
     contrast: 100,
     saturation: 100,
-    whiteBalance: 0, // Simulated as a hue-rotate or sepia/blue tint
+    whiteBalance: 0,
   });
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -110,8 +110,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
       return;
     }
 
-    // Logic to select items within the box
-    const galleryItems = document.querySelectorAll('.gallery-item');
+    const galleryItems = document.querySelectorAll('[data-gallery-item]');
     const newSelectedIds = [...selectedCaptureIds];
 
     galleryItems.forEach(item => {
@@ -192,7 +191,6 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
   useEffect(() => {
     getDevices();
     
-    // Add keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         e.preventDefault();
@@ -212,7 +210,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
       stopCamera();
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isRecording]); // Re-bind when isRecording changes
+  }, [isRecording]);
 
   useEffect(() => {
     if (selectedDeviceId) {
@@ -222,7 +220,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
 
   const getDevices = async () => {
     try {
-      await navigator.mediaDevices.getUserMedia({ video: true }); // Request permission first
+      await navigator.mediaDevices.getUserMedia({ video: true });
       const allDevices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
       setDevices(videoDevices);
@@ -286,7 +284,6 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
       
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Apply mirroring fix to capture as well
         ctx.save();
         ctx.scale(-1, 1);
         ctx.translate(-canvas.width, 0);
@@ -304,11 +301,9 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
         
         setCaptures(prev => [newCapture, ...prev]);
         
-        // Trigger visual flash
         setIsFlashActive(true);
         setTimeout(() => setIsFlashActive(false), 150);
         
-        // Always show notification
         setShowCaptureNotification(true);
         setTimeout(() => setShowCaptureNotification(false), 2000);
       }
@@ -317,7 +312,6 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
 
   const handleStartRecording = useCallback(() => {
     if (stream) {
-      // Try to use MP4 if supported, fallback to HEVC/VP9 or default
       const mimeTypes = [
         'video/mp4;codecs=hvc1',
         'video/mp4;codecs=avc1',
@@ -331,7 +325,7 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
       
       const recorder = new MediaRecorder(stream, { 
         mimeType: selectedMimeType,
-        videoBitsPerSecond: 3500000 // 3.5 Mbps
+        videoBitsPerSecond: 3500000
       });
       const chunks: Blob[] = [];
 
@@ -373,10 +367,8 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
     const a = document.createElement('a');
     a.href = url;
     
-    // Determine extension based on blob type if possible, or default to MP4 for video as requested
     let extension = type === 'image' ? 'png' : 'mp4';
     if (type === 'video' && url.startsWith('blob:')) {
-      // We can't easily get the type from the URL, but we know we preferred H.265
     }
     
     a.download = customName || `endo_capture_${new Date().getTime()}.${extension}`;
@@ -388,11 +380,10 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
   const downloadAllMedia = () => {
     if (captures.length === 0) return;
     
-    // Simple sequential download to avoid browser blocking multiple popups
     captures.forEach((capture, index) => {
       setTimeout(() => {
         downloadMedia(capture.url, capture.type, `endo_${patientData.rmNumber}_${index + 1}.${capture.type === 'image' ? 'png' : 'webm'}`);
-      }, index * 300); // 300ms delay between each download
+      }, index * 300);
     });
   };
 
@@ -415,7 +406,6 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
         handleStopRecording();
       }
       
-      // Create session object
       const session: Session = {
         id: `session_${Date.now()}`,
         date: new Date(),
@@ -428,461 +418,401 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
       setShowFinishConfirmation(false);
     } catch (err) {
       console.error("Error finishing session:", err);
-      // Ensure we close the modal even if something fails
       setShowFinishConfirmation(false);
     }
   };
 
-  return (
-    <div className="flex-1 flex flex-col font-sans text-slate-900 bg-slate-50 h-full overflow-hidden relative">
-      {/* Background Elements */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <Pattern className="text-blue-500 opacity-[0.03]" />
-      </div>
+  const galleryPhotos = captures.filter(c => c.type === 'image');
+  const galleryVideos = captures.filter(c => c.type === 'video');
 
-      {/* Header / Top Bar */}
-      <header className="h-24 border-b border-slate-200 bg-white/80 backdrop-blur-3xl flex items-center justify-between px-10 shrink-0 z-[100] relative">
-        <div className="flex items-center space-x-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-slate-900/10">
-            <Camera className="w-7 h-7 text-white" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="px-3 py-1 bg-[#0C1E35]/10 border border-blue-500/20 rounded-full">
-                <span className="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em]">Sesi Aktif</span>
-              </div>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">RM: {patientData.rmNumber}</span>
-            </div>
-            <h1 className="text-3xl font-black tracking-tighter text-slate-900 leading-none">{patientData.name}</h1>
-          </div>
+  const selectStyle: React.CSSProperties = {
+    backgroundColor: 'transparent', fontSize: 11, color: '#475569', fontWeight: 700,
+    border: 'none', outline: 'none', appearance: 'none' as const, cursor: 'pointer',
+    paddingRight: 24, fontFamily: 'Outfit, sans-serif', width: '100%',
+  };
+
+  const tabLabels: Record<string, string> = { photos: 'Foto', videos: 'Video', utility: 'Utility' };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#F8FAFC', overflow: 'hidden', position: 'relative', fontFamily: 'Outfit, sans-serif' }}>
+      <header style={{ backgroundColor: '#fff', borderBottom: '1px solid #E2E8F0', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, zIndex: 100, position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: '#0C1E35', letterSpacing: '-0.02em' }}>{patientData.name}</h1>
+          <span style={{ padding: '4px 12px', backgroundColor: '#EFF6FF', color: '#0C1E35', fontSize: 11, fontWeight: 700, borderRadius: 8, border: '1px solid #DBEAFE' }}>
+            {patientData.procedures[0] || 'Prosedur'}
+          </span>
+          <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>RM: {patientData.rmNumber}</span>
         </div>
 
-        <div className="flex items-center space-x-6">
-          {/* Settings Group */}
-          <div className="flex items-center bg-slate-100 rounded-2xl border border-slate-200 p-1.5">
-            <div className="relative flex items-center px-4 py-2.5">
-              <Maximize className="w-4 h-4 text-slate-400 mr-3" />
-              <select 
-                value={selectedResolution}
-                onChange={(e) => setSelectedResolution(e.target.value as any)}
-                className="bg-transparent text-[10px] text-slate-600 font-black uppercase tracking-widest focus:outline-none appearance-none pr-8 cursor-pointer"
-              >
-                <option value="480p" className="bg-white">480p SD</option>
-                <option value="720p" className="bg-white">720p HD</option>
-                <option value="1080p" className="bg-white">1080p FHD</option>
-                <option value="4K" className="bg-white">4K UHD</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
-            </div>
-            <div className="w-px h-6 bg-slate-200" />
-            <div className="relative flex items-center px-4 py-2.5">
-              <Camera className="w-4 h-4 text-slate-400 mr-3" />
-              <select 
-                value={selectedDeviceId}
-                onChange={(e) => setSelectedDeviceId(e.target.value)}
-                className="bg-transparent text-[10px] text-slate-600 font-black uppercase tracking-widest focus:outline-none appearance-none pr-8 cursor-pointer max-w-[160px]"
-              >
-                {devices.map(device => (
-                  <option key={device.deviceId} value={device.deviceId} className="bg-white">
-                    {device.label || `Camera ${device.deviceId.substring(0, 5)}...`}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #E2E8F0', borderRadius: 10, padding: '4px 12px', position: 'relative' }}>
+            <Maximize style={{ width: 14, height: 14, color: '#94A3B8' }} />
+            <select
+              value={selectedResolution}
+              onChange={(e) => setSelectedResolution(e.target.value as any)}
+              style={{ ...selectStyle, maxWidth: 80 }}
+            >
+              <option value="480p">480p</option>
+              <option value="720p">720p</option>
+              <option value="1080p">1080p</option>
+              <option value="4K">4K</option>
+            </select>
+            <ChevronDown style={{ width: 12, height: 12, color: '#94A3B8', position: 'absolute', right: 8, pointerEvents: 'none' }} />
           </div>
-          
-          <motion.button 
-            whileHover={{ scale: 1.02, y: -2 }}
-            whileTap={{ scale: 0.98 }}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, border: '1px solid #E2E8F0', borderRadius: 10, padding: '4px 12px', position: 'relative', maxWidth: 200 }}>
+            <Camera style={{ width: 14, height: 14, color: '#94A3B8', flexShrink: 0 }} />
+            <select
+              value={selectedDeviceId}
+              onChange={(e) => setSelectedDeviceId(e.target.value)}
+              style={{ ...selectStyle, maxWidth: 140 }}
+            >
+              {devices.map(device => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label || `Camera ${device.deviceId.substring(0, 5)}...`}
+                </option>
+              ))}
+            </select>
+            <ChevronDown style={{ width: 12, height: 12, color: '#94A3B8', position: 'absolute', right: 8, pointerEvents: 'none' }} />
+          </div>
+
+          <button
             onClick={handleFinishSession}
-            className="flex items-center px-8 py-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-2xl shadow-blue-600/30 cursor-pointer"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+              backgroundColor: '#fff', color: '#DC2626', border: '1px solid #FECACA',
+              borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              transition: 'all 150ms', fontFamily: 'Outfit, sans-serif',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; }}
           >
-            <CheckCircle2 className="w-5 h-5 mr-3" />
-            SELESAIKAN SESI
-          </motion.button>
+            <CheckCircle2 style={{ width: 16, height: 16 }} />
+            Selesaikan Sesi
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 flex overflow-hidden relative z-10">
-        {/* Main Viewfinder Area */}
-        <div ref={containerRef} className="flex-1 relative flex flex-col bg-black">
+      <main style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 10 }}>
+        <div ref={containerRef} style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', backgroundColor: '#1a1a2e', margin: '16px 0 16px 24px', borderRadius: 20, overflow: 'hidden' }}>
           {error && (
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 bg-red-500 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center text-xs font-black uppercase tracking-widest border border-red-400/50">
-              <AlertCircle className="w-4 h-4 mr-3" />
+            <div style={{
+              position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
+              backgroundColor: '#DC2626', color: '#fff', padding: '10px 20px', borderRadius: 12,
+              boxShadow: '0 8px 24px rgba(220,38,38,0.3)', display: 'flex', alignItems: 'center', gap: 8,
+              fontSize: 12, fontWeight: 700,
+            }}>
+              <AlertCircle style={{ width: 16, height: 16 }} />
               {error}
             </div>
           )}
 
-          <div className="flex-1 relative overflow-hidden flex items-center justify-center">
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              className="w-full h-full object-contain transition-all duration-300"
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
               style={{
+                width: '100%', height: '100%', objectFit: 'contain',
+                transition: 'all 300ms',
                 filter: `brightness(${utilitySettings.brightness}%) contrast(${utilitySettings.contrast}%) saturate(${utilitySettings.saturation}%) hue-rotate(${utilitySettings.whiteBalance}deg)`,
-                transform: 'scaleX(-1)'
+                transform: 'scaleX(-1)',
               }}
             />
-            
-            {/* Flash Effect Overlay */}
+
             <AnimatePresence>
               {isFlashActive && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0.8 }}
                   animate={{ opacity: 0 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-white z-[60] pointer-events-none"
+                  style={{ position: 'absolute', inset: 0, backgroundColor: '#fff', zIndex: 60, pointerEvents: 'none' }}
                 />
               )}
             </AnimatePresence>
-            
-            {/* Recording Indicator */}
+
+            <div style={{ position: 'absolute', top: 12, left: 12, padding: '4px 10px', backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', borderRadius: 8, fontSize: 11, fontWeight: 700, zIndex: 10 }}>
+              {selectedResolution}
+            </div>
+
             {isRecording && (
-              <div className="absolute top-8 right-8 flex items-center space-x-4 bg-red-500/20 backdrop-blur-xl px-6 py-3 rounded-2xl border border-red-500/30 z-50 shadow-2xl">
-                <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
-                <span className="text-red-100 font-mono text-sm tracking-[0.2em] font-black">REC {formatTime(recordingTime)}</span>
+              <div style={{
+                position: 'absolute', top: 12, right: 12,
+                backgroundColor: '#fff', borderRadius: 20, padding: '10px 20px',
+                display: 'flex', alignItems: 'center', gap: 10, zIndex: 50,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#DC2626', display: 'inline-block', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#DC2626' }}>REC</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0C1E35', fontFamily: 'monospace' }}>{formatTime(recordingTime)}</span>
               </div>
             )}
 
-            {/* Capture Notification */}
             <AnimatePresence>
               {showCaptureNotification && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -20, x: '-50%' }}
-                  animate={{ opacity: 1, y: 0, x: '-50%' }}
-                  exit={{ opacity: 0, y: -20, x: '-50%' }}
-                  className="absolute top-8 left-1/2 flex items-center space-x-4 bg-emerald-600 backdrop-blur-xl px-8 py-4 rounded-3xl border border-emerald-400/30 z-[70] shadow-2xl"
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  style={{
+                    position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+                    backgroundColor: '#059669', color: '#fff', padding: '10px 20px', borderRadius: 16,
+                    display: 'flex', alignItems: 'center', gap: 10, zIndex: 70,
+                    boxShadow: '0 8px 24px rgba(5,150,105,0.3)',
+                  }}
                 >
-                  <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                    <Camera className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-white font-black text-[10px] uppercase tracking-[0.2em] leading-none mb-1">Capture Success</span>
-                    <span className="text-emerald-50 text-xs font-bold">Foto berhasil disimpan ke galeri</span>
-                  </div>
+                  <Camera style={{ width: 16, height: 16 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>Foto berhasil disimpan</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Crosshair / Center Mark */}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-20">
-              <div className="w-20 h-20 border border-white/50 rounded-full flex items-center justify-center">
-                <div className="w-1 h-1 bg-white rounded-full shadow-[0_0_10px_white]" />
+            <div style={{ position: 'absolute', bottom: 12, left: 16, display: 'flex', gap: 8, opacity: 0.5, pointerEvents: 'none' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#fff', backgroundColor: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <kbd style={{ fontFamily: 'monospace', backgroundColor: 'rgba(255,255,255,0.2)', padding: '1px 6px', borderRadius: 4, fontSize: 10 }}>Space</kbd> Foto
+              </div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#fff', backgroundColor: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <kbd style={{ fontFamily: 'monospace', backgroundColor: 'rgba(255,255,255,0.2)', padding: '1px 6px', borderRadius: 4, fontSize: 10 }}>R</kbd> Rekam
               </div>
             </div>
-            
-            {/* Keyboard Shortcuts Hint */}
-            <div className="absolute bottom-6 left-8 flex space-x-6 opacity-40 pointer-events-none">
-              <div className="flex items-center text-[10px] font-black uppercase tracking-widest text-white bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5">
-                <kbd className="font-mono bg-white/20 px-2 py-0.5 rounded-lg mr-2">Space</kbd> Foto
-              </div>
-              <div className="flex items-center text-[10px] font-black uppercase tracking-widest text-white bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5">
-                <kbd className="font-mono bg-white/20 px-2 py-0.5 rounded-lg mr-2">R</kbd> Rekam
-              </div>
-            </div>
-          </div>
-
-          {/* Controls Bar */}
-          <div className="h-32 bg-white/80 backdrop-blur-3xl border-t border-slate-200 flex items-center justify-center space-x-16 px-16 shrink-0 relative z-10">
-            <motion.button 
-              whileHover={{ scale: 1.1, rotate: 180 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => startCamera(selectedDeviceId)}
-              className="p-5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-900 transition-all border border-slate-200"
-              title="Refresh Camera"
-            >
-              <RefreshCw className="w-7 h-7" />
-            </motion.button>
-
-            <div className="flex items-center space-x-12">
-              <motion.button 
-                whileHover={{ scale: 1.05, y: -4 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleCapturePhoto}
-                className="w-24 h-24 rounded-[2.5rem] bg-white hover:bg-slate-50 flex items-center justify-center shadow-xl border border-slate-200 transition-all relative group"
-                title="Capture Photo (Space)"
-              >
-                <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-0 group-hover:opacity-10 transition-opacity" />
-                <div className="w-20 h-20 rounded-[2rem] border-2 border-slate-900 flex items-center justify-center relative z-10">
-                  <Camera className="w-10 h-10 text-slate-900" />
-                </div>
-              </motion.button>
-
-              <motion.button 
-                whileHover={{ scale: 1.05, y: -4 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={isRecording ? handleStopRecording : handleStartRecording}
-                className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center transition-all shadow-2xl relative group ${
-                  isRecording 
-                    ? 'bg-slate-900 border-2 border-red-500 shadow-red-500/20' 
-                    : 'bg-red-600 hover:bg-red-500 shadow-red-600/30'
-                }`}
-                title={isRecording ? "Stop Recording (R)" : "Start Recording (R)"}
-              >
-                <div className={`absolute inset-0 bg-red-500 blur-3xl opacity-0 ${isRecording ? 'opacity-30 animate-pulse' : 'group-hover:opacity-20'} transition-opacity`} />
-                {isRecording ? (
-                  <Square className="w-10 h-10 text-red-500 fill-current relative z-10" />
-                ) : (
-                  <div className="w-20 h-20 rounded-[2rem] border-2 border-white/40 flex items-center justify-center relative z-10">
-                    <Video className="w-10 h-10 text-white" />
-                  </div>
-                )}
-              </motion.button>
-            </div>
-
-            <motion.button 
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={toggleFullscreen}
-              className="p-5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-900 transition-all border border-slate-200"
-              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            >
-              {isFullscreen ? <Minimize className="w-7 h-7" /> : <Maximize className="w-7 h-7" />}
-            </motion.button>
           </div>
         </div>
 
-        {/* Sidebar Gallery */}
-        <div className="w-96 bg-white border-l border-slate-200 flex flex-col h-full overflow-hidden relative">
-          {/* Patient Info Box */}
-          <div className="p-6 bg-gradient-to-br from-blue-600 to-indigo-800 text-white shrink-0 shadow-2xl relative z-30 m-5 rounded-[2.5rem] border border-blue-400/20 overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/20 transition-colors" />
-            <div className="flex items-center justify-between mb-6 relative z-10">
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/20 shadow-inner">
-                  <Info className="w-7 h-7 text-white" />
+        <div style={{ width: 384, backgroundColor: '#fff', borderLeft: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+          <div style={{ padding: 16, margin: 16, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 16, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isSessionInfoCollapsed ? 0 : 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, backgroundColor: '#EFF6FF', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Info style={{ width: 18, height: 18, color: '#3B82F6' }} />
                 </div>
                 <div>
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] leading-none mb-2 text-blue-200">Informasi Sesi</h3>
-                  <p className="text-xl font-black tracking-tight">Detail Klinis</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Informasi Sesi</p>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: '#0C1E35' }}>Detail Klinis</p>
                 </div>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+              <button
                 onClick={() => setIsSessionInfoCollapsed(!isSessionInfoCollapsed)}
-                className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center border border-white/10 transition-colors"
+                style={{ width: 28, height: 28, backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background-color 150ms' }}
               >
-                <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isSessionInfoCollapsed ? 'rotate-180' : ''}`} />
-              </motion.button>
+                <ChevronDown style={{ width: 14, height: 14, color: '#94A3B8', transition: 'transform 300ms', transform: isSessionInfoCollapsed ? 'rotate(180deg)' : 'none' }} />
+              </button>
             </div>
-            
+
             <AnimatePresence initial={false}>
               {!isSessionInfoCollapsed && (
-                <motion.div 
+                <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="overflow-hidden relative z-10"
+                  style={{ overflow: 'hidden' }}
                 >
-                  <div className="space-y-4 bg-black/10 p-6 rounded-[1.5rem] backdrop-blur-md border border-white/5">
-                    <div className="flex justify-between items-start">
-                      <span className="text-[9px] font-black text-blue-200 uppercase tracking-widest">Waktu</span>
-                      <span className="text-[11px] font-black text-right">{new Date().toLocaleDateString('id-ID')} • {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <div className="w-full h-px bg-white/5" />
-                    <div className="flex justify-between items-start">
-                      <span className="text-[9px] font-black text-blue-200 uppercase tracking-widest">Prosedur</span>
-                      <span className="text-[11px] font-black text-right max-w-[160px] truncate">{patientData.procedures[0] || '-'}</span>
-                    </div>
-                    <div className="w-full h-px bg-white/5" />
-                    <div className="flex justify-between items-start">
-                      <span className="text-[9px] font-black text-blue-200 uppercase tracking-widest">Diagnosis</span>
-                      <span className="text-[11px] font-black text-right max-w-[160px] truncate">{patientData.diagnosis || '-'}</span>
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 0 4px' }}>
+                    {[
+                      { label: 'Waktu', value: `${new Date().toLocaleDateString('id-ID')} • ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` },
+                      { label: 'Prosedur', value: patientData.procedures[0] || '-' },
+                      { label: 'Diagnosis', value: patientData.diagnosis || '-' },
+                    ].map((row, ri) => (
+                      <div key={ri}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>{row.label}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#0C1E35', textAlign: 'right', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.value}</span>
+                        </div>
+                        {ri < 2 && <div style={{ height: 1, backgroundColor: '#E2E8F0', margin: '8px 0' }} />}
+                      </div>
+                    ))}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Gallery Tabs */}
-          <div className="flex px-5 gap-3 mb-6 shrink-0">
-            {['photos', 'videos', 'utility'].map((tab) => (
-              <button 
-                key={tab}
-                onClick={() => setActiveGalleryTab(tab as any)}
-                className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all border ${
-                  activeGalleryTab === tab 
-                    ? 'bg-[#0C1E35] text-white border-blue-600 shadow-lg shadow-slate-900/10' 
-                    : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexShrink: 0, backgroundColor: '#F1F5F9', borderRadius: 12, marginLeft: 16, marginRight: 16, padding: 4 }}>
+            {(['photos', 'videos', 'utility'] as const).map(tab => {
+              const count = tab === 'photos' ? galleryPhotos.length : tab === 'videos' ? galleryVideos.length : 0;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveGalleryTab(tab)}
+                  style={{
+                    flex: 1, padding: '8px 0', fontSize: 12, fontWeight: activeGalleryTab === tab ? 700 : 500,
+                    borderRadius: 8, border: 'none', cursor: 'pointer',
+                    backgroundColor: activeGalleryTab === tab ? '#fff' : 'transparent',
+                    color: activeGalleryTab === tab ? '#0C1E35' : '#94A3B8',
+                    boxShadow: activeGalleryTab === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 150ms', fontFamily: 'Outfit, sans-serif',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                  }}
+                >
+                  {tabLabels[tab]}
+                  {tab !== 'utility' && (
+                    <span style={{ fontSize: 9, fontWeight: 700, backgroundColor: activeGalleryTab === tab ? '#EFF6FF' : '#E2E8F0', color: activeGalleryTab === tab ? '#0C1E35' : '#94A3B8', padding: '1px 6px', borderRadius: 8 }}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="px-8 py-4 flex items-center justify-between shrink-0 relative z-20">
+          <div style={{ padding: '0 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <div>
-              <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                {activeGalleryTab === 'utility' ? 'System Settings' : `Galeri ${activeGalleryTab}`}
-              </h2>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
+                {activeGalleryTab === 'utility' ? 'Pengaturan' : `Galeri ${tabLabels[activeGalleryTab]}`}
+              </p>
               {activeGalleryTab !== 'utility' && (
-                <span className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-2 block">
-                  {captures.filter(c => activeGalleryTab === 'photos' ? c.type === 'image' : c.type === 'video').length} items {selectedCaptureIds.length > 0 && `• ${selectedCaptureIds.length} selected`}
-                </span>
+                <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>
+                  {captures.filter(c => activeGalleryTab === 'photos' ? c.type === 'image' : c.type === 'video').length} item
+                  {selectedCaptureIds.length > 0 && ` • ${selectedCaptureIds.length} dipilih`}
+                </p>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div style={{ display: 'flex', gap: 6 }}>
               {selectedCaptureIds.length > 0 ? (
-                <>
-                  <button 
-                    onClick={handleDeleteSelected}
-                    className="p-3 bg-red-50 text-red-600 hover:bg-red-100 rounded-2xl transition-all border border-red-100 shadow-sm"
-                    title="Hapus Terpilih"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </>
+                <button
+                  onClick={handleDeleteSelected}
+                  style={{ padding: 8, backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Trash2 style={{ width: 16, height: 16 }} />
+                </button>
               ) : (
                 activeGalleryTab !== 'utility' && captures.length > 0 && (
-                  <button 
+                  <button
                     onClick={downloadAllMedia}
-                    className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-2xl transition-all border border-slate-200"
-                    title="Download All"
+                    style={{ padding: 8, backgroundColor: '#F8FAFC', color: '#94A3B8', border: '1px solid #E2E8F0', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 150ms' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#0C1E35'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = '#94A3B8'; }}
                   >
-                    <Download className="w-5 h-5" />
+                    <Download style={{ width: 16, height: 16 }} />
                   </button>
                 )
               )}
             </div>
           </div>
-          
-          <div 
-            className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar relative select-none"
+
+          <div
+            className="custom-scrollbar"
+            style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px', position: 'relative', userSelect: 'none' }}
             onMouseDown={handleGalleryMouseDown}
             onMouseMove={handleGalleryMouseMove}
             onMouseUp={handleGalleryMouseUp}
           >
-            {/* Selection Box Visual */}
             {selectionBox && (
-              <div 
-                className="absolute border-2 border-blue-500 bg-blue-500/10 z-50 pointer-events-none"
+              <div
                 style={{
+                  position: 'absolute', border: '2px solid #3B82F6', backgroundColor: 'rgba(59,130,246,0.1)',
+                  zIndex: 50, pointerEvents: 'none',
                   left: Math.min(selectionBox.x1, selectionBox.x2),
                   top: Math.min(selectionBox.y1, selectionBox.y2),
                   width: Math.abs(selectionBox.x2 - selectionBox.x1),
-                  height: Math.abs(selectionBox.y2 - selectionBox.y1)
+                  height: Math.abs(selectionBox.y2 - selectionBox.y1),
                 }}
               />
             )}
+
             {activeGalleryTab === 'utility' ? (
-              <div className="space-y-10 py-4">
-                {/* Video Specs */}
-                <div className="space-y-5">
-                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center">
-                    <Info className="w-4 h-4 mr-3 text-blue-600" />
-                    Spesifikasi Video
-                  </h3>
-                  <div className="bg-slate-50 rounded-3xl p-6 space-y-4 border border-slate-200 backdrop-blur-md">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Format</span>
-                      <span className="text-[11px] font-black text-slate-900 uppercase tracking-wider">MP4 (H.265 HEVC)</span>
-                    </div>
-                    <div className="w-full h-px bg-slate-200" />
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bitrate</span>
-                      <span className="text-[11px] font-black text-slate-900 uppercase tracking-wider">3.5 Mbps</span>
-                    </div>
-                    <div className="w-full h-px bg-slate-200" />
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resolusi</span>
-                      <span className="text-[11px] font-black text-blue-600 uppercase tracking-wider">{selectedResolution}</span>
-                    </div>
-                    <div className="w-full h-px bg-slate-200" />
-                    <div className="space-y-4 pt-2">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estimasi Ukuran File</span>
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">~{calculateEstimatedSize(60)}/menit</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingTop: 8 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <Info style={{ width: 14, height: 14, color: '#3B82F6' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Spesifikasi Video</span>
+                  </div>
+                  <div style={{ backgroundColor: '#F8FAFC', borderRadius: 14, padding: 16, border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {[
+                      { label: 'Format', value: 'MP4 (H.265 HEVC)' },
+                      { label: 'Bitrate', value: '3.5 Mbps' },
+                      { label: 'Resolusi', value: selectedResolution, accent: true },
+                    ].map((row, ri) => (
+                      <div key={ri}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>{row.label}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: row.accent ? '#3B82F6' : '#0C1E35' }}>{row.value}</span>
+                        </div>
+                        {ri < 2 && <div style={{ height: 1, backgroundColor: '#E2E8F0', marginTop: 10 }} />}
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="p-2 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                          <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">15m</div>
-                          <div className="text-[10px] font-black text-slate-900">{calculateEstimatedSize(15 * 60)}</div>
-                        </div>
-                        <div className="p-2 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                          <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">30m</div>
-                          <div className="text-[10px] font-black text-slate-900">{calculateEstimatedSize(30 * 60)}</div>
-                        </div>
-                        <div className="p-2 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                          <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">60m</div>
-                          <div className="text-[10px] font-black text-slate-900">{calculateEstimatedSize(60 * 60)}</div>
-                        </div>
+                    ))}
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>Estimasi Ukuran</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#3B82F6' }}>~{calculateEstimatedSize(60)}/menit</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                        {[15, 30, 60].map(m => (
+                          <div key={m} style={{ padding: 8, backgroundColor: '#fff', borderRadius: 10, border: '1px solid #E2E8F0', textAlign: 'center' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', marginBottom: 2 }}>{m}m</div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#0C1E35' }}>{calculateEstimatedSize(m * 60)}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Storage Info */}
-                <div className="space-y-5">
-                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center">
-                    <HardDrive className="w-4 h-4 mr-3 text-indigo-600" />
-                    Lokasi Penyimpanan
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="relative flex items-center bg-slate-50 rounded-2xl border border-slate-200 px-5 py-3.5 backdrop-blur-md">
-                      <HardDrive className="w-4 h-4 text-slate-400 mr-3" />
-                      <select 
-                        value={selectedDrive}
-                        onChange={(e) => setSelectedDrive(e.target.value)}
-                        className="bg-transparent text-sm text-slate-600 font-bold focus:outline-none appearance-none pr-8 cursor-pointer w-full"
-                      >
-                        <option value="C:" className="bg-white">Local Disk (C:)</option>
-                        <option value="D:" className="bg-white">Data Storage (D:)</option>
-                        <option value="E:" className="bg-white">External Drive (E:)</option>
-                        <option value="F:" className="bg-white">Network Drive (F:)</option>
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-slate-400 absolute right-5 pointer-events-none" />
-                    </div>
-                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
-                      <p className="text-[10px] font-mono text-slate-400 break-all leading-relaxed">{selectedDrive}/Aexon/Exports/{new Date().getFullYear()}/{patientData.rmNumber}/</p>
-                    </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <HardDrive style={{ width: 14, height: 14, color: '#6366F1' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lokasi Penyimpanan</span>
+                  </div>
+                  <div style={{ position: 'relative', backgroundColor: '#F8FAFC', borderRadius: 12, border: '1px solid #E2E8F0', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <HardDrive style={{ width: 14, height: 14, color: '#94A3B8', flexShrink: 0 }} />
+                    <select
+                      value={selectedDrive}
+                      onChange={(e) => setSelectedDrive(e.target.value)}
+                      style={{ ...selectStyle, fontSize: 13 }}
+                    >
+                      <option value="C:">Local Disk (C:)</option>
+                      <option value="D:">Data Storage (D:)</option>
+                      <option value="E:">External Drive (E:)</option>
+                      <option value="F:">Network Drive (F:)</option>
+                    </select>
+                    <ChevronDown style={{ width: 12, height: 12, color: '#94A3B8', position: 'absolute', right: 12, pointerEvents: 'none' }} />
+                  </div>
+                  <div style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, border: '1px solid #E2E8F0' }}>
+                    <p style={{ fontSize: 11, fontFamily: 'monospace', color: '#94A3B8', wordBreak: 'break-all', lineHeight: 1.5 }}>
+                      {selectedDrive}/Aexon/Exports/{new Date().getFullYear()}/{patientData.rmNumber}/
+                    </p>
                   </div>
                 </div>
 
-                {/* Image Adjustments */}
-                <div className="space-y-8">
-                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center">
-                    <Sliders className="w-4 h-4 mr-3 text-emerald-600" />
-                    Penyesuaian Gambar
-                  </h3>
-                  
-                  <div className="space-y-6">
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                    <Sliders style={{ width: 14, height: 14, color: '#059669' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Penyesuaian Gambar</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {[
                       { label: 'Brightness', key: 'brightness', min: 50, max: 150 },
                       { label: 'Contrast', key: 'contrast', min: 50, max: 150 },
                       { label: 'Saturation', key: 'saturation', min: 50, max: 150 },
-                      { label: 'White Balance', key: 'whiteBalance', min: -180, max: 180 }
+                      { label: 'White Balance', key: 'whiteBalance', min: -180, max: 180 },
                     ].map((adj) => (
-                      <div key={adj.key} className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{adj.label}</label>
-                          <span className="text-[11px] font-black text-blue-600">{(utilitySettings as any)[adj.key]}{adj.key !== 'whiteBalance' ? '%' : ''}</span>
+                      <div key={adj.key}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>{adj.label}</label>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#0C1E35' }}>{(utilitySettings as any)[adj.key]}{adj.key !== 'whiteBalance' ? '%' : '°'}</span>
                         </div>
-                        <input 
+                        <input
                           type="range" min={adj.min} max={adj.max} value={(utilitySettings as any)[adj.key]}
                           onChange={(e) => setUtilitySettings(prev => ({ ...prev, [adj.key]: parseInt(e.target.value) }))}
-                          className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-blue-600"
+                          style={{ width: '100%', height: 4, borderRadius: 4, cursor: 'pointer', accentColor: '#0C1E35' }}
                         />
                       </div>
                     ))}
-
-                    <div className="pt-4 space-y-3">
-                      <button 
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                      <button
                         onClick={() => setUtilitySettings({ brightness: 100, contrast: 100, saturation: 100, whiteBalance: 0 })}
-                        className="w-full py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-900 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all border border-slate-200"
+                        style={{ width: '100%', padding: '10px 0', backgroundColor: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 150ms', fontFamily: 'Outfit, sans-serif' }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F1F5F9'; e.currentTarget.style.color = '#0C1E35'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.color = '#64748B'; }}
                       >
                         Reset Adjustments
                       </button>
-
-                      <button 
+                      <button
                         onClick={() => setUtilitySettings(prev => ({ ...prev, whiteBalance: 0 }))}
-                        className="w-full py-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-2xl shadow-slate-900/10"
+                        style={{ width: '100%', padding: '10px 0', backgroundColor: '#0C1E35', color: '#fff', border: 'none', borderRadius: 12, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif' }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                       >
                         Auto White Balance
                       </button>
@@ -891,115 +821,110 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
                 </div>
               </div>
             ) : (
-              <div className="space-y-5 py-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
                 {captures.filter(c => activeGalleryTab === 'photos' ? c.type === 'image' : c.type === 'video').length === 0 ? (
-                  <div className="h-80 flex flex-col items-center justify-center text-slate-600 space-y-5">
-                    <div className="w-20 h-20 bg-white/5 rounded-[2rem] flex items-center justify-center border border-white/5">
-                      {activeGalleryTab === 'photos' ? <FileImage className="w-10 h-10 opacity-30" /> : <FileVideo className="w-10 h-10 opacity-30" />}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', textAlign: 'center' }}>
+                    <div style={{ width: 56, height: 56, backgroundColor: '#EFF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                      {activeGalleryTab === 'photos' ? <FileImage style={{ width: 24, height: 24, color: '#94A3B8' }} /> : <FileVideo style={{ width: 24, height: 24, color: '#94A3B8' }} />}
                     </div>
-                    <p className="text-sm font-black uppercase tracking-[0.2em] opacity-40">Belum ada {activeGalleryTab}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#94A3B8' }}>Belum ada {tabLabels[activeGalleryTab].toLowerCase()}</p>
                   </div>
                 ) : (
                   captures
                     .filter(c => activeGalleryTab === 'photos' ? c.type === 'image' : c.type === 'video')
-                    .map((capture) => (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        key={capture.id} 
-                        data-id={capture.id}
-                        className={`gallery-item group relative bg-slate-50 rounded-3xl overflow-hidden border-2 transition-all shadow-sm ${
-                          selectedCaptureIds.includes(capture.id) ? 'border-blue-600 ring-4 ring-blue-600/10' : 'border-slate-100 hover:border-blue-200'
-                        }`}
-                        onClick={(e) => {
-                          if (e.ctrlKey || e.metaKey) {
-                            toggleCaptureSelection(capture.id);
-                          } else {
-                            setSelectedCaptureForReview(capture);
-                          }
-                        }}
-                      >
-                        <div className="aspect-video bg-slate-200 relative">
-                          {capture.type === 'image' ? (
-                            <img src={capture.url} alt="Capture" className="w-full h-full object-cover" />
-                          ) : (
-                            <video src={capture.url} className="w-full h-full object-cover" />
-                          )}
-                          
-                          {/* Selection Checkbox */}
-                          <div 
-                            className={`absolute top-3 right-3 w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-all z-20 ${
-                              selectedCaptureIds.includes(capture.id) 
-                                ? 'bg-[#0C1E35] border-blue-600 text-white shadow-lg' 
-                                : 'bg-black/20 border-white/20 opacity-0 group-hover:opacity-100 backdrop-blur-md'
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
+                    .map((capture) => {
+                      const isSelected = selectedCaptureIds.includes(capture.id);
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          key={capture.id}
+                          data-id={capture.id}
+                          data-gallery-item
+                          style={{
+                            backgroundColor: isSelected ? '#EFF6FF' : '#fff',
+                            borderRadius: 14, overflow: 'hidden',
+                            border: isSelected ? '2px solid #0C1E35' : '2px solid #E2E8F0',
+                            transition: 'all 150ms', cursor: 'pointer',
+                          }}
+                          onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderColor = '#0C1E35'; }}
+                          onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderColor = '#E2E8F0'; }}
+                          onClick={(e) => {
+                            if (e.ctrlKey || e.metaKey) {
                               toggleCaptureSelection(capture.id);
-                            }}
-                          >
-                            {selectedCaptureIds.includes(capture.id) && <CheckCircle2 className="w-4 h-4" />}
-                          </div>
-
-                          {/* Overlay Controls */}
-                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-3 backdrop-blur-sm">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedCaptureForReview(capture);
-                              }}
-                              className="w-10 h-10 bg-white/20 hover:bg-white/40 rounded-2xl text-white transition-all flex items-center justify-center border border-white/20"
-                              title="Review Capture"
-                            >
-                              <Maximize className="w-5 h-5" />
-                            </button>
-                            {capture.type === 'image' && (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingCapture(capture);
-                                }}
-                                className="w-10 h-10 bg-[#0C1E35] hover:bg-[#1a3a5c] rounded-2xl text-white transition-all flex items-center justify-center shadow-lg shadow-slate-900/10"
-                                title="Edit Marker"
-                              >
-                                <Edit3 className="w-5 h-5" />
-                              </button>
-                            )}
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                downloadMedia(capture.url, capture.type);
-                              }}
-                              className="w-10 h-10 bg-white/20 hover:bg-white/40 rounded-2xl text-white transition-all flex items-center justify-center border border-white/20"
-                              title="Download"
-                            >
-                              <Download className="w-5 h-5" />
-                            </button>
-                          </div>
-
-                          {/* Type Badge */}
-                          <div className="absolute top-3 left-3 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 flex items-center">
+                            } else {
+                              setSelectedCaptureForReview(capture);
+                            }
+                          }}
+                        >
+                          <div style={{ aspectRatio: '16/10', backgroundColor: '#F1F5F9', position: 'relative' }}>
                             {capture.type === 'image' ? (
-                              <Camera className="w-3.5 h-3.5 text-blue-400 mr-2" />
+                              <img src={capture.url} alt="Capture" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                             ) : (
-                              <Video className="w-3.5 h-3.5 text-red-500 mr-2" />
+                              <video src={capture.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                             )}
-                            <span className="text-[10px] font-black text-white uppercase tracking-widest">
-                              {capture.type}
+
+                            <div
+                              style={{
+                                position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 8,
+                                border: isSelected ? 'none' : '2px solid rgba(255,255,255,0.6)',
+                                backgroundColor: isSelected ? '#0C1E35' : 'rgba(0,0,0,0.2)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', zIndex: 20,
+                              }}
+                              onClick={(e) => { e.stopPropagation(); toggleCaptureSelection(capture.id); }}
+                            >
+                              {isSelected && <CheckCircle2 style={{ width: 14, height: 14, color: '#fff' }} />}
+                            </div>
+
+                            <div
+                              style={{
+                                position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.4)',
+                                opacity: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                transition: 'opacity 150ms', backdropFilter: 'blur(2px)',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
+                              onMouseLeave={e => { e.currentTarget.style.opacity = '0'; }}
+                            >
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setSelectedCaptureForReview(capture); }}
+                                style={{ width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 10, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <Maximize style={{ width: 16, height: 16 }} />
+                              </button>
+                              {capture.type === 'image' && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setEditingCapture(capture); }}
+                                  style={{ width: 36, height: 36, backgroundColor: '#0C1E35', border: 'none', borderRadius: 10, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
+                                >
+                                  <Edit3 style={{ width: 16, height: 16 }} />
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); downloadMedia(capture.url, capture.type); }}
+                                style={{ width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 10, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <Download style={{ width: 16, height: 16 }} />
+                              </button>
+                            </div>
+
+                            <div style={{ position: 'absolute', top: 8, left: 8, padding: '3px 8px', borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', gap: 4, backdropFilter: 'blur(4px)' }}>
+                              {capture.type === 'image' ? <Camera style={{ width: 12, height: 12, color: '#93C5FD' }} /> : <Video style={{ width: 12, height: 12, color: '#FCA5A5' }} />}
+                              <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', textTransform: 'uppercase' }}>{capture.type}</span>
+                            </div>
+                          </div>
+
+                          <div style={{ padding: '10px 14px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <p style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>
+                              {capture.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </p>
+                            <span style={{ padding: '2px 8px', backgroundColor: '#F8FAFC', color: '#64748B', fontSize: 10, fontWeight: 700, borderRadius: 6, border: '1px solid #E2E8F0' }}>
+                              {capture.type === 'image' ? 'PNG' : 'MP4'}
                             </span>
                           </div>
-                        </div>
-                        
-                        <div className="p-4 bg-white border-t border-slate-100 flex justify-between items-center">
-                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                            {capture.timestamp.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-1 bg-slate-50 text-slate-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-slate-200">{capture.type === 'image' ? 'PNG' : 'MP4'}</span>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))
+                        </motion.div>
+                      );
+                    })
                 )}
               </div>
             )}
@@ -1007,19 +932,90 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
         </div>
       </main>
 
-      {/* Image Editor Modal */}
+      <div style={{ backgroundColor: '#fff', borderTop: '1px solid #E2E8F0', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, flexShrink: 0 }}>
+        <motion.button
+          whileHover={{ scale: 1.1, rotate: 180 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => startCamera(selectedDeviceId)}
+          style={{ padding: 14, borderRadius: 14, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 150ms' }}
+        >
+          <RefreshCw style={{ width: 22, height: 22 }} />
+        </motion.button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleCapturePhoto}
+            style={{
+              width: 64, height: 64, borderRadius: '50%',
+              backgroundColor: '#0C1E35', border: 'none', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(12,30,53,0.35)',
+              transition: 'all 150ms',
+            }}
+          >
+            <Camera style={{ width: 28, height: 28 }} />
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={isRecording ? handleStopRecording : handleStartRecording}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 20px', borderRadius: 20,
+              backgroundColor: isRecording ? '#FEF2F2' : '#fff',
+              border: isRecording ? '1px solid #FECACA' : '1px solid #E2E8F0',
+              color: isRecording ? '#DC2626' : '#64748B',
+              cursor: 'pointer', fontSize: 13, fontWeight: 700,
+              transition: 'all 150ms', fontFamily: 'Outfit, sans-serif',
+            }}
+          >
+            {isRecording ? (
+              <>
+                <Square style={{ width: 14, height: 14, fill: '#DC2626' }} />
+                Berhenti ({formatTime(recordingTime)})
+              </>
+            ) : (
+              <>
+                <Video style={{ width: 16, height: 16 }} />
+                Rekam
+              </>
+            )}
+          </motion.button>
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={toggleFullscreen}
+          style={{ padding: 14, borderRadius: 14, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 150ms' }}
+        >
+          {isFullscreen ? <Minimize style={{ width: 22, height: 22 }} /> : <Maximize style={{ width: 22, height: 22 }} />}
+        </motion.button>
+      </div>
+
+      <div style={{ textAlign: 'center', padding: '4px 0 8px', backgroundColor: '#fff' }}>
+        <p style={{ fontSize: 11, color: '#94A3B8' }}>
+          <kbd style={{ fontFamily: 'monospace', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 4, fontSize: 10, border: '1px solid #E2E8F0' }}>Space</kbd> Foto &nbsp;&middot;&nbsp;
+          <kbd style={{ fontFamily: 'monospace', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 4, fontSize: 10, border: '1px solid #E2E8F0' }}>R</kbd> Rekam
+        </p>
+      </div>
+
       {editingCapture && (
         <ImageEditor
           imageUrl={editingCapture.originalUrl || editingCapture.url}
           initialShapes={editingCapture.shapes}
           onClose={() => setEditingCapture(null)}
           onSave={(editedUrl, shapes) => {
-            setCaptures(prev => prev.map(c => 
-              c.id === editingCapture.id ? { 
-                ...c, 
-                url: editedUrl, 
+            setCaptures(prev => prev.map(c =>
+              c.id === editingCapture.id ? {
+                ...c,
+                url: editedUrl,
                 originalUrl: c.originalUrl || editingCapture.url,
-                shapes: shapes 
+                shapes: shapes
               } : c
             ));
             setEditingCapture(null);
@@ -1027,37 +1023,38 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
         />
       )}
 
-      {/* Finish Session Confirmation Modal */}
       <AnimatePresence>
         {showFinishConfirmation && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-xl p-6">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 40 }}
+          <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)', padding: 24 }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 40 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[3rem] p-12 max-w-xl w-full shadow-2xl border border-slate-200 relative overflow-hidden"
+              style={{ backgroundColor: '#fff', borderRadius: 24, padding: 40, maxWidth: 480, width: '100%', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}
             >
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600" />
-              <div className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center mb-10 mx-auto border border-blue-100 shadow-sm">
-                <div className="w-16 h-16 bg-blue-100 rounded-[1.5rem] flex items-center justify-center border border-blue-200">
-                  <CheckCircle2 className="w-8 h-8 text-blue-600" />
-                </div>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(to right, #3B82F6, #6366F1)' }} />
+              <div style={{ width: 64, height: 64, backgroundColor: '#EFF6FF', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', border: '1px solid #DBEAFE' }}>
+                <CheckCircle2 style={{ width: 32, height: 32, color: '#3B82F6' }} />
               </div>
-              <h3 className="text-3xl font-black text-slate-900 text-center mb-4 tracking-tighter uppercase">Selesaikan Sesi?</h3>
-              <p className="text-slate-500 text-center mb-12 text-lg font-medium leading-relaxed px-4">
-                Apakah Anda yakin ingin mengakhiri sesi ini? Semua media akan diproses ke dalam laporan medis profesional secara otomatis.
+              <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0C1E35', marginBottom: 8 }}>Selesaikan Sesi?</h3>
+              <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 32 }}>
+                Semua media akan diproses ke dalam laporan medis secara otomatis.
               </p>
-              <div className="grid grid-cols-2 gap-6">
-                <button 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <button
                   onClick={() => setShowFinishConfirmation(false)}
-                  className="py-5 px-8 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-900 font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl transition-all border border-slate-200 cursor-pointer"
+                  style={{ padding: '14px 0', backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 700, fontSize: 13, borderRadius: 14, border: 'none', cursor: 'pointer', transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif' }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#E2E8F0'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F1F5F9'; }}
                 >
                   Batal
                 </button>
-                <button 
+                <button
                   onClick={confirmFinishSession}
-                  className="py-5 px-8 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl transition-all shadow-xl shadow-slate-900/10 cursor-pointer"
+                  style={{ padding: '14px 0', backgroundColor: '#0C1E35', color: '#fff', fontWeight: 700, fontSize: 13, borderRadius: 14, border: 'none', cursor: 'pointer', transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif', boxShadow: '0 4px 16px rgba(12,30,53,0.2)' }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                 >
                   Ya, Selesaikan
                 </button>
@@ -1067,63 +1064,70 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
         )}
       </AnimatePresence>
 
-      {/* Hidden canvas for photo capture */}
-      <canvas ref={canvasRef} className="hidden" />
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-      {/* Review Modal */}
       <AnimatePresence>
         {selectedCaptureForReview && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-10"
+            style={{ position: 'fixed', inset: 0, zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)', padding: 40 }}
             onClick={() => setSelectedCaptureForReview(null)}
           >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 60 }}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 30 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 60 }}
-              className="relative max-w-7xl w-full bg-white rounded-[3rem] overflow-hidden shadow-2xl border border-slate-200"
+              exit={{ scale: 0.95, opacity: 0, y: 30 }}
+              style={{ position: 'relative', maxWidth: 960, width: '100%', backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.2)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="aspect-video bg-black flex items-center justify-center relative group">
+              <div style={{ aspectRatio: '16/9', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 {selectedCaptureForReview.type === 'image' ? (
-                  <img src={selectedCaptureForReview.url} alt="Review" className="max-w-full max-h-full object-contain" />
+                  <img src={selectedCaptureForReview.url} alt="Review" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                 ) : (
-                  <video src={selectedCaptureForReview.url} controls autoPlay className="max-w-full max-h-full object-contain" />
+                  <video src={selectedCaptureForReview.url} controls autoPlay style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                 )}
-                
-                <button 
+
+                <button
                   onClick={() => setSelectedCaptureForReview(null)}
-                  className="absolute top-8 right-8 w-12 h-12 bg-black/40 hover:bg-black/60 text-white rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/10 transition-all z-50 shadow-xl"
+                  style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, backgroundColor: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 12, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)', zIndex: 50 }}
                 >
-                  <X className="w-6 h-6" />
+                  <X style={{ width: 20, height: 20 }} />
                 </button>
               </div>
-              
-              <div className="p-10 bg-slate-50 flex items-center justify-between border-t border-slate-200">
-                <div className="flex items-center space-x-6">
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm ${selectedCaptureForReview.type === 'image' ? 'bg-blue-100 text-blue-600 border border-blue-200' : 'bg-red-100 text-red-600 border border-red-200'}`}>
-                    {selectedCaptureForReview.type === 'image' ? <Camera className="w-8 h-8" /> : <Video className="w-8 h-8" />}
+
+              <div style={{ padding: '20px 28px', backgroundColor: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: selectedCaptureForReview.type === 'image' ? '#EFF6FF' : '#FEF2F2',
+                    color: selectedCaptureForReview.type === 'image' ? '#3B82F6' : '#DC2626',
+                    border: `1px solid ${selectedCaptureForReview.type === 'image' ? '#DBEAFE' : '#FECACA'}`,
+                  }}>
+                    {selectedCaptureForReview.type === 'image' ? <Camera style={{ width: 22, height: 22 }} /> : <Video style={{ width: 22, height: 22 }} />}
                   </div>
                   <div>
-                    <h4 className="text-slate-900 font-black tracking-tighter uppercase text-2xl mb-1">Pratinjau {selectedCaptureForReview.type === 'image' ? 'Foto' : 'Video'}</h4>
-                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">{selectedCaptureForReview.timestamp.toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'medium' })}</p>
+                    <h4 style={{ fontSize: 16, fontWeight: 800, color: '#0C1E35' }}>Pratinjau {selectedCaptureForReview.type === 'image' ? 'Foto' : 'Video'}</h4>
+                    <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>{selectedCaptureForReview.timestamp.toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'medium' })}</p>
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-4">
-                  <button 
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
                     onClick={() => downloadMedia(selectedCaptureForReview.url, selectedCaptureForReview.type)}
-                    className="flex items-center px-8 py-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, color: '#475569', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; }}
                   >
-                    <Download className="w-5 h-5 mr-3" />
+                    <Download style={{ width: 16, height: 16 }} />
                     Download
                   </button>
-                  <button 
+                  <button
                     onClick={() => setSelectedCaptureForReview(null)}
-                    className="px-10 py-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-slate-900/10"
+                    style={{ padding: '10px 24px', backgroundColor: '#0C1E35', color: '#fff', border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                   >
                     Tutup
                   </button>

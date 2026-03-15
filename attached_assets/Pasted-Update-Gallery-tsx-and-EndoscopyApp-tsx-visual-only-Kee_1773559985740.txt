@@ -1,0 +1,81 @@
+Update Gallery.tsx and EndoscopyApp.tsx visual only.
+Keep ALL logic. LIGHT THEME for both.
+
+═══ GALLERY.tsx ═══
+PAGE: bg '#F8FAFC', flex flex-col, h-full
+
+HEADER BAR (bg white, border-bottom '#E2E8F0', px-6 py-4, flex items-center justify-between):
+- Left: back button (outline navy) + session info (patient procedure, date)
+- Center: tab pills (Foto/Video/Utility)
+  Container: bg '#F1F5F9' borderRadius 12 p-1
+  Selected: bg white color '#0C1E35' fontWeight 700 shadow-sm borderRadius 8
+  Unselected: color '#94A3B8'
+  Count badge on each tab
+- Right: action buttons (white bg, navy border, navy text)
+  "Export Pilihan" when items selected: bg '#0C1E35' white text
+
+PHOTO GRID (bg '#F8FAFC', flex-1, p-6, overflow-y-auto):
+- Grid 4-5 cols, gap 12
+- Each item: bg white, borderRadius 16, overflow hidden, cursor pointer
+  border '2px solid #E2E8F0'
+  hover: border '#0C1E35' boxShadow '0 4px 16px rgba(0,0,0,0.08)'
+  selected: border '#0C1E35' bg '#EFF6FF'
+  transition all 150ms
+
+EXPORT BUTTONS (bottom bar, bg white border-top '#E2E8F0', px-6 py-4):
+- "Export Pasien": bg '#0D9488' white text borderRadius 12
+  boxShadow '0 4px 20px rgba(13,148,136,0.2)'
+- "Lihat Laporan": btn-primary
+- Info tooltips: bg white border '#E2E8F0' borderRadius 12 p-3 text-xs
+
+EMPTY STATE: centered, icon in '#EFF6FF' circle, 
+  text '#94A3B8', btn-primary CTA
+
+═══ ENDOSCOPY APP.tsx ═══
+PAGE: bg '#F8FAFC', flex flex-col, h-full
+
+HEADER BAR (bg white, border-bottom '#E2E8F0', px-6 py-3, flex items-center justify-between):
+- Left: patient name fontWeight 700 color '#0C1E35' + procedure badge
+- Right: settings icon button + end session button (red outline)
+
+CAMERA VIEW AREA (flex-1, bg '#1a1a2e', mx-6 my-4, borderRadius 20, overflow hidden):
+- Camera video: object-cover w-full h-full
+- Overlay top-left: resolution badge (bg rgba(0,0,0,0.5) text white borderRadius 8 px-2 py-1 text-xs)
+- Overlay top-right when recording: 
+  bg white borderRadius 20 px-10 py-4
+  Red dot + "REC" text color '#DC2626' fontWeight 700 fontSize 12
+  Timer: color '#0C1E35' fontWeight 600
+- Error state: centered white icon + white text on dark bg
+
+CONTROL BAR (bg white, border-top '#E2E8F0', px-6 py-4):
+- Layout: 3 sections (left controls | center capture | right gallery)
+- Left: device selector (compact, border '#E2E8F0' borderRadius 10)
+  Resolution selector
+- Center: 
+  Capture button: w-16 h-16 bg '#0C1E35' borderRadius full white Camera icon
+    boxShadow '0 4px 20px rgba(12,30,53,0.35)'
+    hover: scale 1.05, active: scale 0.95
+  Record button: pill shape, border '#E2E8F0'
+    Not recording: color '#64748B' 
+    Recording: bg '#FEF2F2' color '#DC2626' border '#FECACA'
+  Keyboard hint: fontSize 11 color '#94A3B8' textAlign center mt-4
+- Right: gallery strip (3-4 latest captures as small squares)
+
+GALLERY TABS (Foto/Video/Utility):
+- Container: bg '#F1F5F9' borderRadius 12 p-1
+- Selected: bg white color '#0C1E35' shadow-sm
+- Unselected: color '#94A3B8'
+
+GALLERY PANEL (below control or side panel):
+- bg white, border-top '#E2E8F0'
+- Items: rounded-xl, border '#E2E8F0', hover border '#0C1E35'
+- Selected: border '#0C1E35' bg '#EFF6FF'
+
+UTILITY PANEL (brightness/contrast/etc):
+- White bg, clean sliders with navy accent color
+- Labels section-label style
+
+SESSION INFO PANEL (collapsible):
+- bg white border '#E2E8F0' borderRadius 16 p-4
+- Patient details in clean rows
+- Light gray labels, navy values
