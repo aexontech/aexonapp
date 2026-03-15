@@ -44,6 +44,17 @@ import {
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { UserProfile, HospitalSettings, Session } from '../types';
+
+interface ProductPlan {
+  id: string;
+  billing_cycle: 'monthly' | 'annual';
+  price: number;
+  original_price: number | null;
+  features: string[];
+  products: {
+    name: string;
+  };
+}
 import { useToast } from './ToastProvider';
 import ConfirmModal from './ConfirmModal';
 import { saveUserData, loadUserData, getLocalStorageUsage } from '../lib/storage';
@@ -138,10 +149,13 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const logoInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [selectedPlanOption, setSelectedPlanOption] = useState<string | null>(null);
   const [showPaymentInfoModal, setShowPaymentInfoModal] = useState(false);
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
   const [billingLoading, setBillingLoading] = useState(false);
+  const [plans, setPlans] = useState<ProductPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'annual'>('monthly');
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   useEffect(() => {
     setKopForms(hospitalSettingsList);
@@ -166,6 +180,35 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         });
     }
   }, [activeTab, isPersonal, userProfile.id]);
+
+  useEffect(() => {
+    async function fetchPlans() {
+      if (!supabase) { setPlansLoading(false); return; }
+      try {
+        const { data, error } = await supabase
+          .from('product_plans')
+          .select('*, products(name)')
+          .order('price', { ascending: true });
+        if (error) {
+          console.error('Failed to fetch plans:', error);
+          showToast('Gagal memuat daftar paket. Silakan coba lagi nanti.', 'error');
+        } else if (data) {
+          setPlans(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch plans:', err);
+        showToast('Gagal memuat daftar paket.', 'error');
+      } finally {
+        setPlansLoading(false);
+      }
+    }
+    fetchPlans();
+  }, []);
+
+  const formatRupiah = (amount: number) =>
+    'Rp' + amount.toLocaleString('id-ID');
+
+  const filteredPlans = plans.filter(p => p.billing_cycle === selectedBilling);
 
   const COOLDOWN_DAYS = 30;
   const DELETE_COOLDOWN_DAYS = 7;
@@ -1654,7 +1697,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     <p style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Jangan sampai akses Anda terputus.</p>
                   </div>
                   <button
-                    onClick={() => { setSelectedPlanOption(null); setShowPlanModal(true); }}
+                    onClick={() => { setSelectedPlanId(null); setSelectedBilling('monthly'); setShowPlanModal(true); }}
                     style={{ ...btnPrimaryStyle, padding: '10px 20px', fontSize: 12 }}
                     onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
                     onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
@@ -2166,10 +2209,10 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              style={{ backgroundColor: '#fff', borderRadius: 16, maxWidth: 672, width: '100%', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', overflow: 'hidden' }}
+              style={{ backgroundColor: '#fff', borderRadius: 16, maxWidth: 560, width: '100%', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
               onClick={e => e.stopPropagation()}
             >
-              <div style={{ padding: 24, borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ padding: 24, borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <div>
                   <h3 style={sectionHeadingStyle}>Pilih Paket</h3>
                   <p style={{ ...mutedTextStyle, marginTop: 2 }}>Pilih paket yang sesuai kebutuhan Anda</p>
@@ -2179,64 +2222,157 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </button>
               </div>
 
-              <div style={{ padding: 24 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                  {[
-                    { id: 'basic', name: 'BASIC', price: 'Rp 299.000', period: '/bulan', features: ['1 akun dokter', 'Laporan standar', 'Penyimpanan 5 GB', 'Dukungan email'] },
-                    { id: 'pro', name: 'PRO', price: 'Rp 599.000', period: '/bulan', popular: true, features: ['1 akun dokter', 'Laporan kustom', 'Penyimpanan 25 GB', 'Dukungan prioritas', 'Export PDF'] },
-                    { id: 'klinik', name: 'KLINIK', price: 'Rp 1.299.000', period: '/bulan', features: ['5 akun dokter', 'Semua fitur PRO', 'Penyimpanan 100 GB', 'Admin dashboard', 'Kop surat institusi'] },
-                  ].map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => setSelectedPlanOption(p.id)}
+              <div style={{ padding: 24, overflowY: 'auto', flex: 1 }}>
+                <div style={{
+                  display: 'flex', gap: 4, marginBottom: 24,
+                  backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4,
+                  width: 'fit-content',
+                }}>
+                  {(['monthly', 'annual'] as const).map(cycle => (
+                    <button
+                      key={cycle}
+                      onClick={() => { setSelectedBilling(cycle); setSelectedPlanId(null); }}
                       style={{
-                        position: 'relative', cursor: 'pointer', borderRadius: 16, padding: 20, transition: 'all 0.2s',
-                        border: selectedPlanOption === p.id ? '2px solid #0C1E35' : '2px solid #E2E8F0',
-                        backgroundColor: selectedPlanOption === p.id ? 'rgba(12,30,53,0.05)' : '#fff',
-                        boxShadow: selectedPlanOption === p.id ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
+                        padding: '8px 20px', borderRadius: 8, border: 'none',
+                        cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                        transition: 'all 150ms', fontFamily: 'Outfit, sans-serif',
+                        backgroundColor: selectedBilling === cycle ? '#0C1E35' : 'transparent',
+                        color: selectedBilling === cycle ? '#ffffff' : '#94A3B8',
+                        boxShadow: selectedBilling === cycle ? '0 2px 8px rgba(12,30,53,0.2)' : 'none',
                       }}
                     >
-                      {p.popular && (
-                        <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', padding: '2px 12px', backgroundColor: '#0C1E35', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                          <Star style={{ width: 12, height: 12 }} /> Populer
+                      {cycle === 'monthly' ? 'Bulanan' : 'Tahunan'}
+                      {cycle === 'annual' && (
+                        <span style={{
+                          marginLeft: 6, fontSize: 10, fontWeight: 700,
+                          backgroundColor: selectedBilling === 'annual' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)',
+                          padding: '2px 6px', borderRadius: 999,
+                        }}>
+                          Hemat ~17%
                         </span>
                       )}
-                      <h4 style={{ fontSize: 12, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{p.name}</h4>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 16 }}>
-                        <span style={{ fontSize: 24, fontWeight: 900, color: '#0C1E35' }}>{p.price}</span>
-                        <span style={{ fontSize: 12, color: '#94A3B8' }}>{p.period}</span>
-                      </div>
-                      <ul style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {p.features.map((f, fi) => (
-                          <li key={fi} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#475569' }}>
-                            <CheckCircle style={{ width: 14, height: 14, color: '#10B981', flexShrink: 0 }} />
-                            {f}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    </button>
                   ))}
                 </div>
 
-                <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                  <button
-                    onClick={() => setShowPlanModal(false)}
-                    style={{ padding: '10px 20px', border: '1px solid #E2E8F0', color: '#475569', backgroundColor: '#fff', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; }}
-                  >
-                    Batal
-                  </button>
-                  <button
-                    disabled={!selectedPlanOption}
-                    onClick={() => { setShowPlanModal(false); setShowPaymentInfoModal(true); }}
-                    style={{ ...btnPrimaryStyle, padding: '10px 24px', opacity: selectedPlanOption ? 1 : 0.4, cursor: selectedPlanOption ? 'pointer' : 'not-allowed' }}
-                    onMouseEnter={e => { if (selectedPlanOption) e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
-                  >
-                    Lanjutkan Pembayaran
-                  </button>
-                </div>
+                {plansLoading ? (
+                  <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8', fontSize: 14 }}>
+                    <Loader2 className="animate-spin" style={{ width: 24, height: 24, color: '#CBD5E1', margin: '0 auto 12px' }} />
+                    Memuat paket...
+                  </div>
+                ) : filteredPlans.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8', fontSize: 14 }}>
+                    Tidak ada paket tersedia
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {filteredPlans.map((planItem) => {
+                      const isSelected = selectedPlanId === planItem.id;
+                      const isPro = planItem.products?.name?.toLowerCase() === 'pro';
+                      return (
+                        <div
+                          key={planItem.id}
+                          onClick={() => setSelectedPlanId(planItem.id)}
+                          style={{
+                            border: isSelected
+                              ? '2px solid #0C1E35'
+                              : '1px solid #E2E8F0',
+                            borderRadius: 16,
+                            padding: '20px 24px',
+                            cursor: 'pointer',
+                            backgroundColor: isSelected ? '#F8FAFC' : 'white',
+                            transition: 'all 150ms',
+                            position: 'relative',
+                          }}
+                        >
+                          {isPro && (
+                            <span style={{
+                              position: 'absolute', top: -10, right: 16,
+                              backgroundColor: '#0C1E35', color: 'white',
+                              fontSize: 10, fontWeight: 700, padding: '3px 12px',
+                              borderRadius: 999, letterSpacing: '0.05em',
+                            }}>
+                              POPULER
+                            </span>
+                          )}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <div style={{ fontSize: 16, fontWeight: 700, color: '#0C1E35', marginBottom: 4 }}>
+                                {planItem.products?.name || 'Paket'}
+                              </div>
+                              {planItem.original_price && planItem.original_price > planItem.price && (
+                                <div style={{ fontSize: 13, color: '#94A3B8', textDecoration: 'line-through', marginBottom: 2 }}>
+                                  {formatRupiah(planItem.original_price)}
+                                </div>
+                              )}
+                              <div style={{ fontSize: 24, fontWeight: 800, color: '#0C1E35' }}>
+                                {formatRupiah(planItem.price)}
+                                <span style={{ fontSize: 13, fontWeight: 400, color: '#94A3B8', marginLeft: 4 }}>
+                                  /{selectedBilling === 'monthly' ? 'bulan' : 'tahun'}
+                                </span>
+                              </div>
+                            </div>
+                            <div style={{
+                              width: 24, height: 24, borderRadius: '50%',
+                              border: isSelected ? 'none' : '2px solid #E2E8F0',
+                              backgroundColor: isSelected ? '#0C1E35' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              flexShrink: 0, marginTop: 4,
+                            }}>
+                              {isSelected && (
+                                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'white' }} />
+                              )}
+                            </div>
+                          </div>
+
+                          {Array.isArray(planItem.features) && planItem.features.length > 0 && (
+                            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {planItem.features.slice(0, 4).map((f: string, i: number) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748B' }}>
+                                  <div style={{ width: 16, height: 16, borderRadius: '50%', backgroundColor: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                      <path d="M2 5l2 2 4-4" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                  </div>
+                                  {f}
+                                </div>
+                              ))}
+                              {planItem.features.length > 4 && (
+                                <div style={{ fontSize: 12, color: '#94A3B8', marginLeft: 24 }}>
+                                  +{planItem.features.length - 4} fitur lainnya
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {selectedPlanId && (
+                  <div style={{ marginTop: 20 }}>
+                    <button
+                      onClick={() => { setShowPlanModal(false); setShowPaymentInfoModal(true); }}
+                      style={{
+                        width: '100%', padding: '14px 0',
+                        backgroundColor: '#0C1E35', color: 'white',
+                        border: 'none', borderRadius: 12,
+                        fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                        boxShadow: '0 4px 20px rgba(12,30,53,0.25)',
+                        transition: 'background-color 150ms',
+                        fontFamily: 'Outfit, sans-serif',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a3a5c'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0C1E35'}
+                    >
+                      Lanjutkan Pembayaran
+                    </button>
+                    <p style={{ textAlign: 'center', fontSize: 12, color: '#94A3B8', marginTop: 10 }}>
+                      Pembayaran otomatis segera hadir
+                    </p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

@@ -301,7 +301,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
           Beta
         </div>
         <h2 className="font-aexon" style={{ fontSize: 28, textAlign: 'center', color: '#0C1E35', margin: '8px 0 4px' }}>
-          Selamat Datang
+          Masuk Akun Aexon
         </h2>
         <p style={{ fontSize: 14, color: '#64748B', textAlign: 'center' }}>
           Bridging Innovation and Surgery
