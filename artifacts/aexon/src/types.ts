@@ -46,6 +46,7 @@ export interface HospitalSettings {
   subscriptionStatus?: 'active' | 'trial' | 'expired';
   last_name_changed?: string;
   last_logo_changed?: string;
+  createdAt?: string;
 }
 
 export interface UserProfile {

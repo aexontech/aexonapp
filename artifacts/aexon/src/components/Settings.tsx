@@ -126,6 +126,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const [kopSaving, setKopSaving] = useState<number | null>(null);
   const [kopToDelete, setKopToDelete] = useState<number | null>(null);
   const [kopForms, setKopForms] = useState<HospitalSettings[]>(hospitalSettingsList);
+  const [kopVerifyModal, setKopVerifyModal] = useState<{ idx: number; type: 'name' | 'logo' | 'both'; newName?: string; oldName?: string } | null>(null);
+  const [kopVerifyInput, setKopVerifyInput] = useState('');
 
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
@@ -165,31 +167,78 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
     }
   }, [activeTab, isPersonal, userProfile.id]);
 
-  const COOLDOWN_DAYS = 14;
+  const COOLDOWN_DAYS = 30;
+  const DELETE_COOLDOWN_DAYS = 7;
+  const MIN_AGE_BEFORE_DELETE_DAYS = 3;
+  const MAX_OPS_PER_DAY = 3;
 
-  const getCooldownInfo = (kopId: string) => {
-    const key = `aexon_kop_cooldown_${userProfile.id}_${kopId}`;
+  const getKopOpsLog = useCallback((): { date: string; action: string }[] => {
     try {
-      const stored = localStorage.getItem(key);
-      if (!stored) return { locked: false, unlockDate: null };
-      const { last_changed } = JSON.parse(stored);
-      const lastDate = new Date(last_changed);
-      const now = new Date();
-      const diffMs = now.getTime() - lastDate.getTime();
-      const diffDays = diffMs / (1000 * 60 * 60 * 24);
-      if (diffDays < COOLDOWN_DAYS) {
-        const unlockDate = new Date(lastDate.getTime() + COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
-        return { locked: true, unlockDate };
-      }
-      return { locked: false, unlockDate: null };
-    } catch {
-      return { locked: false, unlockDate: null };
-    }
-  };
+      const key = `aexon_kop_ops_${userProfile.id}`;
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  }, [userProfile.id]);
 
-  const setCooldown = (kopId: string) => {
-    const key = `aexon_kop_cooldown_${userProfile.id}_${kopId}`;
-    localStorage.setItem(key, JSON.stringify({ last_changed: new Date().toISOString() }));
+  const addKopOp = useCallback((action: string) => {
+    const key = `aexon_kop_ops_${userProfile.id}`;
+    const ops = getKopOpsLog();
+    ops.push({ date: new Date().toISOString(), action });
+    localStorage.setItem(key, JSON.stringify(ops));
+  }, [userProfile.id, getKopOpsLog]);
+
+  const getDailyOpsCount = useCallback((): number => {
+    const ops = getKopOpsLog();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return ops.filter(op => op.date.slice(0, 10) === todayStr).length;
+  }, [getKopOpsLog]);
+
+  const getLastDeleteDate = useCallback((): Date | null => {
+    const ops = getKopOpsLog();
+    const deletes = ops.filter(op => op.action === 'delete').sort((a, b) => b.date.localeCompare(a.date));
+    return deletes.length > 0 ? new Date(deletes[0].date) : null;
+  }, [getKopOpsLog]);
+
+  const canAddNewKop = useCallback((): { allowed: boolean; reason?: string; unlockDate?: Date } => {
+    if (kopForms.length >= 3) return { allowed: false, reason: 'Maksimal 3 kop surat.' };
+    if (getDailyOpsCount() >= MAX_OPS_PER_DAY) return { allowed: false, reason: `Batas operasi harian tercapai (maks. ${MAX_OPS_PER_DAY} per hari). Coba lagi besok.` };
+    const lastDel = getLastDeleteDate();
+    if (lastDel) {
+      const diffDays = (Date.now() - lastDel.getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDays < DELETE_COOLDOWN_DAYS) {
+        const unlockDate = new Date(lastDel.getTime() + DELETE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+        return { allowed: false, reason: `Tidak dapat menambah kop surat baru setelah penghapusan.`, unlockDate };
+      }
+    }
+    return { allowed: true };
+  }, [kopForms.length, getDailyOpsCount, getLastDeleteDate]);
+
+  const canDeleteKop = useCallback((kop: HospitalSettings): { allowed: boolean; reason?: string } => {
+    if (getDailyOpsCount() >= MAX_OPS_PER_DAY) return { allowed: false, reason: `Batas operasi harian tercapai (maks. ${MAX_OPS_PER_DAY} per hari).` };
+    if (kop.createdAt) {
+      const createdDate = new Date(kop.createdAt);
+      const ageDays = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (ageDays < MIN_AGE_BEFORE_DELETE_DAYS) {
+        return { allowed: false, reason: `Kop surat baru dapat dihapus setelah ${MIN_AGE_BEFORE_DELETE_DAYS} hari sejak dibuat.` };
+      }
+    } else if (kop.name.trim()) {
+      return { allowed: false, reason: `Simpan kop surat terlebih dahulu sebelum menghapus.` };
+    }
+    return { allowed: true };
+  }, [getDailyOpsCount]);
+
+  const getCooldownInfo = (kop: HospitalSettings) => {
+    const nameTs = kop.last_name_changed;
+    const logoTs = kop.last_logo_changed;
+    const latestChange = [nameTs, logoTs].filter(Boolean).sort().pop();
+    if (!latestChange) return { locked: false, unlockDate: null };
+    const lastDate = new Date(latestChange);
+    const diffDays = (Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays < COOLDOWN_DAYS) {
+      const unlockDate = new Date(lastDate.getTime() + COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+      return { locked: true, unlockDate };
+    }
+    return { locked: false, unlockDate: null };
   };
 
   const handleKopFieldChange = (idx: number, field: string, value: string) => {
@@ -244,32 +293,78 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       showToast('Nama RS / Klinik wajib diisi.', 'error');
       return;
     }
+    if (getDailyOpsCount() >= MAX_OPS_PER_DAY) {
+      showToast(`Batas operasi harian tercapai (maks. ${MAX_OPS_PER_DAY} per hari). Coba lagi besok.`, 'warning', 5000);
+      return;
+    }
 
     const original = hospitalSettingsList.find(h => h.id === kopId);
     const nameChanged = original && kop.name.trim() !== original.name;
     const logoChanged = original && (kop.logoUrl || '') !== (original.logoUrl || '');
 
     if (nameChanged || logoChanged) {
-      const cooldown = getCooldownInfo(kopId);
+      const cooldown = getCooldownInfo(kop);
       if (cooldown.locked) {
         showToast(`Nama dan logo masih dalam masa cooldown. Dapat diubah pada ${cooldown.unlockDate!.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.`, 'warning', 5000);
         return;
       }
-      setCooldown(kopId);
+      const changeType: 'name' | 'logo' | 'both' = (nameChanged && logoChanged) ? 'both' : nameChanged ? 'name' : 'logo';
+      setKopVerifyModal({ idx, type: changeType, newName: kop.name.trim(), oldName: original?.name });
+      setKopVerifyInput('');
+      return;
     }
 
+    commitKopSave(idx);
+  };
+
+  const commitKopSave = (idx: number, isIdentityChange = false) => {
+    const kop = kopForms[idx];
+    const kopId = kop.id || `kop-${Date.now()}`;
+    const now = new Date().toISOString();
+
     setKopSaving(idx);
+    const updatedKop = { ...kop, id: kopId };
+
+    if (isIdentityChange) {
+      const original = hospitalSettingsList.find(h => h.id === kopId);
+      const nameChanged = original && kop.name.trim() !== original.name;
+      const logoChanged = original && (kop.logoUrl || '') !== (original.logoUrl || '');
+      if (nameChanged) updatedKop.last_name_changed = now;
+      if (logoChanged) updatedKop.last_logo_changed = now;
+    }
+
+    const isNewRecord = !hospitalSettingsList.find(h => h.id === kopId);
+    if (!updatedKop.createdAt && isNewRecord) updatedKop.createdAt = now;
+    if (!updatedKop.createdAt && !isNewRecord) updatedKop.createdAt = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+
     const updated = [...kopForms];
-    updated[idx] = { ...kop, id: kopId };
+    updated[idx] = updatedKop;
+    setKopForms(updated);
     onUpdateHospitalList(updated);
+    addKopOp(isIdentityChange ? 'identity_change' : 'save');
     setTimeout(() => {
       setKopSaving(null);
       showToast(`Kop Surat ${idx + 1} berhasil disimpan.`, 'success');
     }, 400);
   };
 
+  const handleConfirmKopVerify = () => {
+    if (!kopVerifyModal) return;
+    commitKopSave(kopVerifyModal.idx, true);
+    setKopVerifyModal(null);
+    setKopVerifyInput('');
+  };
+
   const handleAddKop = () => {
-    if (kopForms.length >= 3) return;
+    const check = canAddNewKop();
+    if (!check.allowed) {
+      const msg = check.unlockDate
+        ? `${check.reason} Dapat menambah kembali pada ${check.unlockDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.`
+        : check.reason!;
+      showToast(msg, 'warning', 5000);
+      return;
+    }
+    const now = new Date().toISOString();
     const newKop: HospitalSettings = {
       id: `kop-${Date.now()}`,
       name: '',
@@ -279,16 +374,26 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       email: '',
       website: '',
       logoUrl: '',
+      createdAt: now,
     };
     setKopForms([...kopForms, newKop]);
     setExpandedKopIdx(kopForms.length);
+    addKopOp('add');
   };
 
   const confirmDeleteKop = () => {
     if (kopToDelete === null) return;
+    const kop = kopForms[kopToDelete];
+    const deleteCheck = canDeleteKop(kop);
+    if (!deleteCheck.allowed) {
+      showToast(deleteCheck.reason!, 'warning', 5000);
+      setKopToDelete(null);
+      return;
+    }
     const updated = kopForms.filter((_, i) => i !== kopToDelete);
     setKopForms(updated);
     onUpdateHospitalList(updated);
+    addKopOp('delete');
     setKopToDelete(null);
     showToast('Kop surat berhasil dihapus.', 'success');
     if (expandedKopIdx === kopToDelete) setExpandedKopIdx(null);
@@ -1074,8 +1179,35 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             </>
           )}
 
-          {isPersonal && (
+          {isPersonal && (() => {
+            const addCheck = canAddNewKop();
+            const dailyOps = getDailyOpsCount();
+            return (
             <>
+              <div style={cardStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <div style={iconBoxStyle('#FFF7ED')}>
+                    <Shield style={{ width: 20, height: 20, color: '#EA580C' }} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35' }}>Perlindungan Kop Surat</h4>
+                    <p style={{ fontSize: 11, color: '#64748B' }}>Perubahan nama & logo terkunci selama {COOLDOWN_DAYS} hari setelah diubah.</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ padding: '8px 14px', backgroundColor: dailyOps >= MAX_OPS_PER_DAY ? '#FEF2F2' : '#F0FDF4', borderRadius: 10, border: `1px solid ${dailyOps >= MAX_OPS_PER_DAY ? '#FECACA' : '#BBF7D0'}` }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: dailyOps >= MAX_OPS_PER_DAY ? '#DC2626' : '#16A34A' }}>
+                      Operasi hari ini: {dailyOps}/{MAX_OPS_PER_DAY}
+                    </span>
+                  </div>
+                  <div style={{ padding: '8px 14px', backgroundColor: '#F8FAFC', borderRadius: 10, border: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
+                      Slot terpakai: {kopForms.length}/3
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <h3 style={sectionHeadingStyle}>Kop Surat Praktik</h3>
@@ -1085,9 +1217,11 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     onClick={handleAddKop}
-                    style={{ ...btnPrimaryStyle, padding: '10px 16px', fontSize: 12 }}
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                    disabled={!addCheck.allowed}
+                    style={{ ...btnPrimaryStyle, padding: '10px 16px', fontSize: 12, opacity: addCheck.allowed ? 1 : 0.4, cursor: addCheck.allowed ? 'pointer' : 'not-allowed' }}
+                    onMouseEnter={e => { if (addCheck.allowed) e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
                     onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
+                    title={addCheck.allowed ? undefined : addCheck.reason}
                   >
                     <Plus style={{ width: 16, height: 16 }} />
                     Tambah Kop Surat
@@ -1103,25 +1237,35 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </div>
               )}
 
-              {kopForms.map((kop, idx) => {
-                const isExpanded = expandedKopIdx === idx;
-                const cooldown = getCooldownInfo(kop.id);
-                const isSavingThis = kopSaving === idx;
+              {!addCheck.allowed && addCheck.unlockDate && (
+                <div style={{ padding: 12, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <CalendarClock style={{ width: 16, height: 16, color: '#F59E0B', flexShrink: 0 }} />
+                  <p style={{ fontSize: 12, color: '#92400E' }}>
+                    Penambahan kop surat baru tersedia pada <strong>{addCheck.unlockDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+                  </p>
+                </div>
+              )}
+
+              {kopForms.map((kop, kopIdx) => {
+                const isExpanded = expandedKopIdx === kopIdx;
+                const cooldownKop = getCooldownInfo(kop);
+                const isSavingThis = kopSaving === kopIdx;
+                const deleteCheckKop = canDeleteKop(kop);
 
                 return (
-                  <div key={kop.id || idx} style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+                  <div key={kop.id || kopIdx} style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
                     <button
-                      onClick={() => setExpandedKopIdx(isExpanded ? null : idx)}
+                      onClick={() => setExpandedKopIdx(isExpanded ? null : kopIdx)}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'none', border: 'none', cursor: 'pointer', transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
                       onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
                       onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#0C1E35', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 900 }}>
-                          {idx + 1}
+                          {kopIdx + 1}
                         </div>
                         <div style={{ textAlign: 'left' }}>
-                          <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>{kop.name || `Kop Surat ${idx + 1}`}</h4>
+                          <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>{kop.name || `Kop Surat ${kopIdx + 1}`}</h4>
                           {kop.address && <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 2, maxWidth: 384, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kop.address}</p>}
                         </div>
                       </div>
@@ -1137,11 +1281,11 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                           style={{ overflow: 'hidden' }}
                         >
                           <div style={{ padding: '0 24px 24px', borderTop: '1px solid #E2E8F0' }}>
-                            {cooldown.locked && (
+                            {cooldownKop.locked && (
                               <div style={{ marginBottom: 20, marginTop: 16, padding: 12, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <CalendarClock style={{ width: 16, height: 16, color: '#F59E0B', flexShrink: 0 }} />
                                 <p style={{ fontSize: 12, color: '#92400E' }}>
-                                  Nama dan logo dapat diubah kembali pada <strong>{cooldown.unlockDate!.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+                                  Nama dan logo dapat diubah kembali pada <strong>{cooldownKop.unlockDate!.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
                                 </p>
                               </div>
                             )}
@@ -1152,11 +1296,11 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 <input
                                   type="text"
                                   value={kop.name}
-                                  onChange={(e) => handleKopFieldChange(idx, 'name', e.target.value)}
-                                  readOnly={cooldown.locked}
-                                  style={cooldown.locked ? readOnlyStyle : inputBaseStyle}
-                                  onFocus={cooldown.locked ? undefined : handleInputFocus}
-                                  onBlur={cooldown.locked ? undefined : handleInputBlur}
+                                  onChange={(e) => handleKopFieldChange(kopIdx, 'name', e.target.value)}
+                                  readOnly={cooldownKop.locked}
+                                  style={cooldownKop.locked ? readOnlyStyle : inputBaseStyle}
+                                  onFocus={cooldownKop.locked ? undefined : handleInputFocus}
+                                  onBlur={cooldownKop.locked ? undefined : handleInputBlur}
                                   placeholder="Nama rumah sakit atau klinik"
                                 />
                               </div>
@@ -1167,8 +1311,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 <input
                                   type="file"
                                   accept=".jpg,.jpeg,.png"
-                                  ref={(el) => { if (el) logoInputRefs.current.set(idx, el); }}
-                                  onChange={(e) => handleLogoFileSelect(idx, e)}
+                                  ref={(el) => { if (el) logoInputRefs.current.set(kopIdx, el); }}
+                                  onChange={(e) => handleLogoFileSelect(kopIdx, e)}
                                   style={{ display: 'none' }}
                                 />
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1184,15 +1328,15 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      if (!cooldown.locked) {
-                                        const input = logoInputRefs.current.get(idx);
+                                      if (!cooldownKop.locked) {
+                                        const input = logoInputRefs.current.get(kopIdx);
                                         if (input) input.click();
                                       }
                                     }}
-                                    disabled={cooldown.locked}
+                                    disabled={cooldownKop.locked}
                                     style={{
-                                      display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 12, fontWeight: 700, borderRadius: 12, transition: 'all 0.15s', cursor: cooldown.locked ? 'not-allowed' : 'pointer', fontFamily: 'Outfit, sans-serif',
-                                      ...(cooldown.locked
+                                      display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 12, fontWeight: 700, borderRadius: 12, transition: 'all 0.15s', cursor: cooldownKop.locked ? 'not-allowed' : 'pointer', fontFamily: 'Outfit, sans-serif',
+                                      ...(cooldownKop.locked
                                         ? { backgroundColor: '#F1F5F9', color: '#94A3B8', border: '1px solid #E2E8F0' }
                                         : { backgroundColor: 'rgba(12,30,53,0.05)', color: '#0C1E35', border: '1px solid rgba(12,30,53,0.15)' }),
                                     }}
@@ -1200,10 +1344,10 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                     <Upload style={{ width: 14, height: 14 }} />
                                     {kop.logoUrl ? 'Ganti Logo' : 'Upload Logo'}
                                   </button>
-                                  {kop.logoUrl && !cooldown.locked && (
+                                  {kop.logoUrl && !cooldownKop.locked && (
                                     <button
                                       type="button"
-                                      onClick={() => handleKopFieldChange(idx, 'logoUrl', '')}
+                                      onClick={() => handleKopFieldChange(kopIdx, 'logoUrl', '')}
                                       style={{ padding: 10, color: '#EF4444', background: 'none', border: 'none', borderRadius: 12, cursor: 'pointer', transition: 'background-color 0.15s' }}
                                       title="Hapus logo"
                                       onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
@@ -1222,7 +1366,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 <input
                                   type="text"
                                   value={kop.address}
-                                  onChange={(e) => handleKopFieldChange(idx, 'address', e.target.value)}
+                                  onChange={(e) => handleKopFieldChange(kopIdx, 'address', e.target.value)}
                                   style={inputBaseStyle}
                                   onFocus={handleInputFocus}
                                   onBlur={handleInputBlur}
@@ -1236,7 +1380,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 <input
                                   type="tel"
                                   value={kop.phone}
-                                  onChange={(e) => handleKopFieldChange(idx, 'phone', e.target.value)}
+                                  onChange={(e) => handleKopFieldChange(kopIdx, 'phone', e.target.value)}
                                   style={inputBaseStyle}
                                   onFocus={handleInputFocus}
                                   onBlur={handleInputBlur}
@@ -1248,7 +1392,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 <input
                                   type="tel"
                                   value={kop.fax || ''}
-                                  onChange={(e) => handleKopFieldChange(idx, 'fax', e.target.value)}
+                                  onChange={(e) => handleKopFieldChange(kopIdx, 'fax', e.target.value)}
                                   style={inputBaseStyle}
                                   onFocus={handleInputFocus}
                                   onBlur={handleInputBlur}
@@ -1262,7 +1406,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 <input
                                   type="email"
                                   value={kop.email}
-                                  onChange={(e) => handleKopFieldChange(idx, 'email', e.target.value)}
+                                  onChange={(e) => handleKopFieldChange(kopIdx, 'email', e.target.value)}
                                   style={inputBaseStyle}
                                   onFocus={handleInputFocus}
                                   onBlur={handleInputBlur}
@@ -1276,7 +1420,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                 <input
                                   type="url"
                                   value={kop.website || ''}
-                                  onChange={(e) => handleKopFieldChange(idx, 'website', e.target.value)}
+                                  onChange={(e) => handleKopFieldChange(kopIdx, 'website', e.target.value)}
                                   style={inputBaseStyle}
                                   onFocus={handleInputFocus}
                                   onBlur={handleInputBlur}
@@ -1294,17 +1438,25 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
                             <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <button
-                                onClick={() => setKopToDelete(idx)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', color: '#EF4444', background: 'none', border: 'none', fontSize: 12, fontWeight: 700, borderRadius: 12, cursor: 'pointer', transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
-                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
+                                onClick={() => {
+                                  if (!deleteCheckKop.allowed) {
+                                    showToast(deleteCheckKop.reason!, 'warning', 5000);
+                                    return;
+                                  }
+                                  setKopToDelete(kopIdx);
+                                }}
+                                disabled={!deleteCheckKop.allowed}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', color: deleteCheckKop.allowed ? '#EF4444' : '#94A3B8', background: 'none', border: 'none', fontSize: 12, fontWeight: 700, borderRadius: 12, cursor: deleteCheckKop.allowed ? 'pointer' : 'not-allowed', transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
+                                onMouseEnter={e => { if (deleteCheckKop.allowed) e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
                                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                title={deleteCheckKop.allowed ? undefined : deleteCheckKop.reason}
                               >
                                 <Trash2 style={{ width: 14, height: 14 }} />
                                 Hapus Kop Surat
                               </button>
                               <motion.button
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => handleSaveKop(idx)}
+                                onClick={() => handleSaveKop(kopIdx)}
                                 disabled={isSavingThis}
                                 style={{ ...btnPrimaryStyle, opacity: isSavingThis ? 0.5 : 1 }}
                                 onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
@@ -1322,7 +1474,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 );
               })}
             </>
-          )}
+            );
+          })()}
         </motion.div>
       )}
 
@@ -1720,11 +1873,100 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         onConfirm={confirmDeleteKop}
         onCancel={() => setKopToDelete(null)}
         title="Hapus Kop Surat?"
-        message={`Apakah Anda yakin ingin menghapus Kop Surat ${kopToDelete !== null ? kopToDelete + 1 : ''}? Data kop surat ini akan dihapus secara permanen.`}
+        message={`Apakah Anda yakin ingin menghapus Kop Surat ${kopToDelete !== null ? kopToDelete + 1 : ''}? Data kop surat ini akan dihapus secara permanen. Setelah dihapus, Anda tidak dapat menambahkan kop surat baru selama ${DELETE_COOLDOWN_DAYS} hari.`}
         confirmText="Ya, Hapus"
         cancelText="Batalkan"
         variant="danger"
       />
+
+      <AnimatePresence>
+        {kopVerifyModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
+            onClick={() => { setKopVerifyModal(null); setKopVerifyInput(''); }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ backgroundColor: '#fff', borderRadius: 20, padding: 32, maxWidth: 460, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Shield style={{ width: 20, height: 20, color: '#EA580C' }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0C1E35' }}>Konfirmasi Perubahan Identitas</h3>
+                  <p style={{ fontSize: 12, color: '#64748B' }}>Perubahan ini tidak dapat diubah selama {COOLDOWN_DAYS} hari</p>
+                </div>
+              </div>
+
+              <div style={{ padding: 14, backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12, marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <AlertTriangle style={{ width: 16, height: 16, color: '#DC2626', flexShrink: 0, marginTop: 1 }} />
+                  <div style={{ fontSize: 12, color: '#991B1B', lineHeight: 1.6 }}>
+                    <strong>Peringatan:</strong> Anda sedang mengubah{' '}
+                    {kopVerifyModal.type === 'both' ? 'nama dan logo' : kopVerifyModal.type === 'name' ? 'nama' : 'logo'}{' '}
+                    kop surat. Setelah disimpan, {kopVerifyModal.type === 'both' ? 'nama dan logo' : kopVerifyModal.type === 'name' ? 'nama' : 'logo'}{' '}
+                    akan terkunci selama <strong>{COOLDOWN_DAYS} hari</strong>.
+                  </div>
+                </div>
+              </div>
+
+              {kopVerifyModal.type !== 'logo' && kopVerifyModal.oldName && (
+                <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#F8FAFC', borderRadius: 10, border: '1px solid #E2E8F0' }}>
+                  <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4 }}>Nama sebelumnya:</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#475569', textDecoration: 'line-through' }}>{kopVerifyModal.oldName}</p>
+                  <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 4, marginTop: 8 }}>Nama baru:</p>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35' }}>{kopVerifyModal.newName}</p>
+                </div>
+              )}
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>
+                  Ketik "<strong>KONFIRMASI</strong>" untuk melanjutkan:
+                </label>
+                <input
+                  type="text"
+                  value={kopVerifyInput}
+                  onChange={e => setKopVerifyInput(e.target.value)}
+                  placeholder="KONFIRMASI"
+                  style={inputBaseStyle}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => { setKopVerifyModal(null); setKopVerifyInput(''); }}
+                  style={{ padding: '10px 20px', fontSize: 13, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: 12, cursor: 'pointer', fontFamily: 'Outfit, sans-serif', transition: 'background-color 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#E2E8F0'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F1F5F9'; }}
+                >
+                  Batalkan
+                </button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleConfirmKopVerify}
+                  disabled={kopVerifyInput !== 'KONFIRMASI'}
+                  style={{ ...btnPrimaryStyle, opacity: kopVerifyInput === 'KONFIRMASI' ? 1 : 0.4, cursor: kopVerifyInput === 'KONFIRMASI' ? 'pointer' : 'not-allowed', backgroundColor: '#DC2626' }}
+                  onMouseEnter={e => { if (kopVerifyInput === 'KONFIRMASI') e.currentTarget.style.backgroundColor = '#B91C1C'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#DC2626'; }}
+                >
+                  <Shield style={{ width: 16, height: 16 }} />
+                  Konfirmasi Perubahan
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showMismatchModal && (
