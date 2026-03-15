@@ -207,36 +207,103 @@ export default function Launcher({ onLogin }: LauncherProps) {
     }
   };
 
-  const backgroundElements = (
-    <div className="absolute inset-0 z-0 overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full bg-slate-50" />
-      <motion.div
-        animate={{ scale: [1, 1.2, 1], x: [0, 100, 0], y: [0, 50, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] bg-[#0C1E35]/5 rounded-full blur-[120px]"
-      />
-      <motion.div
-        animate={{ scale: [1, 1.3, 1], x: [0, -100, 0], y: [0, -50, 0] }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        className="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] bg-indigo-400/10 rounded-full blur-[120px]"
-      />
-    </div>
-  );
+  const pageStyle: React.CSSProperties = {
+    background: '#F8FAFC',
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    position: 'relative',
+    overflow: 'hidden',
+  };
+
+  const cardStyle: React.CSSProperties = {
+    background: 'white',
+    borderRadius: 28,
+    maxWidth: 440,
+    width: '100%',
+    padding: 44,
+    boxShadow: '0 20px 60px rgba(12,30,53,0.12), 0 8px 24px rgba(12,30,53,0.08)',
+    position: 'relative',
+    zIndex: 1,
+  };
+
+  const inputIconStyle: React.CSSProperties = {
+    position: 'absolute',
+    left: 14,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    color: '#94A3B8',
+    pointerEvents: 'none',
+  };
+
+  const errorBoxStyle: React.CSSProperties = {
+    background: '#FEF2F2',
+    border: '1px solid #FECACA',
+    borderRadius: 12,
+    padding: '10px 14px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 8,
+    fontSize: 13,
+    color: '#DC2626',
+  };
+
+  const backBtnStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    background: 'none',
+    border: 'none',
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    marginBottom: 24,
+    padding: 0,
+  };
+
+  const loginTypeCard = (type: LoginType, icon: React.ReactNode, label: string, subtitle: string) => {
+    const selected = loginType === type;
+    return (
+      <button
+        type="button"
+        onClick={() => { setLoginType(type); setError(''); }}
+        style={{
+          borderRadius: 16,
+          padding: 16,
+          border: '2px solid',
+          borderColor: selected ? '#0C1E35' : '#E2E8F0',
+          background: selected ? '#0C1E35' : 'white',
+          color: selected ? 'white' : '#64748B',
+          cursor: 'pointer',
+          transition: 'all 200ms',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        {icon}
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{label}</span>
+        <span style={{ fontSize: 11, lineHeight: 1.3, opacity: selected ? 0.8 : 1 }}>{subtitle}</span>
+      </button>
+    );
+  };
 
   const logoHeader = (
-    <div className="flex flex-col items-center mb-8">
-      <div className="relative mb-5">
-        <div className="absolute inset-0 bg-[#0C1E35] blur-3xl opacity-10 animate-pulse" />
-        <Logo mSize={80} wSize={40} className="relative z-10" showPattern />
-      </div>
-      <div className="flex flex-col items-center text-center">
-        <div className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full mb-3">
-          <span className="text-[10px] font-bold text-[#0C1E35] uppercase tracking-[0.2em]">Beta</span>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32 }}>
+      <Logo mSize={80} wSize={40} showPattern />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginTop: 12 }}>
+        <div className="badge-pill" style={{ fontSize: 11, marginTop: 8, marginBottom: 4 }}>
+          Beta
         </div>
-        <h2 className="font-aexon text-[28px] tracking-tight text-gray-900 mb-2">
-          Masuk ke Aexon
+        <h2 className="font-aexon" style={{ fontSize: 28, textAlign: 'center', color: '#0C1E35', margin: '8px 0 4px' }}>
+          Selamat Datang
         </h2>
-        <p className="text-gray-400 text-sm font-medium">
+        <p style={{ fontSize: 14, color: '#94A3B8', textAlign: 'center' }}>
           Bridging Innovation and Surgery
         </p>
       </div>
@@ -245,63 +312,66 @@ export default function Launcher({ onLogin }: LauncherProps) {
 
   if (viewMode === 'forgot') {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 relative overflow-hidden">
-        {backgroundElements}
+      <div style={pageStyle}>
+        <div className="orb-tr" />
+        <div className="orb-bl" />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-[420px] w-full relative z-10"
+          style={{ maxWidth: 440, width: '100%', position: 'relative', zIndex: 1 }}
         >
-          <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-10">
+          <div style={cardStyle}>
             <button
               onClick={() => { setViewMode('login'); setResetSent(false); setResetError(''); }}
-              className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors mb-6"
+              style={backBtnStyle}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft style={{ width: 16, height: 16 }} />
               Kembali ke Login
             </button>
 
             {resetSent ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <CheckCircle2 className="w-8 h-8 text-[#0C1E35]" />
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ width: 64, height: 64, background: '#EFF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                  <CheckCircle2 style={{ width: 32, height: 32, color: '#0C1E35' }} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Link reset password telah dikirim!</h2>
-                <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                <h2 className="font-aexon" style={{ fontSize: 24, color: '#0C1E35', marginBottom: 8 }}>Link reset password telah dikirim!</h2>
+                <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 24 }}>
                   Periksa inbox email kamu. Link berlaku selama 1 jam.
                 </p>
                 <button
                   onClick={() => { setViewMode('login'); setResetSent(false); }}
-                  className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm"
+                  className="btn-primary"
+                  style={{ width: '100%' }}
                 >
                   Kembali ke Login
                 </button>
               </div>
             ) : (
               <>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Reset Password</h2>
-                <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                <h2 className="font-aexon" style={{ fontSize: 24, color: '#0C1E35', marginBottom: 8 }}>Reset Password</h2>
+                <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24, lineHeight: 1.6 }}>
                   Masukkan email terdaftar. Kami akan mengirimkan link untuk membuat password baru.
                 </p>
 
-                <form onSubmit={handleResetPassword} className="space-y-4">
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Mail className="h-4 w-4 text-gray-400" />
+                <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ position: 'relative' }}>
+                    <div style={inputIconStyle}>
+                      <Mail style={{ width: 16, height: 16 }} />
                     </div>
                     <input
                       type="email"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm"
+                      className="input-base"
+                      style={{ paddingLeft: 44 }}
                       placeholder="Email terdaftar"
                       required
                     />
                   </div>
 
                   {resetError && (
-                    <div className="flex items-center gap-2 text-red-600 text-xs">
-                      <AlertCircle className="w-4 h-4 shrink-0" />
+                    <div style={errorBoxStyle}>
+                      <AlertCircle style={{ width: 16, height: 16, flexShrink: 0, marginTop: 1 }} />
                       {resetError}
                     </div>
                   )}
@@ -309,9 +379,10 @@ export default function Launcher({ onLogin }: LauncherProps) {
                   <button
                     type="submit"
                     disabled={resetLoading}
-                    className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="btn-primary"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                   >
-                    {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {resetLoading ? <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} /> : null}
                     Kirim Link Reset
                   </button>
                 </form>
@@ -326,51 +397,62 @@ export default function Launcher({ onLogin }: LauncherProps) {
   if (viewMode === 'register') {
     if (loginType === 'institusi') {
       return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 relative overflow-hidden">
-          {backgroundElements}
+        <div style={pageStyle}>
+          <div className="orb-tr" />
+          <div className="orb-bl" />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-[420px] w-full relative z-10"
+            style={{ maxWidth: 440, width: '100%', position: 'relative', zIndex: 1 }}
           >
-            <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-10">
+            <div style={cardStyle}>
               <button
                 onClick={() => setViewMode('login')}
-                className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors mb-6"
+                style={backBtnStyle}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft style={{ width: 16, height: 16 }} />
                 Kembali ke Login
               </button>
 
-              <div className="text-center py-4">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <Building2 className="w-8 h-8 text-[#0C1E35]" />
+              <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                <div style={{ width: 64, height: 64, background: '#EFF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                  <Building2 style={{ width: 32, height: 32, color: '#0C1E35' }} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-3">Daftar Akun Institusi</h2>
-                <p className="text-sm text-gray-500 leading-relaxed mb-8">
+                <h2 className="font-aexon" style={{ fontSize: 24, color: '#0C1E35', marginBottom: 12 }}>Daftar Akun Institusi</h2>
+                <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 32 }}>
                   Untuk mendaftarkan institusi Anda (rumah sakit, klinik, atau fasilitas kesehatan), silakan hubungi tim Aexon terlebih dahulu. Kami akan membantu proses onboarding dan memberikan kode institusi untuk akun Anda.
                 </p>
 
-                <div className="space-y-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <a
                     href="https://wa.me/6281234567890"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-3 bg-[#25D366] text-white font-bold rounded-xl hover:bg-[#25D366]/90 transition-colors text-sm flex items-center justify-center gap-2"
+                    style={{
+                      width: '100%', padding: '12px 0', background: '#25D366', color: 'white',
+                      fontWeight: 700, borderRadius: 12, fontSize: 14, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none',
+                      border: 'none', cursor: 'pointer',
+                    }}
                   >
-                    <MessageCircle className="w-4 h-4" />
+                    <MessageCircle style={{ width: 16, height: 16 }} />
                     Hubungi Aexon via WhatsApp
                   </a>
                   <a
                     href="mailto:hello@aexon.id"
-                    className="w-full py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors text-sm flex items-center justify-center gap-2"
+                    style={{
+                      width: '100%', padding: '12px 0', background: 'white', color: '#0C1E35',
+                      fontWeight: 700, borderRadius: 12, fontSize: 14, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none',
+                      border: '2px solid #0C1E35', cursor: 'pointer',
+                    }}
                   >
-                    <Mail className="w-4 h-4" />
+                    <Mail style={{ width: 16, height: 16 }} />
                     Kirim Email ke Aexon
                   </a>
                 </div>
 
-                <p className="text-[11px] text-gray-400 mt-6">
+                <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 24 }}>
                   Sudah punya kode institusi? Login dengan tab Institusi.
                 </p>
               </div>
@@ -381,156 +463,165 @@ export default function Launcher({ onLogin }: LauncherProps) {
     }
 
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 relative overflow-hidden">
-        {backgroundElements}
+      <div style={pageStyle}>
+        <div className="orb-tr" />
+        <div className="orb-bl" />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-[420px] w-full relative z-10"
+          style={{ maxWidth: 440, width: '100%', position: 'relative', zIndex: 1 }}
         >
-          <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-10">
+          <div style={cardStyle}>
             <button
               onClick={() => { setViewMode('login'); setRegError(''); setRegSuccess(false); }}
-              className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors mb-6"
+              style={backBtnStyle}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft style={{ width: 16, height: 16 }} />
               Kembali ke Login
             </button>
 
             {regSuccess ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <CheckCircle2 className="w-8 h-8 text-[#0C1E35]" />
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ width: 64, height: 64, background: '#EFF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                  <CheckCircle2 style={{ width: 32, height: 32, color: '#0C1E35' }} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Pendaftaran berhasil!</h2>
-                <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                <h2 className="font-aexon" style={{ fontSize: 24, color: '#0C1E35', marginBottom: 8 }}>Pendaftaran berhasil!</h2>
+                <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 24 }}>
                   Cek email untuk verifikasi.
                 </p>
                 <button
                   onClick={() => { setViewMode('login'); setRegSuccess(false); }}
-                  className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm"
+                  className="btn-primary"
+                  style={{ width: '100%' }}
                 >
                   Kembali ke Login
                 </button>
               </div>
             ) : (
               <>
-                <h2 className="text-xl font-bold text-gray-900 mb-1">Daftar Akun Personal</h2>
-                <p className="text-sm text-gray-500 mb-6">Buat akun dokter baru</p>
+                <h2 className="font-aexon" style={{ fontSize: 24, color: '#0C1E35', marginBottom: 4 }}>Daftar Akun Personal</h2>
+                <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24 }}>Buat akun dokter baru</p>
 
-                <form onSubmit={handleRegister} className="space-y-3.5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-500 ml-1">Nama Lengkap *</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <User className="h-4 w-4 text-gray-400" />
+                <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label className="section-label" style={{ display: 'block', marginBottom: 6 }}>Nama Lengkap *</label>
+                    <div style={{ position: 'relative' }}>
+                      <div style={inputIconStyle}>
+                        <User style={{ width: 16, height: 16 }} />
                       </div>
                       <input
                         type="text"
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
                         disabled={regLoading}
-                        className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
+                        className="input-base"
+                        style={{ paddingLeft: 44, opacity: regLoading ? 0.5 : 1 }}
                         placeholder="Nama lengkap (tanpa gelar)"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-500 ml-1">Nomor STR *</label>
+                  <div>
+                    <label className="section-label" style={{ display: 'block', marginBottom: 6 }}>Nomor STR *</label>
                     <input
                       type="text"
                       value={regStr}
                       onChange={(e) => setRegStr(e.target.value)}
                       disabled={regLoading}
-                      className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
+                      className="input-base"
+                      style={{ opacity: regLoading ? 0.5 : 1 }}
                       placeholder="Nomor Surat Tanda Registrasi"
                       required
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-500 ml-1">Email *</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Mail className="h-4 w-4 text-gray-400" />
+                  <div>
+                    <label className="section-label" style={{ display: 'block', marginBottom: 6 }}>Email *</label>
+                    <div style={{ position: 'relative' }}>
+                      <div style={inputIconStyle}>
+                        <Mail style={{ width: 16, height: 16 }} />
                       </div>
                       <input
                         type="email"
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
                         disabled={regLoading}
-                        className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
+                        className="input-base"
+                        style={{ paddingLeft: 44, opacity: regLoading ? 0.5 : 1 }}
                         placeholder="Email aktif"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-500 ml-1">Password *</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Lock className="h-4 w-4 text-gray-400" />
+                  <div>
+                    <label className="section-label" style={{ display: 'block', marginBottom: 6 }}>Password *</label>
+                    <div style={{ position: 'relative' }}>
+                      <div style={inputIconStyle}>
+                        <Lock style={{ width: 16, height: 16 }} />
                       </div>
                       <input
                         type={regShowPassword ? 'text' : 'password'}
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
                         disabled={regLoading}
-                        className="block w-full pl-11 pr-11 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
+                        className="input-base"
+                        style={{ paddingLeft: 44, paddingRight: 44, opacity: regLoading ? 0.5 : 1 }}
                         placeholder="Min. 8 karakter"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setRegShowPassword(!regShowPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                        style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }}
                       >
-                        {regShowPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {regShowPassword ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
                       </button>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-500 ml-1">Konfirmasi Password *</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Lock className="h-4 w-4 text-gray-400" />
+                  <div>
+                    <label className="section-label" style={{ display: 'block', marginBottom: 6 }}>Konfirmasi Password *</label>
+                    <div style={{ position: 'relative' }}>
+                      <div style={inputIconStyle}>
+                        <Lock style={{ width: 16, height: 16 }} />
                       </div>
                       <input
                         type={regShowPassword ? 'text' : 'password'}
                         value={regConfirmPassword}
                         onChange={(e) => setRegConfirmPassword(e.target.value)}
                         disabled={regLoading}
-                        className="block w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
+                        className="input-base"
+                        style={{ paddingLeft: 44, opacity: regLoading ? 0.5 : 1 }}
                         placeholder="Ulangi password"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-500 ml-1">Nomor SIP (opsional)</label>
+                  <div>
+                    <label className="section-label" style={{ display: 'block', marginBottom: 6 }}>Nomor SIP (opsional)</label>
                     <input
                       type="text"
                       value={regSip}
                       onChange={(e) => setRegSip(e.target.value)}
                       disabled={regLoading}
-                      className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
+                      className="input-base"
+                      style={{ opacity: regLoading ? 0.5 : 1 }}
                       placeholder="Surat Izin Praktik"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-gray-500 ml-1">Spesialisasi (opsional)</label>
+                  <div>
+                    <label className="section-label" style={{ display: 'block', marginBottom: 6 }}>Spesialisasi (opsional)</label>
                     <input
                       type="text"
                       value={regSpecialization}
                       onChange={(e) => setRegSpecialization(e.target.value)}
                       disabled={regLoading}
-                      className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
+                      className="input-base"
+                      style={{ opacity: regLoading ? 0.5 : 1 }}
                       placeholder="Contoh: Gastroenterohepatologi"
                     />
                   </div>
@@ -539,9 +630,9 @@ export default function Launcher({ onLogin }: LauncherProps) {
                     <motion.div
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-start gap-2 text-red-600 text-xs bg-red-50 border border-red-100 rounded-xl p-3"
+                      style={errorBoxStyle}
                     >
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <AlertCircle style={{ width: 16, height: 16, flexShrink: 0, marginTop: 1 }} />
                       <span>{regError}</span>
                     </motion.div>
                   )}
@@ -549,9 +640,10 @@ export default function Launcher({ onLogin }: LauncherProps) {
                   <button
                     type="submit"
                     disabled={regLoading}
-                    className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
+                    className="btn-primary"
+                    style={{ width: '100%', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                   >
-                    {regLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {regLoading ? <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} /> : null}
                     Daftar
                   </button>
                 </form>
@@ -564,49 +656,22 @@ export default function Launcher({ onLogin }: LauncherProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8 relative overflow-hidden">
-      {backgroundElements}
+    <div style={pageStyle}>
+      <div className="orb-tr" />
+      <div className="orb-bl" />
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="max-w-[420px] w-full relative z-10"
+        style={{ maxWidth: 440, width: '100%', position: 'relative', zIndex: 1 }}
       >
-        <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-10">
+        <div style={cardStyle}>
           {logoHeader}
 
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <button
-              type="button"
-              onClick={() => { setLoginType('personal'); setError(''); }}
-              className={`flex flex-col items-center gap-1 p-4 rounded-2xl border-2 transition-all duration-200 ${
-                loginType === 'personal'
-                  ? 'bg-[#0C1E35] border-[#0C1E35] text-white'
-                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-              }`}
-            >
-              <User className="w-5 h-5 mb-0.5" />
-              <span className="text-sm font-bold">Personal</span>
-              <span className={`text-[10px] leading-tight text-center ${loginType === 'personal' ? 'text-white/80' : 'text-gray-400'}`}>
-                Dokter spesialis{'\n'}lisensi pribadi
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setLoginType('institusi'); setError(''); }}
-              className={`flex flex-col items-center gap-1 p-4 rounded-2xl border-2 transition-all duration-200 ${
-                loginType === 'institusi'
-                  ? 'bg-[#0C1E35] border-[#0C1E35] text-white'
-                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-              }`}
-            >
-              <Building2 className="w-5 h-5 mb-0.5" />
-              <span className="text-sm font-bold">Institusi</span>
-              <span className={`text-[10px] leading-tight text-center ${loginType === 'institusi' ? 'text-white/80' : 'text-gray-400'}`}>
-                Dokter & Admin{'\n'}rumah sakit / klinik
-              </span>
-            </button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+            {loginTypeCard('personal', <User style={{ width: 24, height: 24 }} />, 'Personal', 'Dokter spesialis\nlisensi pribadi')}
+            {loginTypeCard('institusi', <Building2 style={{ width: 24, height: 24 }} />, 'Institusi', 'Dokter & Admin\nrumah sakit / klinik')}
           </div>
 
           <AnimatePresence mode="wait">
@@ -616,28 +681,32 @@ export default function Launcher({ onLogin }: LauncherProps) {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
-                className="overflow-hidden mb-5"
+                style={{ overflow: 'hidden', marginBottom: 16 }}
               >
-                <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+                <div style={{ background: '#F1F5F9', borderRadius: 12, padding: 4, display: 'flex', gap: 4 }}>
                   <button
                     type="button"
                     onClick={() => setInstitusiRole('doctor')}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                      institusiRole === 'doctor'
-                        ? 'bg-white text-[#0C1E35] shadow-sm'
-                        : 'text-gray-400 hover:text-gray-500'
-                    }`}
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      border: 'none', cursor: 'pointer',
+                      background: institusiRole === 'doctor' ? 'white' : 'transparent',
+                      color: institusiRole === 'doctor' ? '#0C1E35' : '#94A3B8',
+                      boxShadow: institusiRole === 'doctor' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                    }}
                   >
                     Dokter Institusi
                   </button>
                   <button
                     type="button"
                     onClick={() => setInstitusiRole('admin')}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                      institusiRole === 'admin'
-                        ? 'bg-white text-[#0C1E35] shadow-sm'
-                        : 'text-gray-400 hover:text-gray-500'
-                    }`}
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      border: 'none', cursor: 'pointer',
+                      background: institusiRole === 'admin' ? 'white' : 'transparent',
+                      color: institusiRole === 'admin' ? '#0C1E35' : '#94A3B8',
+                      boxShadow: institusiRole === 'admin' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                    }}
                   >
                     Admin Institusi
                   </button>
@@ -646,46 +715,48 @@ export default function Launcher({ onLogin }: LauncherProps) {
             )}
           </AnimatePresence>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500 ml-1">Email</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-4 w-4 text-gray-400" />
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label className="section-label" style={{ display: 'block', marginBottom: 6 }}>Email</label>
+              <div style={{ position: 'relative' }}>
+                <div style={inputIconStyle}>
+                  <Mail style={{ width: 16, height: 16 }} />
                 </div>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
+                  className="input-base"
+                  style={{ paddingLeft: 44, opacity: isLoading ? 0.5 : 1 }}
                   placeholder="Email terdaftar"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500 ml-1">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-4 w-4 text-gray-400" />
+            <div>
+              <label className="section-label" style={{ display: 'block', marginBottom: 6 }}>Password</label>
+              <div style={{ position: 'relative' }}>
+                <div style={inputIconStyle}>
+                  <Lock style={{ width: 16, height: 16 }} />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="block w-full pl-11 pr-11 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm disabled:opacity-50"
+                  className="input-base"
+                  style={{ paddingLeft: 44, paddingRight: 44, opacity: isLoading ? 0.5 : 1 }}
                   placeholder="Password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
                 </button>
               </div>
             </div>
@@ -694,9 +765,9 @@ export default function Launcher({ onLogin }: LauncherProps) {
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-start gap-2 text-red-600 text-xs bg-red-50 border border-red-100 rounded-xl p-3"
+                style={errorBoxStyle}
               >
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <AlertCircle style={{ width: 16, height: 16, flexShrink: 0, marginTop: 1 }} />
                 <span>{error}</span>
               </motion.div>
             )}
@@ -704,11 +775,12 @@ export default function Launcher({ onLogin }: LauncherProps) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-[#0C1E35] text-white font-bold rounded-xl hover:bg-[#1a3a5c] transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+              className="btn-primary"
+              style={{ width: '100%', marginTop: 8, fontSize: 15, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} />
                   Masuk...
                 </>
               ) : (
@@ -716,29 +788,29 @@ export default function Launcher({ onLogin }: LauncherProps) {
               )}
             </button>
 
-            <div className="text-right">
+            <div style={{ textAlign: 'right', marginTop: 8 }}>
               <button
                 type="button"
                 onClick={() => { setViewMode('forgot'); setResetEmail(email); }}
-                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                style={{ background: 'none', border: 'none', fontSize: 13, color: '#94A3B8', cursor: 'pointer', padding: 0 }}
               >
                 Lupa password?
               </button>
             </div>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-gray-100 text-center space-y-1">
-            <p className="text-xs text-gray-400">
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: '#94A3B8' }}>
               Belum punya akun?{' '}
               <button
                 type="button"
                 onClick={() => { setViewMode('register'); setRegError(''); setRegSuccess(false); }}
-                className="text-[#0C1E35] font-medium hover:underline"
+                style={{ background: 'none', border: 'none', color: '#0C1E35', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 13 }}
               >
                 Daftar Sekarang
               </button>
             </p>
-            <p className="text-[10px] text-gray-300">
+            <p style={{ fontSize: 11, color: '#CBD5E1', marginTop: 8 }}>
               &copy; 2026 PT Aexon Inovasi Teknologi
             </p>
           </div>
