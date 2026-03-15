@@ -2402,11 +2402,11 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   <ExternalLink style={{ width: 14, height: 14, opacity: 0.6 }} />
                 </a>
                 <a
-                  href="mailto:hello@aexon.id"
+                  href="mailto:cs@aexon.id"
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', padding: '12px 0', border: '1px solid #E2E8F0', color: '#475569', fontWeight: 700, borderRadius: 12, fontSize: 14, textDecoration: 'none', backgroundColor: '#fff', transition: 'background-color 0.15s' }}
                 >
                   <MailIcon style={{ width: 16, height: 16 }} />
-                  hello@aexon.id
+                  cs@aexon.id
                   <ExternalLink style={{ width: 14, height: 14, opacity: 0.4 }} />
                 </a>
               </div>

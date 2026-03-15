@@ -439,7 +439,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                     Hubungi Aexon via WhatsApp
                   </a>
                   <a
-                    href="mailto:hello@aexon.id"
+                    href="mailto:cs@aexon.id"
                     style={{
                       width: '100%', padding: '12px 0', background: 'white', color: '#0C1E35',
                       fontWeight: 700, borderRadius: 12, fontSize: 14, display: 'flex',
