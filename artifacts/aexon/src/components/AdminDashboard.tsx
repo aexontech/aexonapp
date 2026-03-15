@@ -61,179 +61,280 @@ export default function AdminDashboard({
   };
 
   const stats = [
-    { label: 'Total Dokter', value: institutionDoctors.length.toString(), icon: Users, color: 'blue' },
-    { label: 'Aktif Hari Ini', value: institutionDoctors.filter(d => d.status === 'active').length.toString(), icon: Activity, color: 'emerald' },
-    { label: 'Sesi Selesai', value: '142', icon: CheckCircle2, color: 'indigo' },
+    { label: 'Total Dokter', value: institutionDoctors.length.toString(), icon: Users, gradient: 'linear-gradient(135deg, #3B82F6, #2563EB)' },
+    { label: 'Aktif Hari Ini', value: institutionDoctors.filter(d => d.status === 'active').length.toString(), icon: Activity, gradient: 'linear-gradient(135deg, #059669, #047857)' },
+    { label: 'Sesi Selesai', value: '142', icon: CheckCircle2, gradient: 'linear-gradient(135deg, #6366F1, #4F46E5)' },
   ];
 
   return (
-    <div className="flex-1 p-8 max-w-7xl mx-auto w-full font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar relative">
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-15%] right-[-10%] w-[45%] h-[45%] bg-[#0C1E35]/[0.04] rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[-5%] w-[35%] h-[35%] bg-indigo-500/[0.03] rounded-full blur-[100px]" />
+    <div className="custom-scrollbar" style={{ flex: 1, padding: 32, maxWidth: 1280, margin: '0 auto', width: '100%', overflowY: 'auto', height: '100%', position: 'relative', backgroundColor: '#F8FAFC' }}>
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <div className="orb-tr" />
+        <div className="orb-bl" />
       </div>
 
-      <div className="flex justify-between items-center mb-10 relative z-10">
-        <div>
-          <h2 className="font-aexon text-[32px] leading-tight text-slate-900 tracking-tight mb-1">Enterprise Admin Console</h2>
-          <p className="text-sm text-slate-500">Manajemen akun tenaga medis dan monitoring sistem korporat.</p>
-        </div>
-        
-        <button 
-          onClick={onAddDoctor}
-          className="flex items-center px-5 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all shadow-lg shadow-slate-900/10 active:scale-95"
-        >
-          <UserPlus className="w-5 h-5 mr-2" />
-          Tambah Dokter Baru
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 relative z-10">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.04)] relative overflow-hidden group hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] hover:border-slate-200 transition-all duration-200"
+      <div style={{ marginBottom: 40, position: 'relative', zIndex: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+          <div>
+            <span style={{
+              display: 'inline-block', padding: '4px 14px', backgroundColor: '#EFF6FF',
+              color: '#1D4ED8', fontSize: 11, fontWeight: 700, borderRadius: 20,
+              border: '1px solid #DBEAFE', marginBottom: 16, letterSpacing: '0.03em',
+            }}>
+              Admin Institusi
+            </span>
+            <h2 className="font-aexon" style={{ fontSize: 36, fontWeight: 800, color: '#0C1E35', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 8 }}>
+              Enterprise Admin Console
+            </h2>
+            <p style={{ fontSize: 15, color: '#94A3B8', fontWeight: 500 }}>
+              Manajemen akun tenaga medis dan monitoring sistem korporat.
+            </p>
+          </div>
+          <button
+            onClick={onAddDoctor}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '12px 24px', backgroundColor: '#0C1E35', color: '#ffffff',
+              border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700,
+              cursor: 'pointer', boxShadow: '0 4px 16px rgba(12,30,53,0.2)',
+              transition: 'background-color 150ms', fontFamily: 'Outfit, sans-serif',
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a3a5c'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0C1E35'}
           >
-            <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 bg-${stat.color}-500/5 rounded-full blur-2xl group-hover:bg-${stat.color}-500/10 transition-colors`} />
-            <div className="flex items-center justify-between relative z-10">
-              <div>
-                <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">{stat.label}</p>
-                <h3 className="text-3xl font-black text-slate-900">{stat.value}</h3>
+            <UserPlus style={{ width: 18, height: 18 }} />
+            Tambah Dokter Baru
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 32 }}>
+          {stats.map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              style={{
+                backgroundColor: '#ffffff', padding: 24, borderRadius: 20,
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+                position: 'relative', overflow: 'hidden',
+                transition: 'box-shadow 200ms, border-color 200ms',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(0,0,0,0.08)'; (e.currentTarget as HTMLElement).style.borderColor = '#CBD5E1'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 24px rgba(0,0,0,0.04)'; (e.currentTarget as HTMLElement).style.borderColor = '#E2E8F0'; }}
+            >
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: stat.gradient, opacity: 0.06 }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{stat.label}</p>
+                  <h3 style={{ fontSize: 30, fontWeight: 800, color: '#0C1E35', fontFamily: 'Outfit, sans-serif' }}>{stat.value}</h3>
+                </div>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 14,
+                  background: stat.gradient,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                }}>
+                  <stat.icon style={{ width: 22, height: 22, color: '#ffffff' }} />
+                </div>
               </div>
-              <div className={`p-3 bg-${stat.color}-50 rounded-xl text-${stat.color}-600`}>
-                <stat.icon className="w-6 h-6" />
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))}
+        </div>
       </div>
 
-      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.04)] relative z-10">
-        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h3 className="text-lg font-bold text-slate-900 flex items-center">
-            <ShieldCheck className="w-5 h-5 mr-2 text-blue-600" />
+      <div style={{
+        backgroundColor: '#ffffff', border: '1px solid #E2E8F0', borderRadius: 24,
+        overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+        position: 'relative', zIndex: 10,
+      }}>
+        <div style={{
+          padding: '20px 24px', borderBottom: '1px solid #F1F5F9',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0C1E35', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ShieldCheck style={{ width: 18, height: 18, color: '#3B82F6' }} />
             Daftar Dokter Terdaftar
           </h3>
-          
-          <div className="relative max-w-md w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <div style={{ position: 'relative', maxWidth: 320, width: '100%' }}>
+            <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: '#94A3B8', pointerEvents: 'none' }} />
             <input
               type="text"
               placeholder="Cari nama, spesialisasi, atau email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0C1E35] transition-all"
+              style={{
+                width: '100%', padding: '10px 16px 10px 40px',
+                backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0',
+                borderRadius: 12, fontSize: 13, color: '#0C1E35',
+                outline: 'none', fontFamily: 'Plus Jakarta Sans, sans-serif',
+                transition: 'border-color 150ms',
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = '#0C1E35'}
+              onBlur={e => e.currentTarget.style.borderColor = '#E2E8F0'}
             />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
             <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dokter</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Spesialisasi</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Login Terakhir</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Aksi</th>
+              <tr style={{ backgroundColor: '#FAFBFC' }}>
+                {['Dokter', 'Spesialisasi', 'Status', 'Login Terakhir', ''].map((h, hi) => (
+                  <th key={hi} style={{
+                    padding: '14px 24px', fontSize: 10, fontWeight: 700, color: '#94A3B8',
+                    textTransform: 'uppercase', letterSpacing: '0.08em',
+                    textAlign: hi === 4 ? 'right' : 'left',
+                  }}>
+                    {h || 'Aksi'}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {filteredDoctors.map((doctor, i) => (
-                <motion.tr 
+                <motion.tr
                   key={doctor.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.05 }}
-                  className="hover:bg-slate-50/50 transition-colors group"
+                  style={{ borderTop: '1px solid #F1F5F9', transition: 'background-color 150ms' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = '#FAFBFC'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'}
                 >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md mr-3">
-                        {doctor.name.split(' ').filter(n => n.startsWith('Dr.') ? false : true)[0]?.charAt(0) || 'D'}
+                  <td style={{ padding: '16px 24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: '50%',
+                        backgroundColor: '#0C1E35',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#ffffff', fontWeight: 700, fontSize: 14,
+                        fontFamily: 'Outfit, sans-serif', flexShrink: 0,
+                      }}>
+                        {doctor.name.split(' ').filter(n => !n.startsWith('Dr.'))[0]?.charAt(0) || 'D'}
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-slate-900">{doctor.name}</div>
-                        <div className="text-[11px] text-slate-400 font-medium flex items-center">
-                          <Mail className="w-3 h-3 mr-1" /> {doctor.email}
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>{doctor.name}</div>
+                        <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <Mail style={{ width: 11, height: 11 }} /> {doctor.email}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                  <td style={{ padding: '16px 24px' }}>
+                    <span style={{
+                      fontSize: 13, fontWeight: 600, color: '#475569',
+                      backgroundColor: '#F1F5F9', padding: '4px 12px', borderRadius: 20,
+                    }}>
                       {doctor.specialization}
                     </span>
-                    <div className="mt-2 space-y-1">
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">STR: {doctor.strNumber || '-'}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">SIP: {doctor.sipNumber || '-'}</div>
+                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>STR: {doctor.strNumber || '-'}</span>
+                      <span style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>SIP: {doctor.sipNumber || '-'}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      {doctor.status === 'active' ? (
-                        <span className="flex items-center text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
-                          <CheckCircle2 className="w-3 h-3 mr-1" /> AKTIF
-                        </span>
-                      ) : (
-                        <span className="flex items-center text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
-                          <XCircle className="w-3 h-3 mr-1" /> NONAKTIF
-                        </span>
-                      )}
-                    </div>
+                  <td style={{ padding: '16px 24px' }}>
+                    {doctor.status === 'active' ? (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 11, fontWeight: 700, color: '#065F46',
+                        backgroundColor: '#ECFDF5', padding: '4px 10px', borderRadius: 8,
+                      }}>
+                        <CheckCircle2 style={{ width: 12, height: 12 }} /> AKTIF
+                      </span>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 11, fontWeight: 700, color: '#94A3B8',
+                        backgroundColor: '#F1F5F9', padding: '4px 10px', borderRadius: 8,
+                      }}>
+                        <XCircle style={{ width: 12, height: 12 }} /> NONAKTIF
+                      </span>
+                    )}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-xs text-slate-500 font-medium flex items-center">
-                      <Calendar className="w-3 h-3 mr-1.5" />
+                  <td style={{ padding: '16px 24px' }}>
+                    <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Calendar style={{ width: 12, height: 12 }} />
                       {doctor.lastLogin?.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right relative">
-                    <button 
+                  <td style={{ padding: '16px 24px', textAlign: 'right', position: 'relative' }}>
+                    <button
                       onClick={() => setSelectedDoctorId(selectedDoctorId === doctor.id ? null : doctor.id)}
-                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      style={{
+                        padding: 8, backgroundColor: 'transparent', border: 'none',
+                        color: '#94A3B8', cursor: 'pointer', borderRadius: 8,
+                        transition: 'all 150ms', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#EFF6FF'; e.currentTarget.style.color = '#3B82F6'; }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#94A3B8'; }}
                     >
-                      <MoreVertical className="w-5 h-5" />
+                      <MoreVertical style={{ width: 18, height: 18 }} />
                     </button>
-                    
+
                     <AnimatePresence>
                       {selectedDoctorId === doctor.id && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95, y: 10 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                          className="absolute right-6 top-14 w-48 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                          style={{
+                            position: 'absolute', right: 24, top: 52,
+                            width: 200, backgroundColor: '#ffffff',
+                            border: '1px solid #E2E8F0', borderRadius: 16,
+                            boxShadow: '0 20px 40px rgba(0,0,0,0.12)', zIndex: 50,
+                            overflow: 'hidden',
+                          }}
                         >
-                          <div className="p-2 space-y-1">
-                            <button 
-                              onClick={() => {
-                                onToggleDoctorStatus(doctor.id);
-                                setSelectedDoctorId(null);
+                          <div style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <button
+                              onClick={() => { onToggleDoctorStatus(doctor.id); setSelectedDoctorId(null); }}
+                              style={{
+                                width: '100%', textAlign: 'left', padding: '10px 14px',
+                                fontSize: 12, fontWeight: 700, color: '#475569',
+                                backgroundColor: 'transparent', border: 'none', borderRadius: 10,
+                                cursor: 'pointer', transition: 'background-color 150ms',
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                fontFamily: 'Plus Jakarta Sans, sans-serif',
                               }}
-                              className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-3"
+                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
-                              <Activity className="w-4 h-4 text-slate-400" />
+                              <Activity style={{ width: 14, height: 14, color: '#94A3B8' }} />
                               {doctor.status === 'active' ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
                             </button>
-                            <button 
-                              onClick={() => {
-                                onEditDoctor(doctor);
-                                setSelectedDoctorId(null);
+                            <button
+                              onClick={() => { onEditDoctor(doctor); setSelectedDoctorId(null); }}
+                              style={{
+                                width: '100%', textAlign: 'left', padding: '10px 14px',
+                                fontSize: 12, fontWeight: 700, color: '#475569',
+                                backgroundColor: 'transparent', border: 'none', borderRadius: 10,
+                                cursor: 'pointer', transition: 'background-color 150ms',
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                fontFamily: 'Plus Jakarta Sans, sans-serif',
                               }}
-                              className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-3"
+                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
-                              <Users className="w-4 h-4 text-slate-400" />
+                              <Users style={{ width: 14, height: 14, color: '#94A3B8' }} />
                               Edit Profil
                             </button>
-                            <div className="h-px bg-slate-100 my-1" />
-                            <button 
+                            <div style={{ height: 1, backgroundColor: '#F1F5F9', margin: '2px 0' }} />
+                            <button
                               onClick={() => handleDeleteClick(doctor)}
-                              className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-3"
+                              style={{
+                                width: '100%', textAlign: 'left', padding: '10px 14px',
+                                fontSize: 12, fontWeight: 700, color: '#DC2626',
+                                backgroundColor: 'transparent', border: 'none', borderRadius: 10,
+                                cursor: 'pointer', transition: 'background-color 150ms',
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                fontFamily: 'Plus Jakarta Sans, sans-serif',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FEF2F2'}
+                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
-                              <XCircle className="w-4 h-4 text-red-400" />
+                              <XCircle style={{ width: 14, height: 14, color: '#EF4444' }} />
                               Hapus Akun
                             </button>
                           </div>
@@ -248,49 +349,70 @@ export default function AdminDashboard({
         </div>
 
         {filteredDoctors.length === 0 && (
-          <div className="p-12 text-center">
-            <p className="text-slate-400 font-medium">Tidak ada dokter yang ditemukan.</p>
+          <div style={{ padding: 48, textAlign: 'center' }}>
+            <p style={{ fontSize: 14, color: '#94A3B8', fontWeight: 500 }}>Tidak ada dokter yang ditemukan.</p>
           </div>
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {doctorToDelete && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDoctorToDelete(null)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-[2.5rem] p-10 shadow-2xl border border-slate-100 overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              style={{
+                position: 'relative', width: '100%', maxWidth: 420,
+                backgroundColor: '#ffffff', borderRadius: 24, padding: 36,
+                boxShadow: '0 25px 50px rgba(0,0,0,0.15)', overflow: 'hidden',
+              }}
             >
-              <div className="absolute top-0 left-0 w-full h-2 bg-red-500" />
-              <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center mb-8 mx-auto">
-                <XCircle className="w-10 h-10 text-red-500" />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, backgroundColor: '#EF4444' }} />
+              <div style={{
+                width: 64, height: 64, backgroundColor: '#FEF2F2', borderRadius: 20,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 24px',
+              }}>
+                <XCircle style={{ width: 32, height: 32, color: '#EF4444' }} />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 text-center mb-4 tracking-tight">Hapus Akun Dokter?</h3>
-              <p className="text-slate-500 text-center mb-10 text-sm font-medium leading-relaxed">
-                Apakah Anda yakin ingin menghapus akun <span className="text-slate-900 font-bold">"{doctorToDelete.name}"</span>? Tindakan ini tidak dapat dibatalkan dan dokter tersebut tidak akan bisa mengakses sistem lagi.
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0C1E35', textAlign: 'center', marginBottom: 8 }}>Hapus Akun Dokter?</h3>
+              <p style={{ fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 28, lineHeight: 1.6 }}>
+                Apakah Anda yakin ingin menghapus akun <span style={{ fontWeight: 700, color: '#0C1E35' }}>"{doctorToDelete.name}"</span>? Tindakan ini tidak dapat dibatalkan.
               </p>
-              <div className="flex flex-col gap-3">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <button
                   onClick={confirmDelete}
-                  className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-600/20"
+                  style={{
+                    width: '100%', padding: '14px 0', backgroundColor: '#EF4444', color: '#ffffff',
+                    border: 'none', borderRadius: 14, fontWeight: 700, fontSize: 13,
+                    cursor: 'pointer', transition: 'background-color 150ms',
+                    fontFamily: 'Outfit, sans-serif',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#DC2626'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#EF4444'}
                 >
-                  YA, HAPUS AKUN
+                  Ya, Hapus Akun
                 </button>
                 <button
                   onClick={() => setDoctorToDelete(null)}
-                  className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+                  style={{
+                    width: '100%', padding: '14px 0', backgroundColor: '#F1F5F9', color: '#475569',
+                    border: 'none', borderRadius: 14, fontWeight: 700, fontSize: 13,
+                    cursor: 'pointer', transition: 'background-color 150ms',
+                    fontFamily: 'Outfit, sans-serif',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#E2E8F0'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
                 >
-                  BATALKAN
+                  Batalkan
                 </button>
               </div>
             </motion.div>
@@ -298,20 +420,38 @@ export default function AdminDashboard({
         )}
       </AnimatePresence>
 
-      <div className="mt-10 p-6 bg-[#0C1E35] rounded-3xl text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-slate-900/10 relative z-10 overflow-hidden">
-        <div className="absolute top-[-50%] right-[-10%] w-[40%] h-[200%] bg-white/5 rounded-full blur-[60px]" />
-        <div className="flex items-center relative z-10">
-          <div className="p-3 bg-white/10 rounded-2xl mr-4">
-            <Building2 className="w-8 h-8" />
+      <div style={{
+        marginTop: 40, padding: 24, backgroundColor: '#0C1E35', borderRadius: 24,
+        color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 24, boxShadow: '0 8px 32px rgba(12,30,53,0.2)',
+        position: 'relative', zIndex: 10, overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: '-50%', right: '-10%', width: '40%', height: '200%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '50%', filter: 'blur(60px)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', position: 'relative', zIndex: 1, gap: 16 }}>
+          <div style={{
+            padding: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Building2 style={{ width: 28, height: 28 }} />
           </div>
           <div>
-            <h4 className="text-lg font-bold">Enterprise Plan: RSUP Jakarta</h4>
-            <p className="text-white/60 text-sm">Lisensi Aktif hingga 12 Des 2026 • {institutionDoctors.length}/50 Akun Terpakai</p>
+            <h4 style={{ fontSize: 16, fontWeight: 800 }}>Enterprise Plan: RSUP Jakarta</h4>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+              Lisensi Aktif hingga 12 Des 2026 • {institutionDoctors.length}/50 Akun Terpakai
+            </p>
           </div>
         </div>
-        <button 
+        <button
           onClick={onManageSubscription}
-          className="relative z-10 px-6 py-2.5 bg-white text-[#0C1E35] font-bold rounded-xl hover:bg-white/90 transition-colors shadow-lg"
+          style={{
+            position: 'relative', zIndex: 1,
+            padding: '10px 24px', backgroundColor: '#ffffff', color: '#0C1E35',
+            fontWeight: 700, borderRadius: 12, border: 'none',
+            cursor: 'pointer', fontSize: 13, transition: 'background-color 150ms',
+            fontFamily: 'Outfit, sans-serif',
+          }}
+          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
+          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ffffff'}
         >
           Kelola Langganan
         </button>
