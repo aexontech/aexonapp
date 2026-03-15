@@ -1,3 +1,5 @@
+Replace the ENTIRE content of src/index.css with this:
+
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap');
 @import "tailwindcss";
 
@@ -144,22 +146,3 @@ body {
 }
 
 [color-scheme\:dark] { color-scheme: dark; }
-
-@page {
-  margin: 0;
-  size: auto;
-}
-
-@media print {
-  html, body, #root {
-    height: auto !important;
-    overflow: visible !important;
-    background: white !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  #root > div {
-    height: auto !important;
-    overflow: visible !important;
-  }
-}
