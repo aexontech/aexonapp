@@ -95,7 +95,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           {!isCollapsed && (
             <button
               onClick={() => setIsCollapsed(true)}
-              style={{ padding: 6, borderRadius: 8, color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ padding: 6, borderRadius: 8, color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#F8FAFC'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
             >
@@ -108,7 +108,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0', borderBottom: '1px solid #E2E8F0' }}>
             <button
               onClick={() => setIsCollapsed(false)}
-              style={{ padding: 6, borderRadius: 8, color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ padding: 6, borderRadius: 8, color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#F8FAFC'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
             >
@@ -272,7 +272,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', padding: isCollapsed ? '8px 0' : '8px 16px' }} title={isOnline ? 'Online' : 'Offline'}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: isOnline ? '#34D399' : '#CBD5E1' }} />
             {!isCollapsed && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginLeft: 8 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginLeft: 8 }}>
                 {isOnline ? 'Online' : 'Offline'}
               </span>
             )}

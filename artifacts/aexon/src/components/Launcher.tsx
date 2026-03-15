@@ -234,7 +234,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
     left: 14,
     top: '50%',
     transform: 'translateY(-50%)',
-    color: '#94A3B8',
+    color: '#64748B',
     pointerEvents: 'none',
   };
 
@@ -303,7 +303,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
         <h2 className="font-aexon" style={{ fontSize: 28, textAlign: 'center', color: '#0C1E35', margin: '8px 0 4px' }}>
           Selamat Datang
         </h2>
-        <p style={{ fontSize: 14, color: '#94A3B8', textAlign: 'center' }}>
+        <p style={{ fontSize: 14, color: '#64748B', textAlign: 'center' }}>
           Bridging Innovation and Surgery
         </p>
       </div>
@@ -452,7 +452,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                   </a>
                 </div>
 
-                <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 24 }}>
+                <p style={{ fontSize: 11, color: '#64748B', marginTop: 24 }}>
                   Sudah punya kode institusi? Login dengan tab Institusi.
                 </p>
               </div>
@@ -574,7 +574,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                       <button
                         type="button"
                         onClick={() => setRegShowPassword(!regShowPassword)}
-                        style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }}
+                        style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0 }}
                       >
                         {regShowPassword ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
                       </button>
@@ -691,7 +691,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                       flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600,
                       border: 'none', cursor: 'pointer',
                       background: institusiRole === 'doctor' ? 'white' : 'transparent',
-                      color: institusiRole === 'doctor' ? '#0C1E35' : '#94A3B8',
+                      color: institusiRole === 'doctor' ? '#0C1E35' : '#64748B',
                       boxShadow: institusiRole === 'doctor' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
                     }}
                   >
@@ -704,7 +704,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                       flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600,
                       border: 'none', cursor: 'pointer',
                       background: institusiRole === 'admin' ? 'white' : 'transparent',
-                      color: institusiRole === 'admin' ? '#0C1E35' : '#94A3B8',
+                      color: institusiRole === 'admin' ? '#0C1E35' : '#64748B',
                       boxShadow: institusiRole === 'admin' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
                     }}
                   >
@@ -754,7 +754,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0 }}
+                  style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0 }}
                 >
                   {showPassword ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
                 </button>
@@ -792,7 +792,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
               <button
                 type="button"
                 onClick={() => { setViewMode('forgot'); setResetEmail(email); }}
-                style={{ background: 'none', border: 'none', fontSize: 13, color: '#94A3B8', cursor: 'pointer', padding: 0 }}
+                style={{ background: 'none', border: 'none', fontSize: 13, color: '#64748B', cursor: 'pointer', padding: 0 }}
               >
                 Lupa password?
               </button>
@@ -800,7 +800,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
           </form>
 
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: '#94A3B8' }}>
+            <p style={{ fontSize: 13, color: '#64748B' }}>
               Belum punya akun?{' '}
               <button
                 type="button"

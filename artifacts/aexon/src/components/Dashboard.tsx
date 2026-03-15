@@ -148,14 +148,14 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40, position: 'relative', zIndex: 10 }}>
         <div>
-          <p style={{ fontSize: 13, color: '#94A3B8', fontWeight: 500, marginBottom: 8 }}>{dateStr}</p>
-          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: 44, fontWeight: 400, color: '#94A3B8', letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 4 }}>
+          <p style={{ fontSize: 13, color: '#64748B', fontWeight: 500, marginBottom: 8 }}>{dateStr}</p>
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: 44, fontWeight: 400, color: '#64748B', letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 4 }}>
             Selamat datang,
           </h2>
           <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: 44, fontWeight: 800, color: '#0C1E35', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
             {userProfile.name}
           </h2>
-          <p style={{ fontSize: 14, color: '#94A3B8', marginTop: 8, fontWeight: 500 }}>
+          <p style={{ fontSize: 14, color: '#64748B', marginTop: 8, fontWeight: 500 }}>
             {userProfile.specialization}
           </p>
         </div>
@@ -181,7 +181,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
               disabled
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                padding: '12px 24px', backgroundColor: '#E2E8F0', color: '#94A3B8',
+                padding: '12px 24px', backgroundColor: '#E2E8F0', color: '#64748B',
                 border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 600,
                 cursor: 'not-allowed',
               }}
@@ -232,7 +232,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
               }}>
                 <AnimatedNumber value={stat.value} />
               </div>
-              <div style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500 }}>
+              <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>
                 {stat.label}
               </div>
             </div>
@@ -270,7 +270,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
               <Stethoscope style={{ width: 40, height: 40, color: '#CBD5E1' }} />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 700, color: '#334155', marginBottom: 8, letterSpacing: '-0.01em' }}>Belum ada sesi tercatat</h3>
-            <p style={{ fontSize: 14, color: '#94A3B8', fontWeight: 500, maxWidth: 384, margin: '0 auto 24px' }}>
+            <p style={{ fontSize: 14, color: '#64748B', fontWeight: 500, maxWidth: 384, margin: '0 auto 24px' }}>
               Mulai sesi pertama Anda untuk mendokumentasikan prosedur endoskopi
             </p>
             {hasActiveAccess ? (
@@ -292,7 +292,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                 title="Diperlukan langganan aktif"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '12px 24px', backgroundColor: '#E2E8F0', color: '#94A3B8',
+                  padding: '12px 24px', backgroundColor: '#E2E8F0', color: '#64748B',
                   border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 14,
                   cursor: 'not-allowed',
                 }}
@@ -320,7 +320,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             }}>
               <h3 style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 800, fontSize: 20, color: '#0C1E35', letterSpacing: '-0.01em' }}>Riwayat Sesi</h3>
               <div style={{ position: 'relative', width: 288 }}>
-                <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: '#94A3B8', pointerEvents: 'none' }} />
+                <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: '#64748B', pointerEvents: 'none' }} />
                 <input
                   type="text"
                   value={searchTerm}
@@ -332,7 +332,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                 {searchTerm && (
                   <button
                     onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
-                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 2 }}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 2 }}
                   >
                     <X style={{ width: 16, height: 16 }} />
                   </button>
@@ -343,7 +343,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             {filteredSessions.length === 0 ? (
               <div style={{ padding: '64px 0', textAlign: 'center' }}>
                 <FileText style={{ width: 40, height: 40, color: '#E2E8F0', margin: '0 auto 12px' }} />
-                <p style={{ fontSize: 14, fontWeight: 500, color: '#94A3B8' }}>Data Tidak Ditemukan</p>
+                <p style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Data Tidak Ditemukan</p>
               </div>
             ) : (
               <>
@@ -382,11 +382,11 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                             <span style={{ padding: '2px 8px', backgroundColor: '#F1F5F9', color: '#64748B', fontSize: 10, fontWeight: 700, borderRadius: 6 }}>
                               {session.patient.category}
                             </span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#94A3B8' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#64748B' }}>
                               <Camera style={{ width: 12, height: 12 }} />
                               {session.captures.length}
                             </div>
-                            <span style={{ fontSize: 12, color: '#94A3B8' }}>
+                            <span style={{ fontSize: 12, color: '#64748B' }}>
                               {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </span>
                           </div>
@@ -430,7 +430,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                           width: 36, height: 36, borderRadius: 8, fontSize: 12, fontWeight: 700,
                           border: 'none', cursor: 'pointer', transition: 'all 150ms',
                           backgroundColor: currentPage === p ? '#0C1E35' : '#F8FAFC',
-                          color: currentPage === p ? '#ffffff' : '#94A3B8',
+                          color: currentPage === p ? '#ffffff' : '#64748B',
                         }}
                       >
                         {p}

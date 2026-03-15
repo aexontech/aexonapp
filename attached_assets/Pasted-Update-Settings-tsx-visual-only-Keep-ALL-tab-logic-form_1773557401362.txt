@@ -1,0 +1,69 @@
+Update Settings.tsx visual only. Keep ALL tab logic, form logic, 
+backup/restore logic, Supabase calls. Light theme throughout.
+
+PAGE: bg '#F8FAFC', p-8, overflow-y-auto
+Decorative orbs (orb-tr, orb-bl)
+Page title: className="font-aexon" fontSize 28 color '#0C1E35' mb-2
+Subtitle: fontSize 14 color '#94A3B8' mb-8
+
+TAB BAR (mb-8):
+- Container: bg '#F1F5F9', borderRadius 20, p-1, inline-flex, gap 4
+- Active tab: bg white, color '#0C1E35', fontWeight 700, borderRadius 16, 
+  px 20 py 8, boxShadow '0 2px 8px rgba(0,0,0,0.08)', fontSize 14
+- Inactive: color '#94A3B8', px 20 py 8, borderRadius 16, fontSize 14,
+  hover color '#64748B', cursor pointer, transition all 150ms
+
+PROFIL TAB:
+- Avatar section centered (mb-8):
+  w-24 h-24, bg '#0C1E35', borderRadius full,
+  initials white fontWeight 800 fontSize 28
+  Below: name fontSize 18 fontWeight 700, role badge pill
+
+- Form card: bg white, borderRadius 24, border '#E2E8F0', p-8
+  Section dividers: border-top '#F1F5F9' my-6
+  Fields 2-col grid where possible
+  Each: label (section-label mb-6), input (input-base)
+  Read-only: bg '#F8FAFC' color '#94A3B8' cursor not-allowed
+  
+- Save button: btn-primary + CheckCircle animation on success (2s then revert)
+
+KEAMANAN TAB:
+- Card: bg white borderRadius 24 border '#E2E8F0' p-8
+- Password fields with Eye/EyeOff toggle buttons
+- Submit: btn-primary
+
+LANGGANAN TAB (Personal only):
+- Current plan (featured-border wrapper):
+  Inner: bg white borderRadius 22 p-8
+  Plan name: font-aexon fontSize 24 color '#0C1E35'
+  Price: fontSize 36 fontWeight 800 color '#0C1E35'
+  Status chip: based on status (aktif/trial/expired)
+  Expiry: fontSize 14 color '#64748B'
+  Progress bar: height 6 borderRadius 999 bg '#F1F5F9'
+    Fill: green if >30d, yellow 8-30d, red <=7d
+  "Perpanjang Sekarang": btn-primary full width mt-4
+
+- Billing history: bg white borderRadius 24 border '#E2E8F0' p-8
+  Empty state centered icon + text
+  
+For Dokter Institusi: show info card instead:
+  bg '#F0FDFA' border '#99F6E4' borderRadius 20 p-6
+  Info icon teal + "Langganan dikelola oleh Admin Institusi Anda"
+  fontSize 14 color '#0D9488'
+
+BACKUP TAB:
+- All cards: bg white borderRadius 24 border '#E2E8F0' p-8 (light theme)
+- Backup card:
+  HardDrive icon in '#EFF6FF' circle
+  Title font-aexon fontSize 20
+  Date range inputs: input-base side by side
+  "Backup Sekarang": btn-primary with teal color override:
+    bg '#0D9488' boxShadow '0 4px 20px rgba(13,148,136,0.3)'
+  Info tooltip: bg '#F8FAFC' border '#E2E8F0' borderRadius 12 p-3 fontSize 12 color '#64748B'
+
+- Restore card:
+  Upload icon in '#EFF6FF' circle
+  Title font-aexon fontSize 20
+  File input: dashed border '#E2E8F0' borderRadius 16 p-8 textAlign center
+    hover: border '#0C1E35' bg '#F8FAFC'
+  "Restore": btn-secondary (outline navy)

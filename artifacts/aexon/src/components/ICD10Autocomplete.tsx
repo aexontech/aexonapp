@@ -71,7 +71,7 @@ export default function ICD10Autocomplete({
   return (
     <div ref={containerRef} style={{ position: 'relative', overflow: 'visible' }} className={className}>
       {label && (
-        <label style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>
           {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
         </label>
       )}
@@ -123,7 +123,7 @@ export default function ICD10Autocomplete({
           backgroundColor: 'white', border: '1px solid #E2E8F0', borderRadius: 16,
           boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         }}>
-          <div style={{ padding: '10px 16px', fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>Tidak ditemukan. Ketik diagnosis secara manual.</div>
+          <div style={{ padding: '10px 16px', fontSize: 12, color: '#64748B', fontStyle: 'italic' }}>Tidak ditemukan. Ketik diagnosis secara manual.</div>
         </div>
       )}
     </div>

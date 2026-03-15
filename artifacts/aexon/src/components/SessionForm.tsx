@@ -106,13 +106,13 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
   const age = calculateAge(formData.dob);
 
   const sectionLabelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: '#94A3B8',
+    fontSize: 11, fontWeight: 700, color: '#64748B',
     textTransform: 'uppercase', letterSpacing: '0.08em',
     display: 'flex', alignItems: 'center', gap: 8,
   };
 
   const fieldLabelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: '#94A3B8',
+    fontSize: 11, fontWeight: 700, color: '#64748B',
     textTransform: 'uppercase', letterSpacing: '0.08em',
     display: 'block', marginBottom: 6,
   };
@@ -149,7 +149,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
               <span style={{ fontSize: 10, fontWeight: 700, color: '#0C1E35', textTransform: 'uppercase' }}>Sesi Baru</span>
-              <span style={{ fontSize: 9, color: '#94A3B8' }}>ID: {sessionId}</span>
+              <span style={{ fontSize: 9, color: '#64748B' }}>ID: {sessionId}</span>
             </div>
             <div style={{ width: 40, height: 40, backgroundColor: '#EFF6FF', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Activity style={{ width: 20, height: 20, color: '#0C1E35' }} />
@@ -174,7 +174,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
             </div>
             <div>
               <h2 className="font-aexon" style={{ fontSize: 36, color: '#0C1E35', marginBottom: 4 }}>Registrasi Sesi</h2>
-              <p style={{ fontSize: 14, color: '#94A3B8' }}>Lengkapi data klinis pasien untuk memulai prosedur endoskopi.</p>
+              <p style={{ fontSize: 14, color: '#64748B' }}>Lengkapi data klinis pasien untuk memulai prosedur endoskopi.</p>
             </div>
           </div>
 
@@ -186,7 +186,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                   <User style={{ width: 16, height: 16 }} />
                   Identitas Pasien
                 </h3>
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>Wajib Diisi *</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>Wajib Diisi *</span>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
@@ -253,7 +253,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                       <option value="Perempuan">Perempuan</option>
                     </select>
                     <div style={{ position: 'absolute', inset: '0 0 0 auto', paddingRight: 16, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-                      <ArrowRight style={{ width: 16, height: 16, color: '#94A3B8', transform: 'rotate(90deg)' }} />
+                      <ArrowRight style={{ width: 16, height: 16, color: '#64748B', transform: 'rotate(90deg)' }} />
                     </div>
                   </div>
                 </div>
@@ -404,7 +404,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                       <option value="IGD">IGD</option>
                     </select>
                     <div style={{ position: 'absolute', inset: '0 0 0 auto', paddingRight: 16, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-                      <ArrowRight style={{ width: 16, height: 16, color: '#94A3B8', transform: 'rotate(90deg)' }} />
+                      <ArrowRight style={{ width: 16, height: 16, color: '#64748B', transform: 'rotate(90deg)' }} />
                     </div>
                   </div>
                 </div>
