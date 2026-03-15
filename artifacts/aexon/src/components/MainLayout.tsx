@@ -16,6 +16,8 @@ interface MainLayoutProps {
 export default function MainLayout({ children, activeMenu, onNavigate, onLogout, plan, trialDaysLeft, userProfile }: MainLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [hoveredNav, setHoveredNav] = useState<string | null>(null);
+  const [hoveredLogout, setHoveredLogout] = useState(false);
   const isAdmin = userProfile.role === 'admin';
   const isEnterprise = plan === 'enterprise';
 
@@ -31,11 +33,11 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
   }, []);
 
   const menuItems = isAdmin ? [
-    { id: 'admin-dashboard', label: 'Admin Console', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: 'admin-kop-surat', label: 'Kop Surat Institusi', icon: <FileText className="w-5 h-5" /> },
+    { id: 'admin-dashboard', label: 'Admin Console', icon: <LayoutDashboard style={{ width: 20, height: 20 }} /> },
+    { id: 'admin-kop-surat', label: 'Kop Surat Institusi', icon: <FileText style={{ width: 20, height: 20 }} /> },
   ] : [
-    { id: 'dashboard', label: 'Beranda', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: 'session-form', label: 'Mulai Sesi Baru', icon: <Plus className="w-5 h-5" /> },
+    { id: 'dashboard', label: 'Beranda', icon: <LayoutDashboard style={{ width: 20, height: 20 }} /> },
+    { id: 'session-form', label: 'Mulai Sesi Baru', icon: <Plus style={{ width: 20, height: 20 }} /> },
   ];
 
   const isActive = (itemId: string) =>
@@ -49,158 +51,234 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
     name.split(' ').filter(n => !n.startsWith('Dr.')).map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const getRoleBadge = () => {
-    if (isAdmin) return { label: 'Admin Institusi', color: 'bg-purple-100 text-purple-700' };
-    if (isEnterprise) return { label: 'Dokter Institusi', color: 'bg-teal-100 text-teal-700' };
-    return { label: 'Personal', color: 'bg-blue-100 text-blue-700' };
+    if (isAdmin) return { label: 'Admin Institusi', bg: '#F5F3FF', color: '#7C3AED' };
+    if (isEnterprise) return { label: 'Dokter Institusi', bg: '#F0FDFA', color: '#0D9488' };
+    return { label: 'Personal', bg: '#EFF6FF', color: '#1D4ED8' };
   };
 
   const getSubscriptionStatus = () => {
     if (isAdmin || plan === 'subscription' || plan === 'enterprise') {
-      return { state: 'active' as const, label: 'Aktif', sublabel: 'Langganan aktif', dotColor: 'bg-emerald-500', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200', textColor: 'text-emerald-700', pulse: false, showCta: false };
+      return { state: 'active' as const, label: 'Aktif', dotColor: '#10B981', bg: '#ECFDF5', border: '#A7F3D0', textColor: '#065F46', pulse: false, showCta: false };
     }
     if (trialDaysLeft !== null && trialDaysLeft > 0 && trialDaysLeft <= 7) {
-      return { state: 'warning' as const, label: `Trial — ${trialDaysLeft} hari lagi`, sublabel: 'Segera berlangganan', dotColor: 'bg-orange-500', bgColor: 'bg-orange-50', borderColor: 'border-orange-200', textColor: 'text-orange-700', pulse: true, showCta: true, ctaLabel: 'Segera Berlangganan', ctaBg: 'bg-orange-500 hover:bg-orange-600' };
+      return { state: 'warning' as const, label: `Trial — ${trialDaysLeft} hari lagi`, dotColor: '#F97316', bg: '#FFF7ED', border: '#FED7AA', textColor: '#C2410C', pulse: true, showCta: true };
     }
     if (trialDaysLeft !== null && trialDaysLeft > 7) {
-      return { state: 'trial' as const, label: `Trial — ${trialDaysLeft} hari lagi`, sublabel: '', dotColor: 'bg-yellow-500', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-100', textColor: 'text-yellow-700', pulse: false, showCta: false };
+      return { state: 'trial' as const, label: `Trial — ${trialDaysLeft} hari`, dotColor: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', textColor: '#92400E', pulse: false, showCta: false };
     }
-    return { state: 'inactive' as const, label: 'Tidak Aktif', sublabel: 'Berlangganan Sekarang', dotColor: 'bg-red-500', bgColor: 'bg-red-50', borderColor: 'border-red-200', textColor: 'text-red-700', pulse: true, showCta: true, ctaLabel: 'Berlangganan Sekarang', ctaBg: 'bg-[#0C1E35] hover:bg-[#1a3a5c]' };
+    return { state: 'inactive' as const, label: 'Tidak Aktif', dotColor: '#EF4444', bg: '#FEF2F2', border: '#FECACA', textColor: '#DC2626', pulse: true, showCta: true };
   };
 
   const roleBadge = getRoleBadge();
   const subStatus = getSubscriptionStatus();
 
+  const sidebarWidth = isCollapsed ? 72 : 256;
+
+  const pulseKeyframes = `
+    @keyframes dotPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  `;
+
   return (
-    <div className="h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden relative print:overflow-visible print:h-auto print:bg-white print:block">
-      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-100 flex flex-col h-full z-40 transition-all duration-300 ease-in-out shrink-0 print:hidden`}>
-        <div className={`h-16 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-4'} border-b border-slate-100 shrink-0`}>
+    <div style={{ height: '100vh', background: '#F8FAFC', display: 'flex', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0C1E35', overflow: 'hidden', position: 'relative' }} className="print:overflow-visible print:h-auto print:bg-white print:block">
+      <style>{pulseKeyframes}</style>
+
+      <aside style={{ width: sidebarWidth, background: 'white', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', height: '100%', zIndex: 40, transition: 'width 300ms ease-in-out', flexShrink: 0 }} className="print:hidden">
+        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between', paddingLeft: isCollapsed ? 0 : 16, paddingRight: isCollapsed ? 0 : 16, borderBottom: '1px solid #E2E8F0', flexShrink: 0 }}>
           <div
             onClick={() => onNavigate(isAdmin ? 'admin-dashboard' : 'dashboard')}
-            className={`flex items-center cursor-pointer hover:opacity-80 transition-opacity overflow-hidden ${isCollapsed ? 'hidden' : ''}`}
+            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', overflow: 'hidden', gap: 8 }}
           >
             <Logo mSize={28} wSize={isCollapsed ? 0 : 18} />
+            {!isCollapsed && (
+              <span className="font-aexon" style={{ fontSize: 20, color: '#0C1E35' }}>Aexon</span>
+            )}
           </div>
-          {isCollapsed && (
-            <div
-              onClick={() => onNavigate(isAdmin ? 'admin-dashboard' : 'dashboard')}
-              className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
-            >
-              <Logo mSize={28} wSize={0} />
-            </div>
-          )}
           {!isCollapsed && (
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 transition-colors"
+              onClick={() => setIsCollapsed(true)}
+              style={{ padding: 6, borderRadius: 8, color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#F8FAFC'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft style={{ width: 20, height: 20 }} />
             </button>
           )}
         </div>
 
         {isCollapsed && (
-          <div className="flex justify-center py-2 border-b border-slate-100">
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0', borderBottom: '1px solid #E2E8F0' }}>
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 transition-colors"
+              onClick={() => setIsCollapsed(false)}
+              style={{ padding: 6, borderRadius: 8, color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#F8FAFC'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight style={{ width: 20, height: 20 }} />
             </button>
           </div>
         )}
 
-        <nav className="flex-1 p-3 space-y-1">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id as any)}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                isActive(item.id)
-                  ? 'bg-[#0C1E35] text-white shadow-sm'
-                  : 'text-gray-500 hover:bg-slate-50'
-              }`}
-              title={isCollapsed ? item.label : ''}
-            >
-              <div className={`${isCollapsed ? '' : 'mr-3'} ${
-                isActive(item.id) ? 'text-white' : 'text-gray-400'
-              }`}>
+        <nav style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {menuItems.map((item) => {
+            const active = isActive(item.id);
+            const hovered = hoveredNav === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onNavigate(item.id as any)}
+                onMouseEnter={() => setHoveredNav(item.id)}
+                onMouseLeave={() => setHoveredNav(null)}
+                title={isCollapsed ? item.label : ''}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  padding: isCollapsed ? '10px 0' : '10px 12px',
+                  gap: isCollapsed ? 0 : 10,
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 150ms',
+                  background: active ? '#0C1E35' : (hovered ? '#F8FAFC' : 'transparent'),
+                  color: active ? 'white' : (hovered ? '#0C1E35' : '#64748B'),
+                }}
+              >
                 {item.icon}
-              </div>
-              {!isCollapsed && item.label}
-            </button>
-          ))}
+                {!isCollapsed && item.label}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="p-3 border-t border-slate-100 space-y-1 shrink-0">
+        <div style={{ padding: 12, borderTop: '1px solid #F1F5F9', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
           {isCollapsed ? (
-            <div className="flex justify-center py-2" title={subStatus.label}>
-              <div className={`w-2.5 h-2.5 rounded-full ${subStatus.dotColor} ${subStatus.pulse ? 'animate-pulse' : ''}`} />
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }} title={subStatus.label}>
+              <div style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: subStatus.dotColor,
+                animation: subStatus.pulse ? 'dotPulse 2s ease-in-out infinite' : 'none',
+              }} />
             </div>
           ) : (
-            <div className={`relative overflow-hidden rounded-xl border ${subStatus.borderColor} mb-1`}>
-              <div className={`absolute inset-0 ${subStatus.bgColor}`} />
-              <div className="relative p-3">
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-2.5 h-2.5 rounded-full ${subStatus.dotColor} ${subStatus.pulse ? 'animate-pulse' : ''} shrink-0`} />
-                  <span className={`text-xs font-semibold ${subStatus.textColor} leading-tight`}>{subStatus.label}</span>
-                </div>
-                {subStatus.sublabel && !subStatus.showCta && (
-                  <p className={`text-[10px] ${subStatus.textColor} opacity-70 mt-1 ml-[18px]`}>{subStatus.sublabel}</p>
-                )}
-                {subStatus.showCta && (
-                  <button
-                    onClick={() => onNavigate('settings')}
-                    className={`w-full mt-2 px-3 py-2 ${(subStatus as any).ctaBg} text-white text-[10px] font-bold rounded-lg transition-all shadow-sm hover:shadow-md`}
-                  >
-                    {(subStatus as any).ctaLabel}
-                  </button>
-                )}
+            <div style={{
+              background: subStatus.bg,
+              border: `1px solid ${subStatus.border}`,
+              borderRadius: 14,
+              padding: '10px 12px',
+              marginLeft: 0, marginRight: 0, marginBottom: 8,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: subStatus.dotColor,
+                  animation: subStatus.pulse ? 'dotPulse 2s ease-in-out infinite' : 'none',
+                }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: subStatus.textColor }}>{subStatus.label}</span>
               </div>
+              {subStatus.showCta && (
+                <button
+                  onClick={() => onNavigate('settings')}
+                  style={{
+                    width: '100%', marginTop: 6, padding: '6px 10px',
+                    background: '#0C1E35', color: 'white', borderRadius: 8,
+                    fontSize: 11, fontWeight: 700, border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  Perpanjang Sekarang
+                </button>
+              )}
             </div>
           )}
 
-          <button
-            onClick={() => onNavigate('settings')}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-              activeMenu === 'settings'
-                ? 'bg-[#0C1E35] text-white shadow-sm'
-                : 'text-gray-500 hover:bg-slate-50'
-            }`}
-            title={isCollapsed ? 'Pengaturan' : ''}
-          >
-            <Settings className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 ${activeMenu === 'settings' ? 'text-white' : 'text-gray-400'}`} />
-            {!isCollapsed && 'Pengaturan'}
-          </button>
+          {(() => {
+            const settingsActive = activeMenu === 'settings';
+            const settingsHovered = hoveredNav === 'settings';
+            return (
+              <button
+                onClick={() => onNavigate('settings')}
+                onMouseEnter={() => setHoveredNav('settings')}
+                onMouseLeave={() => setHoveredNav(null)}
+                title={isCollapsed ? 'Pengaturan' : ''}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  padding: isCollapsed ? '10px 0' : '10px 12px',
+                  gap: isCollapsed ? 0 : 10,
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 150ms',
+                  background: settingsActive ? '#0C1E35' : (settingsHovered ? '#F8FAFC' : 'transparent'),
+                  color: settingsActive ? 'white' : (settingsHovered ? '#0C1E35' : '#64748B'),
+                }}
+              >
+                <Settings style={{ width: 20, height: 20 }} />
+                {!isCollapsed && 'Pengaturan'}
+              </button>
+            );
+          })()}
 
-          <div className={`${isCollapsed ? 'px-1' : 'px-2'} py-2`}>
-            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-              <div className="w-9 h-9 bg-[#0C1E35] rounded-full flex items-center justify-center shrink-0">
-                <span className="text-white font-bold text-[10px]">{getInitials(userProfile.name)}</span>
-              </div>
-              {!isCollapsed && (
-                <div className="overflow-hidden flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">{userProfile.name}</p>
-                  <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold rounded-full ${roleBadge.color}`}>
-                    {roleBadge.label}
-                  </span>
-                </div>
-              )}
+          <div style={{ padding: isCollapsed ? '4px 0' : '4px 0', display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: isCollapsed ? 0 : 12, marginTop: 4 }}>
+            <div style={{
+              width: 40, height: 40, background: '#0C1E35', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <span style={{ color: 'white', fontWeight: 700, fontSize: 12 }}>{getInitials(userProfile.name)}</span>
             </div>
+            {!isCollapsed && (
+              <div style={{ overflow: 'hidden', flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{userProfile.name}</p>
+                <span style={{
+                  display: 'inline-block', padding: '2px 8px', borderRadius: 999,
+                  fontSize: 10, fontWeight: 700, marginTop: 2,
+                  background: roleBadge.bg, color: roleBadge.color,
+                }}>
+                  {roleBadge.label}
+                </span>
+              </div>
+            )}
           </div>
 
           <button
             onClick={onLogout}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all duration-200`}
+            onMouseEnter={() => setHoveredLogout(true)}
+            onMouseLeave={() => setHoveredLogout(false)}
             title={isCollapsed ? 'Keluar' : ''}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isCollapsed ? 'center' : 'flex-start',
+              padding: isCollapsed ? '10px 0' : '10px 12px',
+              gap: isCollapsed ? 0 : 10,
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 150ms',
+              color: '#EF4444',
+              background: hoveredLogout ? '#FEF2F2' : 'transparent',
+            }}
           >
-            <LogOut className={`${isCollapsed ? '' : 'mr-3'} w-5 h-5 text-red-400`} />
+            <LogOut style={{ width: 20, height: 20 }} />
             {!isCollapsed && 'Keluar'}
           </button>
 
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'px-4'} py-2 mt-1`} title={isOnline ? 'Online' : 'Offline'}>
-            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', padding: isCollapsed ? '8px 0' : '8px 16px' }} title={isOnline ? 'Online' : 'Offline'}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: isOnline ? '#34D399' : '#CBD5E1' }} />
             {!isCollapsed && (
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-2">
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginLeft: 8 }}>
                 {isOnline ? 'Online' : 'Offline'}
               </span>
             )}
@@ -208,8 +286,8 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col h-full overflow-hidden transition-all duration-300 ease-in-out bg-white">
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', transition: 'all 300ms ease-in-out', background: '#F8FAFC' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
           {children}
         </div>
       </main>
