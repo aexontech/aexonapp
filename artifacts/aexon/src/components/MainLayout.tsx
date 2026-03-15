@@ -16,7 +16,6 @@ interface MainLayoutProps {
 export default function MainLayout({ children, activeMenu, onNavigate, onLogout, plan, trialDaysLeft, userProfile }: MainLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const [hoveredLogout, setHoveredLogout] = useState(false);
   const isAdmin = userProfile.role === 'admin';
   const isEnterprise = plan === 'enterprise';
@@ -124,30 +123,29 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
         <nav style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {menuItems.map((item) => {
             const active = isActive(item.id);
-            const hovered = hoveredNav === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id as any)}
-                onMouseEnter={() => setHoveredNav(item.id)}
-                onMouseLeave={() => setHoveredNav(null)}
                 title={isCollapsed ? item.label : ''}
                 style={{
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: isCollapsed ? 'center' : 'flex-start',
-                  padding: isCollapsed ? '10px 0' : '10px 12px',
-                  gap: isCollapsed ? 0 : 10,
+                  padding: isCollapsed ? 10 : '10px 16px',
                   borderRadius: 12,
-                  fontSize: 14,
-                  fontWeight: 500,
                   border: 'none',
                   cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  gap: isCollapsed ? 0 : 10,
+                  backgroundColor: active ? '#0C1E35' : 'transparent',
+                  color: active ? '#ffffff' : '#64748B',
                   transition: 'all 150ms',
-                  background: active ? '#0C1E35' : (hovered ? '#F8FAFC' : 'transparent'),
-                  color: active ? 'white' : (hovered ? '#0C1E35' : '#64748B'),
                 }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 {item.icon}
                 {!isCollapsed && item.label}
@@ -198,29 +196,28 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
 
           {(() => {
             const settingsActive = activeMenu === 'settings';
-            const settingsHovered = hoveredNav === 'settings';
             return (
               <button
                 onClick={() => onNavigate('settings')}
-                onMouseEnter={() => setHoveredNav('settings')}
-                onMouseLeave={() => setHoveredNav(null)}
                 title={isCollapsed ? 'Pengaturan' : ''}
                 style={{
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: isCollapsed ? 'center' : 'flex-start',
-                  padding: isCollapsed ? '10px 0' : '10px 12px',
-                  gap: isCollapsed ? 0 : 10,
+                  padding: isCollapsed ? 10 : '10px 16px',
                   borderRadius: 12,
-                  fontSize: 14,
-                  fontWeight: 500,
                   border: 'none',
                   cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  gap: isCollapsed ? 0 : 10,
+                  backgroundColor: settingsActive ? '#0C1E35' : 'transparent',
+                  color: settingsActive ? '#ffffff' : '#64748B',
                   transition: 'all 150ms',
-                  background: settingsActive ? '#0C1E35' : (settingsHovered ? '#F8FAFC' : 'transparent'),
-                  color: settingsActive ? 'white' : (settingsHovered ? '#0C1E35' : '#64748B'),
                 }}
+                onMouseEnter={e => { if (!settingsActive) e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                onMouseLeave={e => { if (!settingsActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 <Settings style={{ width: 20, height: 20 }} />
                 {!isCollapsed && 'Pengaturan'}

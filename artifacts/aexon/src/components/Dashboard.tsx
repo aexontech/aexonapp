@@ -119,54 +119,111 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
         </motion.div>
       )}
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mb-10 relative z-10"
-      >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40, position: 'relative', zIndex: 10 }}>
         <div>
-          <p className="text-sm font-medium text-slate-400 mb-1">{dateStr}</p>
-          <h2 className="font-aexon text-[40px] leading-[1.1] tracking-tight text-slate-900">
+          <p style={{ fontSize: 13, color: '#94A3B8', fontWeight: 500, marginBottom: 8 }}>{dateStr}</p>
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: 44, fontWeight: 400, color: '#94A3B8', letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 4 }}>
             Selamat datang,
           </h2>
-          <h2 className="font-aexon text-[40px] leading-[1.1] tracking-tight text-[#0C1E35]">
+          <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: 44, fontWeight: 800, color: '#0C1E35', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
             {userProfile.name}
           </h2>
-          <p className="text-sm font-medium text-slate-400 mt-2">{userProfile.specialization}</p>
+          <p style={{ fontSize: 14, color: '#94A3B8', marginTop: 8, fontWeight: 500 }}>
+            {userProfile.specialization}
+          </p>
         </div>
+        <div>
+          {hasActiveAccess ? (
+            <button
+              onClick={onNewSession}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '12px 24px', backgroundColor: '#0C1E35', color: '#ffffff',
+                border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', boxShadow: '0 4px 20px rgba(12,30,53,0.25)',
+                transition: 'background-color 150ms',
+              }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a3a5c'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0C1E35'}
+            >
+              <Plus style={{ width: 18, height: 18 }} />
+              Mulai Sesi Baru
+            </button>
+          ) : (
+            <button
+              disabled
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '12px 24px', backgroundColor: '#E2E8F0', color: '#94A3B8',
+                border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 600,
+                cursor: 'not-allowed',
+              }}
+            >
+              <Lock style={{ width: 16, height: 16 }} />
+              Mulai Sesi Baru
+            </button>
+          )}
+        </div>
+      </div>
 
-        
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 relative z-10"
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 40, position: 'relative', zIndex: 10 }}>
         {stats.map((stat, i) => (
-          <motion.div
+          <div
             key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + i * 0.1 }}
-            whileHover={{ scale: 1.05 }}
-            className="group relative bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] transition-all duration-200 overflow-hidden"
+            style={{
+              background: i === 0
+                ? 'linear-gradient(135deg, #0C1E35 0%, #1E3A5F 50%, #0C1E35 100%)'
+                : 'transparent',
+              padding: i === 0 ? 2 : 0,
+              borderRadius: 24,
+              boxShadow: i === 0 ? '0 20px 60px rgba(12,30,53,0.18)' : 'none',
+            }}
           >
-            <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.gradient} opacity-5 group-hover:opacity-10 transition-opacity duration-200 rounded-full -mr-12 -mt-12`} />
-            <div className="relative z-10">
-              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-4 shadow-sm`}>
-                <stat.icon className="w-5 h-5 text-white" />
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: i === 0 ? 22 : 20,
+              border: i === 0 ? 'none' : '1px solid #E2E8F0',
+              boxShadow: i === 0 ? 'none' : '0 4px 24px rgba(0,0,0,0.04)',
+              padding: 24,
+              position: 'relative',
+              overflow: 'hidden',
+              transition: 'transform 150ms, box-shadow 150ms',
+              cursor: 'default',
+            }}>
+              <div style={{
+                position: 'absolute', top: 0, right: 0,
+                width: 80, height: 80, borderRadius: '50%',
+                background: i === 0
+                  ? 'linear-gradient(135deg, #3B82F6, #2563EB)'
+                  : i === 1
+                  ? 'linear-gradient(135deg, #0C1E35, #1a3a5c)'
+                  : 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
+                opacity: 0.06,
+                marginRight: -40, marginTop: -40,
+              }} />
+              <div style={{
+                width: 40, height: 40, borderRadius: 14,
+                background: i === 0
+                  ? 'linear-gradient(135deg, #3B82F6, #2563EB)'
+                  : i === 1
+                  ? 'linear-gradient(135deg, #0C1E35, #1a3a5c)'
+                  : 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 16,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              }}>
+                <stat.icon style={{ width: 20, height: 20, color: '#ffffff' }} />
               </div>
-              <div className="text-3xl font-black text-slate-900 tracking-tight mb-1">
+              <div style={{ fontSize: 36, fontWeight: 800, color: '#0C1E35', lineHeight: 1, marginBottom: 4 }}>
                 <AnimatedNumber value={stat.value} />
               </div>
-              <div className="text-xs font-medium text-slate-400">{stat.label}</div>
+              <div style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500 }}>
+                {stat.label}
+              </div>
             </div>
-          </motion.div>
+          </div>
         ))}
-      </motion.div>
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
