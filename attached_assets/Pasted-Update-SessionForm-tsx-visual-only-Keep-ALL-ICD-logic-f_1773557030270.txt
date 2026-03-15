@@ -1,0 +1,72 @@
+Update SessionForm.tsx visual only. Keep ALL ICD logic, form submit, 
+all fields, all validation. Light theme throughout — NO dark navy sections.
+
+PAGE: bg '#F8FAFC', flex flex-col items-center, p-8, overflow-y-auto
+Decorative orbs: orb-tr and orb-bl divs
+
+BACK BUTTON (top left):
+- flex items-center, px 16 py 10, bg white, border '1px solid #E2E8F0',
+  borderRadius 12, color '#64748B', hover color '#0C1E35', hover bg '#F8FAFC'
+- ChevronLeft icon + "Kembali ke Dashboard" text
+- fontSize 11 fontWeight 700 uppercase letterSpacing 0.1em
+
+SESSION ID BADGE (top right):
+- "Sesi Baru" label: fontSize 10 fontWeight 700 color '#0C1E35' uppercase
+- ID: fontSize 9 color '#94A3B8'
+- Small Activity icon in bg '#EFF6FF' borderRadius 10
+
+MAIN CARD (maxWidth 900, w-full, bg white, borderRadius 28, p-10,
+  boxShadow '0 8px 40px rgba(12,30,53,0.08)', position relative overflow hidden):
+  Top accent line: height 3, position absolute top 0 left 0 right 0,
+  background 'linear-gradient(90deg, #0C1E35, #1E3A5F, #0C1E35)'
+
+CARD HEADER (mb-10):
+- Icon box: w-16 h-16 bg '#EFF6FF' borderRadius 20
+  ClipboardList icon color '#0C1E35'
+- Title: className="font-aexon" fontSize 36 color '#0C1E35'
+- Subtitle: fontSize 14 color '#94A3B8'
+
+SECTION 1 — IDENTITAS PASIEN (light card):
+- bg '#F8FAFC', borderRadius 20, p-8, border '1px solid #E2E8F0'
+- Section header: className="section-label" with User icon
+- Grid 2 cols, gap 24
+- Each field: label (section-label style, mb-6), input (input-base class)
+- Date input with age badge (bg '#EFF6FF' color '#0C1E35' borderRadius 8 px-3 py-1)
+- Gender select: input-base + custom arrow
+- All labels and inputs use LIGHT theme colors
+
+SECTION 2 — PROSEDUR ICD-9 (light card with featured border):
+- Wrap with featured-border div
+- Inner: bg white borderRadius 22 p-8
+- Section header: section-label + Activity icon
+- Each procedure row: flex gap-8, number badge (bg '#EFF6FF' color '#0C1E35' 
+  w-8 h-8 borderRadius 10 flex items-center justify-center fontWeight 700)
+- ICD9 autocomplete: full width, light input style
+- Remove button: bg '#FEF2F2' hover bg red-100, color '#EF4444', borderRadius 10
+- "Tambah Tindakan" button: bg '#F8FAFC' border '#E2E8F0' color '#64748B'
+  borderRadius 10, hover bg '#EFF6FF' hover color '#0C1E35'
+
+SECTION 3 — DIAGNOSIS ICD-10 (light card):
+- bg white, borderRadius 20, border '1px solid #E2E8F0', p-8
+- Stethoscope icon + "DIAGNOSIS ICD-10" section-label
+- ICD10 autocomplete: full width light input
+- Diagnosis banding: input-base
+
+SECTION 4 — ADMINISTRASI (light card):
+- bg '#F8FAFC', borderRadius 20, border '1px solid #E2E8F0', p-8
+- Building2 icon + "ADMINISTRASI" section-label
+- 3 cols: Operator (read-only display), Kategori (select), Submit button
+- Operator: bg white border '#E2E8F0' borderRadius 12 p-3
+  green pulse dot + doctor name, fontWeight 600 color '#0C1E35'
+- Category select: input-base style
+- Submit: btn-primary full width with ArrowRight icon
+
+ICD DROPDOWNS (CRITICAL — must be visible):
+- position absolute, zIndex 9999, width '100%', top '100%', mt 4
+- bg white, borderRadius 16, border '1px solid #E2E8F0'
+- boxShadow '0 8px 32px rgba(0,0,0,0.12)'
+- maxHeight 240, overflowY auto
+- Each item: px 16 py 10, fontSize 13
+  hover: bg '#F8FAFC', cursor pointer
+  Selected: bg '#EFF6FF' color '#0C1E35' fontWeight 600
+- Parent containers: position relative, overflow visible

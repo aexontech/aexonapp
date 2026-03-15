@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Activity, ArrowRight, ChevronLeft, Stethoscope, ClipboardList, Building2, Plus, X } from 'lucide-react';
 import { PatientData, UserProfile } from '../types';
-import { Pattern } from './Logo';
 import ICD10Autocomplete from './ICD10Autocomplete';
 import ICD9Autocomplete from './ICD9Autocomplete';
 
@@ -106,298 +105,338 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
 
   const age = calculateAge(formData.dob);
 
+  const sectionLabelStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, color: '#94A3B8',
+    textTransform: 'uppercase', letterSpacing: '0.08em',
+    display: 'flex', alignItems: 'center', gap: 8,
+  };
+
+  const fieldLabelStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, color: '#94A3B8',
+    textTransform: 'uppercase', letterSpacing: '0.08em',
+    display: 'block', marginBottom: 6,
+  };
+
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col items-center p-8 font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar relative">
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <Pattern className="text-blue-500 opacity-[0.03]" />
-        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#0C1E35]/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/5 rounded-full blur-[120px]" />
+    <div style={{ flex: 1, backgroundColor: '#F8FAFC', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 32, overflowY: 'auto', height: '100%', position: 'relative' }} className="custom-scrollbar">
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <div className="orb-tr" />
+        <div className="orb-bl" />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="max-w-5xl w-full relative z-10"
+        style={{ maxWidth: 900, width: '100%', position: 'relative', zIndex: 10 }}
       >
-        <div className="flex items-center justify-between mb-10">
-          <motion.button 
-            whileHover={{ x: -4 }}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 40 }}>
+          <button
             onClick={onCancel}
-            className="flex items-center px-4 py-2.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold transition-colors"
+            style={{
+              display: 'flex', alignItems: 'center', padding: '10px 16px',
+              backgroundColor: 'white', border: '1px solid #E2E8F0',
+              borderRadius: 12, color: '#64748B', cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: '0.1em', transition: 'all 150ms',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#0C1E35'; e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#64748B'; e.currentTarget.style.backgroundColor = 'white'; }}
           >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Kembali
-          </motion.button>
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-end">
-              <span className="text-xs font-medium text-slate-500">Sesi Baru</span>
-              <span className="text-xs font-medium text-slate-400">ID: {sessionId}</span>
+            <ChevronLeft style={{ width: 16, height: 16, marginRight: 6 }} />
+            Kembali ke Dashboard
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#0C1E35', textTransform: 'uppercase' }}>Sesi Baru</span>
+              <span style={{ fontSize: 9, color: '#94A3B8' }}>ID: {sessionId}</span>
             </div>
-            <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center">
-              <Activity className="w-5 h-5 text-blue-600" />
+            <div style={{ width: 40, height: 40, backgroundColor: '#EFF6FF', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Activity style={{ width: 20, height: 20, color: '#0C1E35' }} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] relative overflow-visible">
-          <div className="flex items-center mb-10">
-            <div className="w-14 h-14 bg-[#0C1E35] rounded-2xl flex items-center justify-center mr-6">
-              <ClipboardList className="w-7 h-7 text-white" />
+        <div style={{
+          backgroundColor: 'white', borderRadius: 28, padding: 40,
+          boxShadow: '0 8px 40px rgba(12,30,53,0.08)',
+          position: 'relative', overflow: 'visible',
+        }}>
+          <div style={{
+            height: 3, position: 'absolute', top: 0, left: 0, right: 0,
+            background: 'linear-gradient(90deg, #0C1E35, #1E3A5F, #0C1E35)',
+            borderRadius: '28px 28px 0 0',
+          }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 40 }}>
+            <div style={{ width: 64, height: 64, backgroundColor: '#EFF6FF', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 24 }}>
+              <ClipboardList style={{ width: 28, height: 28, color: '#0C1E35' }} />
             </div>
             <div>
-              <h2 className="font-aexon text-2xl text-slate-900 tracking-tight mb-1">Registrasi Sesi</h2>
-              <p className="text-sm text-slate-500">Lengkapi data klinis pasien untuk memulai prosedur endoskopi.</p>
+              <h2 className="font-aexon" style={{ fontSize: 36, color: '#0C1E35', marginBottom: 4 }}>Registrasi Sesi</h2>
+              <p style={{ fontSize: 14, color: '#94A3B8' }}>Lengkapi data klinis pasien untuk memulai prosedur endoskopi.</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-10">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
 
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="bg-[#0C1E35] rounded-2xl p-6 border border-[#0C1E35] space-y-6"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-white/70 uppercase tracking-wider flex items-center">
-                  <User className="w-4 h-4 mr-2" />
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: 20, padding: 32, border: '1px solid #E2E8F0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+                <h3 style={sectionLabelStyle}>
+                  <User style={{ width: 16, height: 16 }} />
                   Identitas Pasien
                 </h3>
-                <span className="text-xs font-medium text-white/40">Wajib Diisi *</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>Wajib Diisi *</span>
               </div>
-              
-              <div className="grid md:grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/60">Nama Lengkap *</label>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                <div>
+                  <label style={fieldLabelStyle}>Nama Lengkap *</label>
                   <input
                     type="text"
                     name="name"
                     required
                     value={formData.name}
                     onChange={handleChange}
-                    className="block w-full px-4 py-2.5 border border-white/10 rounded-xl bg-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition-colors duration-150"
+                    className="input-base"
                     placeholder="Contoh: Budi Santoso"
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/60">No. Rekam Medis *</label>
+                <div>
+                  <label style={fieldLabelStyle}>No. Rekam Medis *</label>
                   <input
                     type="text"
                     name="rmNumber"
                     required
                     value={formData.rmNumber}
                     onChange={handleChange}
-                    className="block w-full px-4 py-2.5 border border-white/10 rounded-xl bg-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition-colors duration-150"
+                    className="input-base"
                     placeholder="RM-XXXXXX"
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/60">Tanggal Lahir</label>
-                  <div className="flex items-center gap-3">
+                <div>
+                  <label style={fieldLabelStyle}>Tanggal Lahir</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <input
                       type="date"
                       name="dob"
                       value={formData.dob}
                       onChange={handleChange}
-                      className="block w-full px-4 py-2.5 border border-white/10 rounded-xl bg-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition-colors duration-150 [color-scheme:dark]"
+                      className="input-base"
                     />
                     {age !== null && (
-                      <motion.span
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="shrink-0 px-3 py-1.5 bg-white/20 rounded-lg text-white font-semibold text-xs whitespace-nowrap"
-                      >
+                      <span style={{
+                        flexShrink: 0, padding: '4px 12px',
+                        backgroundColor: '#EFF6FF', color: '#0C1E35',
+                        borderRadius: 8, fontWeight: 600, fontSize: 12,
+                        whiteSpace: 'nowrap',
+                      }}>
                         {age} thn
-                      </motion.span>
+                      </span>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/60">Jenis Kelamin</label>
-                  <div className="relative">
+                <div>
+                  <label style={fieldLabelStyle}>Jenis Kelamin</label>
+                  <div style={{ position: 'relative' }}>
                     <select
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
-                      className="block w-full px-4 py-2.5 border border-white/10 rounded-xl bg-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition-colors duration-150 appearance-none"
+                      className="input-base"
+                      style={{ appearance: 'none', paddingRight: 40 }}
                     >
-                      <option value="Laki-laki" className="text-slate-900">Laki-laki</option>
-                      <option value="Perempuan" className="text-slate-900">Perempuan</option>
+                      <option value="Laki-laki">Laki-laki</option>
+                      <option value="Perempuan">Perempuan</option>
                     </select>
-                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                      <ArrowRight className="w-4 h-4 text-white/40 rotate-90" />
+                    <div style={{ position: 'absolute', inset: '0 0 0 auto', paddingRight: 16, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                      <ArrowRight style={{ width: 16, height: 16, color: '#94A3B8', transform: 'rotate(90deg)' }} />
                     </div>
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="bg-slate-50 rounded-2xl p-6 border-2 border-[#0C1E35]/10 space-y-6"
-            >
-              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center">
-                <Stethoscope className="w-4 h-4 mr-2" />
-                Diagnosis (ICD-10)
+            <div style={{
+              background: 'linear-gradient(135deg, #0C1E35 0%, #1E3A5F 50%, #0C1E35 100%)',
+              padding: 2, borderRadius: 24,
+              boxShadow: '0 20px 60px rgba(12,30,53,0.18)',
+            }}>
+              <div style={{ backgroundColor: 'white', borderRadius: 22, padding: 32, position: 'relative', overflow: 'visible' }}>
+                <h3 style={{ ...sectionLabelStyle, marginBottom: 24 }}>
+                  <Activity style={{ width: 16, height: 16 }} />
+                  Prosedur & Tindakan (ICD-9-CM)
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <AnimatePresence mode="popLayout">
+                    {formData.procedures_icd9.map((proc, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}
+                      >
+                        <div style={{
+                          width: 32, height: 32, flexShrink: 0, borderRadius: 10,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 700, fontSize: 13, marginTop: 4,
+                          backgroundColor: index === 0 ? '#EFF6FF' : '#F1F5F9',
+                          color: '#0C1E35',
+                        }}>
+                          {index + 1}
+                        </div>
+                        <div style={{ flex: 1, position: 'relative', overflow: 'visible' }}>
+                          <ICD9Autocomplete
+                            value={proc}
+                            onChange={(val) => updateProcedure(index, val)}
+                            index={index}
+                          />
+                        </div>
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => removeProcedure(index)}
+                            style={{
+                              width: 32, height: 32, flexShrink: 0, borderRadius: 10,
+                              backgroundColor: '#FEF2F2', border: 'none',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#EF4444', cursor: 'pointer', marginTop: 4,
+                              transition: 'background-color 150ms',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FEE2E2'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FEF2F2'}
+                          >
+                            <X style={{ width: 16, height: 16 }} />
+                          </button>
+                        )}
+                        {index === 0 && <div style={{ width: 32, flexShrink: 0 }} />}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+
+                  {formData.procedures_icd9.length < 5 && (
+                    <button
+                      type="button"
+                      onClick={addProcedure}
+                      style={{
+                        marginLeft: 44, display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '10px 16px', backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0', borderRadius: 10,
+                        color: '#64748B', fontSize: 13, fontWeight: 600,
+                        cursor: 'pointer', transition: 'all 150ms',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#EFF6FF'; e.currentTarget.style.color = '#0C1E35'; }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.color = '#64748B'; }}
+                    >
+                      <Plus style={{ width: 16, height: 16 }} />
+                      Tambah Tindakan
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: 'white', borderRadius: 20, border: '1px solid #E2E8F0', padding: 32, position: 'relative', overflow: 'visible' }}>
+              <h3 style={{ ...sectionLabelStyle, marginBottom: 24 }}>
+                <Stethoscope style={{ width: 16, height: 16 }} />
+                Diagnosis ICD-10
               </h3>
 
-              <div className="grid md:grid-cols-2 gap-5">
-                <ICD10Autocomplete
-                  value={formData.diagnosis_icd10}
-                  onChange={(val) => updateField('diagnosis_icd10', val)}
-                  label="Diagnosis Utama (ICD-10)"
-                  required={formData.category === 'Kamar Operasi'}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                <div style={{ position: 'relative', overflow: 'visible' }}>
+                  <ICD10Autocomplete
+                    value={formData.diagnosis_icd10}
+                    onChange={(val) => updateField('diagnosis_icd10', val)}
+                    label="Diagnosis Utama (ICD-10)"
+                    required={formData.category === 'Kamar Operasi'}
+                  />
+                </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500 block">Diagnosis Banding</label>
+                <div>
+                  <label style={fieldLabelStyle}>Diagnosis Banding</label>
                   <input
                     type="text"
                     name="differentialDiagnosis"
                     value={formData.differentialDiagnosis}
                     onChange={handleChange}
-                    className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
+                    className="input-base"
                     placeholder="Diagnosis banding (opsional)..."
                   />
                 </div>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.25 }}
-              className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
-            >
-              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center mb-2">
-                <Activity className="w-4 h-4 mr-2" />
-                Prosedur & Tindakan (ICD-9-CM)
-              </h3>
-              <div className="space-y-4">
-                <AnimatePresence mode="popLayout">
-                  {formData.procedures_icd9.map((proc, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="flex items-start gap-3"
-                    >
-                      <div className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center font-semibold text-sm mt-1 ${
-                        index === 0 
-                          ? 'bg-[#0C1E35] text-white' 
-                          : 'bg-slate-200 text-slate-600'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <ICD9Autocomplete
-                          value={proc}
-                          onChange={(val) => updateProcedure(index, val)}
-                          index={index}
-                        />
-                      </div>
-                      {index > 0 && (
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          type="button"
-                          onClick={() => removeProcedure(index)}
-                          className="w-9 h-9 shrink-0 rounded-lg bg-slate-100 hover:bg-red-50 border border-slate-200 hover:border-red-200 flex items-center justify-center text-slate-400 hover:text-red-500 transition-all mt-1"
-                        >
-                          <X className="w-4 h-4" />
-                        </motion.button>
-                      )}
-                      {index === 0 && (
-                        <div className="w-9 shrink-0" />
-                      )}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {formData.procedures_icd9.length < 5 && (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="button"
-                    onClick={addProcedure}
-                    className="ml-12 flex items-center gap-2 px-4 py-2.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Tambah Tindakan
-                  </motion.button>
-                )}
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-              className="bg-slate-50 rounded-2xl p-5 border border-slate-100"
-            >
-              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center mb-4">
-                <Building2 className="w-4 h-4 mr-2" />
+            <div style={{ backgroundColor: '#F8FAFC', borderRadius: 20, border: '1px solid #E2E8F0', padding: 32 }}>
+              <h3 style={{ ...sectionLabelStyle, marginBottom: 24 }}>
+                <Building2 style={{ width: 16, height: 16 }} />
                 Administrasi
               </h3>
-              <div className="flex items-end gap-4">
-                <div className="flex-1 space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500">Operator / Dokter</label>
-                  <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-sm flex items-center cursor-not-allowed">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full mr-3 animate-pulse" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, alignItems: 'end' }}>
+                <div>
+                  <label style={fieldLabelStyle}>Operator / Dokter</label>
+                  <div style={{
+                    backgroundColor: 'white', border: '1px solid #E2E8F0',
+                    borderRadius: 12, padding: 12, display: 'flex',
+                    alignItems: 'center', color: '#0C1E35', fontWeight: 600,
+                    fontSize: 14, cursor: 'not-allowed',
+                  }}>
+                    <div style={{ width: 8, height: 8, backgroundColor: '#34D399', borderRadius: '50%', marginRight: 12, animation: 'dotPulse 2s ease-in-out infinite' }} />
                     {userProfile.name}
                   </div>
                 </div>
-                <div className="flex-1 space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500">Kategori Layanan</label>
-                  <div className="relative">
+                <div>
+                  <label style={fieldLabelStyle}>Kategori Layanan</label>
+                  <div style={{ position: 'relative' }}>
                     <select
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
-                      className="block w-full px-4 py-2 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150 appearance-none"
+                      className="input-base"
+                      style={{ appearance: 'none', paddingRight: 40 }}
                     >
                       <option value="Poli">Poli Klinik</option>
                       <option value="Kamar Operasi">Kamar Operasi (OK)</option>
                       <option value="IGD">IGD</option>
                     </select>
-                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                      <ArrowRight className="w-4 h-4 text-slate-400 rotate-90" />
+                    <div style={{ position: 'absolute', inset: '0 0 0 auto', paddingRight: 16, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                      <ArrowRight style={{ width: 16, height: 16, color: '#94A3B8', transform: 'rotate(90deg)' }} />
                     </div>
                   </div>
                 </div>
-                <div className="shrink-0 flex flex-col items-end gap-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <AnimatePresence>
                     {validationError && (
                       <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="bg-red-50 border border-red-200 text-red-600 text-xs font-semibold p-2.5 rounded-xl text-center whitespace-nowrap"
+                        style={{
+                          backgroundColor: '#FEF2F2', border: '1px solid #FECACA',
+                          color: '#DC2626', fontSize: 12, fontWeight: 600,
+                          padding: '8px 12px', borderRadius: 12, textAlign: 'center',
+                          whiteSpace: 'nowrap',
+                        }}
                       >
                         {validationError}
                       </motion.div>
                     )}
                   </AnimatePresence>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                  <button
                     type="submit"
-                    className="flex items-center justify-center py-2 px-6 rounded-xl font-semibold text-sm text-white bg-[#0C1E35] hover:bg-[#1a3a5c] transition-colors"
+                    className="btn-primary"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                   >
                     Mulai Sesi
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </motion.button>
+                    <ArrowRight style={{ width: 16, height: 16 }} />
+                  </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
           </form>
         </div>

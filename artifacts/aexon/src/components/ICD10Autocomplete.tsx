@@ -17,7 +17,7 @@ function highlightMatch(text: string, query: string) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-yellow-200 text-slate-900 rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      <mark style={{ backgroundColor: '#FEF08A', color: '#0F172A', borderRadius: 2, padding: '0 2px' }}>{text.slice(idx, idx + query.length)}</mark>
       {text.slice(idx + query.length)}
     </>
   );
@@ -69,10 +69,10 @@ export default function ICD10Autocomplete({
   };
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
+    <div ref={containerRef} style={{ position: 'relative', overflow: 'visible' }} className={className}>
       {label && (
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] ml-1 block mb-2">
-          {label} {required && <span className="text-red-500">*</span>}
+        <label style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>
+          {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
         </label>
       )}
       <input
@@ -83,22 +83,32 @@ export default function ICD10Autocomplete({
         onFocus={() => query.length >= 2 && !selected && setOpen(true)}
         placeholder={placeholder}
         required={required}
-        className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
+        className="input-base"
       />
       {open && results.length > 0 && (
-        <div className="absolute z-[9999] w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-          <ul>
+        <div style={{
+          position: 'absolute', zIndex: 9999, width: '100%', marginTop: 4,
+          backgroundColor: 'white', border: '1px solid #E2E8F0', borderRadius: 16,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)', maxHeight: 240, overflowY: 'auto',
+        }}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {results.map((entry, idx) => (
               <li
                 key={entry.code}
                 onMouseDown={() => handleSelect(entry)}
-                className={`px-4 py-3 cursor-pointer transition-colors border-b border-slate-50 last:border-0 ${idx === highlighted ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                style={{
+                  padding: '10px 16px', cursor: 'pointer', fontSize: 13,
+                  transition: 'background-color 150ms',
+                  backgroundColor: idx === highlighted ? '#EFF6FF' : 'transparent',
+                }}
+                onMouseEnter={e => { if (idx !== highlighted) e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                onMouseLeave={e => { if (idx !== highlighted) e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
-                <div className="flex items-start gap-3">
-                  <span className="font-black text-[#0C1E35] text-xs font-mono shrink-0 mt-0.5 min-w-[3.5rem]">
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <span style={{ fontWeight: 900, color: '#0C1E35', fontSize: 12, fontFamily: 'monospace', flexShrink: 0, marginTop: 2, minWidth: 56 }}>
                     {highlightMatch(entry.code, query)}
                   </span>
-                  <div className="text-sm font-semibold text-slate-900 leading-tight">
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', lineHeight: 1.4 }}>
                     {highlightMatch(entry.display, query)}
                   </div>
                 </div>
@@ -108,8 +118,12 @@ export default function ICD10Autocomplete({
         </div>
       )}
       {open && results.length === 0 && query.length >= 2 && (
-        <div className="absolute z-[9999] w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl">
-          <div className="px-4 py-3 text-xs text-slate-400 italic">Tidak ditemukan. Ketik diagnosis secara manual.</div>
+        <div style={{
+          position: 'absolute', zIndex: 9999, width: '100%', marginTop: 4,
+          backgroundColor: 'white', border: '1px solid #E2E8F0', borderRadius: 16,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+        }}>
+          <div style={{ padding: '10px 16px', fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>Tidak ditemukan. Ketik diagnosis secara manual.</div>
         </div>
       )}
     </div>
