@@ -960,29 +960,22 @@ export default function EndoscopyApp({ plan, patientData, onEndSession, onLogout
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
             onClick={isRecording ? handleStopRecording : handleStartRecording}
+            title={isRecording ? 'Stop Recording (R)' : 'Start Recording (R)'}
             style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 20px', borderRadius: 20,
-              backgroundColor: isRecording ? '#FEF2F2' : '#fff',
-              border: isRecording ? '1px solid #FECACA' : '1px solid #E2E8F0',
-              color: isRecording ? '#DC2626' : '#64748B',
-              cursor: 'pointer', fontSize: 13, fontWeight: 700,
-              transition: 'all 150ms', fontFamily: 'Outfit, sans-serif',
+              width: 52, height: 52, borderRadius: '50%',
+              backgroundColor: '#DC2626', border: isRecording ? '3px solid #991B1B' : '3px solid #FECACA',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all 150ms',
+              boxShadow: isRecording ? '0 0 20px rgba(220,38,38,0.4)' : '0 4px 16px rgba(220,38,38,0.25)',
             }}
           >
             {isRecording ? (
-              <>
-                <Square style={{ width: 14, height: 14, fill: '#DC2626' }} />
-                Berhenti ({formatTime(recordingTime)})
-              </>
+              <Square style={{ width: 18, height: 18, color: '#fff', fill: '#fff' }} />
             ) : (
-              <>
-                <Video style={{ width: 16, height: 16 }} />
-                Rekam
-              </>
+              <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: '#fff' }} />
             )}
           </motion.button>
         </div>
