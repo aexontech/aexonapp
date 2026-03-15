@@ -71,7 +71,7 @@ export default function ICD10Autocomplete({
   return (
     <div ref={containerRef} style={{ position: 'relative', overflow: 'visible' }} className={className}>
       {label && (
-        <label style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
           {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
         </label>
       )}

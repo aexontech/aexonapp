@@ -105,16 +105,47 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
 
   const age = calculateAge(formData.dob);
 
+  const sectionCardStyle: React.CSSProperties = {
+    backgroundColor: 'white',
+    border: '1px solid #CBD5E1',
+    borderRadius: 16,
+    padding: 28,
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+  };
+
   const sectionLabelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: '#64748B',
+    fontSize: 12, fontWeight: 800, color: '#0C1E35',
     textTransform: 'uppercase', letterSpacing: '0.08em',
     display: 'flex', alignItems: 'center', gap: 8,
+    marginBottom: 24,
   };
 
   const fieldLabelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: '#64748B',
-    textTransform: 'uppercase', letterSpacing: '0.08em',
+    fontSize: 11, fontWeight: 700, color: '#475569',
+    textTransform: 'uppercase', letterSpacing: '0.06em',
     display: 'block', marginBottom: 6,
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    border: '1px solid #CBD5E1',
+    borderRadius: 10,
+    padding: '11px 14px',
+    fontSize: 14,
+    backgroundColor: 'white',
+    color: '#0C1E35',
+    outline: 'none',
+    transition: 'border 150ms, box-shadow 150ms',
+    fontFamily: 'Plus Jakarta Sans, sans-serif',
+  };
+
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    e.currentTarget.style.borderColor = '#0C1E35';
+    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(12,30,53,0.08)';
+  };
+  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    e.currentTarget.style.borderColor = '#CBD5E1';
+    e.currentTarget.style.boxShadow = 'none';
   };
 
   return (
@@ -130,26 +161,29 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
         transition={{ duration: 0.6 }}
         style={{ maxWidth: 900, width: '100%', position: 'relative', zIndex: 10 }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 40 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: 24, backgroundColor: 'white', borderBottom: '1px solid #E2E8F0',
+          padding: '12px 24px', borderRadius: '16px 16px 0 0',
+        }}>
           <button
             onClick={onCancel}
             style={{
-              display: 'flex', alignItems: 'center', padding: '10px 16px',
+              display: 'flex', alignItems: 'center', padding: '8px 14px',
               backgroundColor: 'white', border: '1px solid #E2E8F0',
-              borderRadius: 12, color: '#64748B', cursor: 'pointer',
-              fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-              letterSpacing: '0.1em', transition: 'all 150ms',
+              borderRadius: 10, color: '#0C1E35', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600, transition: 'all 150ms',
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#0C1E35'; e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#64748B'; e.currentTarget.style.backgroundColor = 'white'; }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
           >
             <ChevronLeft style={{ width: 16, height: 16, marginRight: 6 }} />
-            Kembali ke Dashboard
+            Kembali
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#0C1E35', textTransform: 'uppercase' }}>Sesi Baru</span>
-              <span style={{ fontSize: 9, color: '#64748B' }}>ID: {sessionId}</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#0C1E35', textTransform: 'uppercase' }}>Sesi Baru</span>
+              <span style={{ fontSize: 11, color: '#64748B' }}>ID: {sessionId}</span>
             </div>
             <div style={{ width: 40, height: 40, backgroundColor: '#EFF6FF', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Activity style={{ width: 20, height: 20, color: '#0C1E35' }} />
@@ -158,14 +192,13 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
         </div>
 
         <div style={{
-          backgroundColor: 'white', borderRadius: 28, padding: 40,
+          backgroundColor: 'white', borderRadius: '0 0 16px 16px', padding: 40,
           boxShadow: '0 8px 40px rgba(12,30,53,0.08)',
           position: 'relative', overflow: 'visible',
         }}>
           <div style={{
-            height: 3, position: 'absolute', top: 0, left: 0, right: 0,
-            background: 'linear-gradient(90deg, #0C1E35, #1E3A5F, #0C1E35)',
-            borderRadius: '28px 28px 0 0',
+            height: 4, position: 'absolute', top: 0, left: 0, right: 0,
+            background: 'linear-gradient(90deg, #0C1E35 0%, #1E3A5F 60%, #0C1E35 100%)',
           }} />
 
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 40 }}>
@@ -178,12 +211,12 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
 
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: 20, padding: 32, border: '1px solid #E2E8F0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <div style={sectionCardStyle}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <h3 style={sectionLabelStyle}>
-                  <User style={{ width: 16, height: 16 }} />
+                  <User style={{ width: 16, height: 16, color: '#0C1E35' }} />
                   Identitas Pasien
                 </h3>
                 <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>Wajib Diisi *</span>
@@ -198,7 +231,9 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                     required
                     value={formData.name}
                     onChange={handleChange}
-                    className="input-base"
+                    style={inputStyle}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     placeholder="Contoh: Budi Santoso"
                   />
                 </div>
@@ -211,7 +246,9 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                     required
                     value={formData.rmNumber}
                     onChange={handleChange}
-                    className="input-base"
+                    style={inputStyle}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     placeholder="RM-XXXXXX"
                   />
                 </div>
@@ -224,7 +261,9 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                       name="dob"
                       value={formData.dob}
                       onChange={handleChange}
-                      className="input-base"
+                      style={inputStyle}
+                      onFocus={handleInputFocus}
+                      onBlur={handleInputBlur}
                     />
                     {age !== null && (
                       <span style={{
@@ -246,13 +285,14 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
-                      className="input-base"
-                      style={{ appearance: 'none', paddingRight: 40 }}
+                      style={{ ...inputStyle, appearance: 'none', paddingRight: 40, cursor: 'pointer' }}
+                      onFocus={handleInputFocus as any}
+                      onBlur={handleInputBlur as any}
                     >
                       <option value="Laki-laki">Laki-laki</option>
                       <option value="Perempuan">Perempuan</option>
                     </select>
-                    <div style={{ position: 'absolute', inset: '0 0 0 auto', paddingRight: 16, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', inset: '0 0 0 auto', paddingRight: 14, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
                       <ArrowRight style={{ width: 16, height: 16, color: '#64748B', transform: 'rotate(90deg)' }} />
                     </div>
                   </div>
@@ -260,88 +300,83 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
               </div>
             </div>
 
-            <div style={{
-              backgroundColor: 'white', borderRadius: 20,
-              border: '1px solid #E2E8F0', padding: 32,
-              position: 'relative', overflow: 'visible',
-            }}>
-                <h3 style={{ ...sectionLabelStyle, marginBottom: 24 }}>
-                  <Activity style={{ width: 16, height: 16 }} />
-                  Prosedur & Tindakan (ICD-9-CM)
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <AnimatePresence mode="popLayout">
-                    {formData.procedures_icd9.map((proc, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}
-                      >
-                        <div style={{
-                          width: 32, height: 32, flexShrink: 0, borderRadius: 10,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 700, fontSize: 13, marginTop: 4,
-                          backgroundColor: index === 0 ? '#EFF6FF' : '#F1F5F9',
-                          color: '#0C1E35',
-                        }}>
-                          {index + 1}
-                        </div>
-                        <div style={{ flex: 1, position: 'relative', overflow: 'visible' }}>
-                          <ICD9Autocomplete
-                            value={proc}
-                            onChange={(val) => updateProcedure(index, val)}
-                            index={index}
-                          />
-                        </div>
-                        {index > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => removeProcedure(index)}
-                            style={{
-                              width: 32, height: 32, flexShrink: 0, borderRadius: 10,
-                              backgroundColor: '#FEF2F2', border: 'none',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: '#EF4444', cursor: 'pointer', marginTop: 4,
-                              transition: 'background-color 150ms',
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FEE2E2'}
-                            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FEF2F2'}
-                          >
-                            <X style={{ width: 16, height: 16 }} />
-                          </button>
-                        )}
-                        {index === 0 && <div style={{ width: 32, flexShrink: 0 }} />}
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-
-                  {formData.procedures_icd9.length < 5 && (
-                    <button
-                      type="button"
-                      onClick={addProcedure}
-                      style={{
-                        marginLeft: 44, display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '10px 16px', backgroundColor: '#F8FAFC',
-                        border: '1px solid #E2E8F0', borderRadius: 10,
-                        color: '#64748B', fontSize: 13, fontWeight: 600,
-                        cursor: 'pointer', transition: 'all 150ms',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#EFF6FF'; e.currentTarget.style.color = '#0C1E35'; }}
-                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.color = '#64748B'; }}
+            <div style={{ ...sectionCardStyle, position: 'relative', overflow: 'visible' }}>
+              <h3 style={sectionLabelStyle}>
+                <Activity style={{ width: 16, height: 16, color: '#0C1E35' }} />
+                Prosedur & Tindakan (ICD-9-CM)
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <AnimatePresence mode="popLayout">
+                  {formData.procedures_icd9.map((proc, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}
                     >
-                      <Plus style={{ width: 16, height: 16 }} />
-                      Tambah Tindakan
-                    </button>
-                  )}
-                </div>
+                      <div style={{
+                        width: 32, height: 32, flexShrink: 0, borderRadius: 8,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 700, fontSize: 13, marginTop: 4,
+                        backgroundColor: '#0C1E35', color: 'white',
+                      }}>
+                        {index + 1}
+                      </div>
+                      <div style={{ flex: 1, position: 'relative', overflow: 'visible' }}>
+                        <ICD9Autocomplete
+                          value={proc}
+                          onChange={(val) => updateProcedure(index, val)}
+                          index={index}
+                        />
+                      </div>
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => removeProcedure(index)}
+                          style={{
+                            width: 32, height: 32, flexShrink: 0, borderRadius: 10,
+                            backgroundColor: '#FEF2F2', border: 'none',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#EF4444', cursor: 'pointer', marginTop: 4,
+                            transition: 'background-color 150ms',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FEE2E2'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FEF2F2'}
+                        >
+                          <X style={{ width: 16, height: 16 }} />
+                        </button>
+                      )}
+                      {index === 0 && <div style={{ width: 32, flexShrink: 0 }} />}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+
+                {formData.procedures_icd9.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={addProcedure}
+                    style={{
+                      marginLeft: 44, display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '10px 16px', backgroundColor: 'white',
+                      border: '1px dashed #94A3B8', borderRadius: 10,
+                      color: '#64748B', fontSize: 13, fontWeight: 600,
+                      cursor: 'pointer', transition: 'all 150ms',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#0C1E35'; e.currentTarget.style.color = '#0C1E35'; e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#94A3B8'; e.currentTarget.style.color = '#64748B'; e.currentTarget.style.backgroundColor = 'white'; }}
+                  >
+                    <Plus style={{ width: 16, height: 16 }} />
+                    Tambah Tindakan
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div style={{ backgroundColor: 'white', borderRadius: 20, border: '1px solid #E2E8F0', padding: 32, position: 'relative', overflow: 'visible' }}>
-              <h3 style={{ ...sectionLabelStyle, marginBottom: 24 }}>
-                <Stethoscope style={{ width: 16, height: 16 }} />
+            <div style={{ ...sectionCardStyle, position: 'relative', overflow: 'visible' }}>
+              <h3 style={sectionLabelStyle}>
+                <Stethoscope style={{ width: 16, height: 16, color: '#0C1E35' }} />
                 Diagnosis ICD-10
               </h3>
 
@@ -362,28 +397,30 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                     name="differentialDiagnosis"
                     value={formData.differentialDiagnosis}
                     onChange={handleChange}
-                    className="input-base"
+                    style={inputStyle}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                     placeholder="Diagnosis banding (opsional)..."
                   />
                 </div>
               </div>
             </div>
 
-            <div style={{ backgroundColor: '#F8FAFC', borderRadius: 20, border: '1px solid #E2E8F0', padding: 32 }}>
-              <h3 style={{ ...sectionLabelStyle, marginBottom: 24 }}>
-                <Building2 style={{ width: 16, height: 16 }} />
+            <div style={sectionCardStyle}>
+              <h3 style={sectionLabelStyle}>
+                <Building2 style={{ width: 16, height: 16, color: '#0C1E35' }} />
                 Administrasi
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, alignItems: 'end' }}>
                 <div>
                   <label style={fieldLabelStyle}>Operator / Dokter</label>
                   <div style={{
-                    backgroundColor: 'white', border: '1px solid #E2E8F0',
-                    borderRadius: 12, padding: 12, display: 'flex',
+                    backgroundColor: '#F8FAFC', border: '1px solid #CBD5E1',
+                    borderRadius: 10, padding: '11px 14px', display: 'flex',
                     alignItems: 'center', color: '#0C1E35', fontWeight: 600,
                     fontSize: 14, cursor: 'not-allowed',
                   }}>
-                    <div style={{ width: 8, height: 8, backgroundColor: '#34D399', borderRadius: '50%', marginRight: 12, animation: 'dotPulse 2s ease-in-out infinite' }} />
+                    <div style={{ width: 8, height: 8, backgroundColor: '#10B981', borderRadius: '50%', marginRight: 12, animation: 'dotPulse 2s ease-in-out infinite' }} />
                     {userProfile.name}
                   </div>
                 </div>
@@ -394,14 +431,15 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
-                      className="input-base"
-                      style={{ appearance: 'none', paddingRight: 40 }}
+                      style={{ ...inputStyle, appearance: 'none', paddingRight: 40, cursor: 'pointer' }}
+                      onFocus={handleInputFocus as any}
+                      onBlur={handleInputBlur as any}
                     >
                       <option value="Poli">Poli Klinik</option>
                       <option value="Kamar Operasi">Kamar Operasi (OK)</option>
                       <option value="IGD">IGD</option>
                     </select>
-                    <div style={{ position: 'absolute', inset: '0 0 0 auto', paddingRight: 16, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', inset: '0 0 0 auto', paddingRight: 14, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
                       <ArrowRight style={{ width: 16, height: 16, color: '#64748B', transform: 'rotate(90deg)' }} />
                     </div>
                   </div>
@@ -416,7 +454,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                         style={{
                           backgroundColor: '#FEF2F2', border: '1px solid #FECACA',
                           color: '#DC2626', fontSize: 12, fontWeight: 600,
-                          padding: '8px 12px', borderRadius: 12, textAlign: 'center',
+                          padding: '8px 12px', borderRadius: 10, textAlign: 'center',
                           whiteSpace: 'nowrap',
                         }}
                       >
@@ -426,8 +464,16 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                   </AnimatePresence>
                   <button
                     type="submit"
-                    className="btn-primary"
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', gap: 8, backgroundColor: '#0C1E35',
+                      color: 'white', border: 'none', borderRadius: 12,
+                      padding: '14px 32px', fontSize: 15, fontWeight: 700,
+                      cursor: 'pointer', boxShadow: '0 4px 20px rgba(12,30,53,0.3)',
+                      transition: 'background-color 150ms',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a3a5c'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0C1E35'}
                   >
                     Mulai Sesi
                     <ArrowRight style={{ width: 16, height: 16 }} />

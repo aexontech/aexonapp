@@ -1,0 +1,88 @@
+In SessionForm.tsx, improve contrast and visual hierarchy.
+Keep ALL existing logic. Only update styling.
+
+OVERALL PAGE:
+- Background: #F8FAFC
+- Main card: bg white, keep existing shadow
+
+SECTION CARDS — increase contrast:
+Each section card (Identitas Pasien, Prosedur, Diagnosis, Administrasi):
+- bg: white
+- border: '1px solid #CBD5E1' (darker than before)
+- borderRadius: 16
+- padding: 28px
+- boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+
+SECTION HEADERS inside each card:
+- Icon + label row
+- Icon: color '#0C1E35', size 16
+- Label: fontSize 12, fontWeight 800, color '#0C1E35', 
+  letterSpacing '0.08em', textTransform uppercase
+
+ALL INPUT FIELDS:
+- border: '1px solid #CBD5E1' (more visible)
+- borderRadius: 10
+- padding: '11px 14px'
+- fontSize: 14
+- backgroundColor: white
+- color: '#0C1E35'
+- placeholder color: '#94A3B8'
+- focus: border '#0C1E35', boxShadow '0 0 0 3px rgba(12,30,53,0.08)'
+
+ALL LABELS above inputs:
+- fontSize: 11
+- fontWeight: 700
+- color: '#475569' (darker, more visible)
+- textTransform: uppercase
+- letterSpacing: '0.06em'
+- marginBottom: 6
+
+PROCEDURE NUMBER BADGE:
+- bg: '#0C1E35'
+- color: white
+- w-8 h-8, borderRadius 8
+- fontSize 13, fontWeight 700
+
+TAMBAH TINDAKAN button:
+- border: '1px dashed #94A3B8'
+- borderRadius: 10
+- padding: '10px 16px'
+- color: '#64748B'
+- bg: white
+- hover: border '#0C1E35', color '#0C1E35', bg '#F8FAFC'
+- Plus icon + "Tambah Tindakan" text
+
+OPERATOR display:
+- border: '1px solid #CBD5E1'
+- borderRadius: 10
+- padding: '11px 14px'
+- bg: '#F8FAFC'
+- Green dot: w-2 h-2 bg-emerald-500
+- Doctor name: fontSize 14, fontWeight 600, color '#0C1E35'
+
+KATEGORI SELECT:
+- Same input style as other inputs
+- Arrow icon visible
+
+MULAI SESI button:
+- backgroundColor: '#0C1E35'
+- color: white
+- borderRadius: 12
+- padding: '14px 32px'
+- fontSize: 15, fontWeight: 700
+- boxShadow: '0 4px 20px rgba(12,30,53,0.3)'
+- ArrowRight icon
+
+TOP HEADER BAR:
+- bg: white
+- borderBottom: '1px solid #E2E8F0'
+- padding: '12px 24px'
+- Back button: border '#E2E8F0', borderRadius 10, 
+  color '#0C1E35', fontWeight 600 fontSize 12
+- Session ID: fontSize 11, color '#94A3B8'
+  "SESI BARU" label: fontWeight 800 color '#0C1E35'
+
+ACCENT LINE top of main card:
+- height: 4
+- background: 'linear-gradient(90deg, #0C1E35 0%, #1E3A5F 60%, #0C1E35 100%)'
+- borderRadius: '16px 16px 0 0'
