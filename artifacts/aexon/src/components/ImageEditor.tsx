@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Image as KonvaImage, Arrow, Circle, Rect, Transformer } from 'react-konva';
-import { X, ArrowUpRight, Circle as CircleIcon, Square, Trash2, Check, Undo } from 'lucide-react';
+import { X, ArrowUpRight, Circle as CircleIcon, Square, Trash2, Check, Undo, MousePointer } from 'lucide-react';
 import useImage from 'use-image';
 
 interface Shape {
@@ -25,12 +25,22 @@ interface ImageEditorProps {
   onClose: () => void;
 }
 
+const COLORS = [
+  { value: '#ffffff', label: 'White' },
+  { value: '#000000', label: 'Black' },
+  { value: '#EF4444', label: 'Red' },
+  { value: '#F59E0B', label: 'Yellow' },
+  { value: '#10B981', label: 'Green' },
+  { value: '#3B82F6', label: 'Blue' },
+  { value: '#0C1E35', label: 'Navy' },
+];
+
 export default function ImageEditor({ imageUrl, initialShapes = [], onSave, onClose }: ImageEditorProps) {
   const [image] = useImage(imageUrl, 'anonymous');
   const [shapes, setShapes] = useState<Shape[]>(initialShapes);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tool, setTool] = useState<'arrow' | 'circle' | 'rect' | 'select'>('select');
-  const [color, setColor] = useState('#ef4444'); // Default red
+  const [color, setColor] = useState('#EF4444');
   const [isDrawing, setIsDrawing] = useState(false);
   const stageRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
@@ -70,7 +80,6 @@ export default function ImageEditor({ imageUrl, initialShapes = [], onSave, onCl
     const clickedOnEmpty = e.target === e.target.getStage();
     const clickedOnImage = e.target.id() === 'background-image';
     
-    // If clicked on a shape (not empty and not image), select it
     if (!clickedOnEmpty && !clickedOnImage) {
       const shapeId = e.target.id();
       if (shapeId) {
@@ -87,7 +96,6 @@ export default function ImageEditor({ imageUrl, initialShapes = [], onSave, onCl
       return;
     }
 
-    // Start drawing a new shape
     const pos = e.target.getStage().getPointerPosition();
     const newId = `shape-${Math.random().toString(36).substr(2, 9)}`;
     const newShape: Shape = {
@@ -195,10 +203,8 @@ export default function ImageEditor({ imageUrl, initialShapes = [], onSave, onCl
 
   const handleSave = () => {
     if (stageRef.current) {
-      // Clear selection to hide transformer before capture
       setSelectedId(null);
       
-      // Use a small timeout to ensure the transformer is hidden in the next render cycle
       setTimeout(() => {
         const dataUrl = stageRef.current.toDataURL();
         onSave(dataUrl, shapes);
@@ -206,159 +212,220 @@ export default function ImageEditor({ imageUrl, initialShapes = [], onSave, onCl
     }
   };
 
+  const tools = [
+    { id: 'select' as const, icon: MousePointer, title: 'Pilih' },
+    { id: 'arrow' as const, icon: ArrowUpRight, title: 'Panah' },
+    { id: 'circle' as const, icon: CircleIcon, title: 'Lingkaran' },
+    { id: 'rect' as const, icon: Square, title: 'Persegi' },
+  ];
+
+  const toolBtnStyle = (active: boolean): React.CSSProperties => ({
+    width: 36, height: 36, borderRadius: 10,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    border: active ? 'none' : '1px solid #E2E8F0',
+    backgroundColor: active ? '#0C1E35' : '#F8FAFC',
+    color: active ? '#ffffff' : '#64748B',
+    cursor: 'pointer', transition: 'all 150ms',
+  });
+
   return (
-    <div className="fixed inset-0 z-[60] bg-white/95 backdrop-blur-sm flex flex-col">
-      {/* Header */}
-      <div className="h-16 border-b border-slate-200 flex items-center justify-between px-6 bg-white text-slate-900">
-        <div className="flex items-center gap-4">
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-          <h2 className="text-lg font-bold">Edit Foto</h2>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex bg-slate-100 rounded-xl p-1 mr-4">
-            <button
-              onClick={() => setTool('select')}
-              className={`p-2 rounded-lg transition-all ${tool === 'select' ? 'bg-[#0C1E35] text-white' : 'text-slate-500 hover:text-slate-900'}`}
-              title="Pilih"
-            >
-              <ArrowUpRight className="w-5 h-5 rotate-[-45deg]" />
-            </button>
-            <button
-              onClick={() => setTool('arrow')}
-              className={`p-2 rounded-lg transition-all ${tool === 'arrow' ? 'bg-[#0C1E35] text-white' : 'text-slate-500 hover:text-slate-900'}`}
-              title="Panah"
-            >
-              <ArrowUpRight className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setTool('circle')}
-              className={`p-2 rounded-lg transition-all ${tool === 'circle' ? 'bg-[#0C1E35] text-white' : 'text-slate-500 hover:text-slate-900'}`}
-              title="Lingkaran"
-            >
-              <CircleIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setTool('rect')}
-              className={`p-2 rounded-lg transition-all ${tool === 'rect' ? 'bg-[#0C1E35] text-white' : 'text-slate-500 hover:text-slate-900'}`}
-              title="Persegi"
-            >
-              <Square className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="flex gap-2 mr-4">
-            {['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#000000'].map((c) => (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 60,
+      backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 32,
+    }}>
+      <div style={{
+        backgroundColor: '#ffffff', borderRadius: 20,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        maxWidth: '90vw', maxHeight: '90vh', width: '100%', height: '100%',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      }}>
+        {/* Top Toolbar */}
+        <div style={{
+          backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
+          padding: '12px 16px', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {tools.map(t => (
               <button
-                key={c}
-                onClick={() => handleColorChange(c)}
-                className={`w-6 h-6 rounded-full border-2 transition-all ${color === c ? 'border-blue-600 scale-110' : 'border-slate-200'}`}
-                style={{ backgroundColor: c }}
-              />
+                key={t.id}
+                onClick={() => setTool(t.id)}
+                title={t.title}
+                style={toolBtnStyle(tool === t.id)}
+                onMouseEnter={e => { if (tool !== t.id) { e.currentTarget.style.backgroundColor = '#F1F5F9'; e.currentTarget.style.color = '#0C1E35'; }}}
+                onMouseLeave={e => { if (tool !== t.id) { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.color = '#64748B'; }}}
+              >
+                <t.icon style={{ width: 18, height: 18 }} />
+              </button>
             ))}
           </div>
 
-          <div className="flex gap-2">
-            <button onClick={handleUndo} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition-colors" title="Undo">
-              <Undo className="w-5 h-5" />
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#0C1E35' }}>Anotasi Foto</span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={handleUndo}
+              title="Undo"
+              style={toolBtnStyle(false)}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F1F5F9'; e.currentTarget.style.color = '#0C1E35'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.color = '#64748B'; }}
+            >
+              <Undo style={{ width: 18, height: 18 }} />
             </button>
-            <button onClick={handleDelete} className="p-2 hover:bg-slate-100 rounded-lg text-red-500 hover:text-red-600 transition-colors" title="Hapus">
-              <Trash2 className="w-5 h-5" />
+            <button
+              onClick={handleDelete}
+              title="Hapus"
+              style={{ ...toolBtnStyle(false), color: '#EF4444' }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+            >
+              <Trash2 style={{ width: 18, height: 18 }} />
+            </button>
+
+            <div style={{ width: 1, height: 24, backgroundColor: '#E2E8F0', margin: '0 4px' }} />
+
+            <button
+              onClick={onClose}
+              style={{
+                padding: '8px 16px', borderRadius: 10,
+                border: '1px solid #E2E8F0', backgroundColor: '#ffffff',
+                color: '#64748B', cursor: 'pointer', fontSize: 12,
+                fontWeight: 700, transition: 'all 150ms',
+                fontFamily: 'Outfit, sans-serif',
+              }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ffffff'}
+            >
+              Batal
             </button>
             <button
               onClick={handleSave}
-              className="ml-4 px-6 py-2 bg-[#0C1E35] hover:bg-blue-500 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-slate-900/10"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 18px', borderRadius: 10,
+                border: 'none', backgroundColor: '#0C1E35',
+                color: '#ffffff', cursor: 'pointer', fontSize: 12,
+                fontWeight: 700, transition: 'background-color 150ms',
+                fontFamily: 'Outfit, sans-serif',
+              }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a3a5c'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0C1E35'}
             >
-              <Check className="w-4 h-4" />
+              <Check style={{ width: 14, height: 14 }} />
               Simpan
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Editor Area */}
-      <div ref={containerRef} className="flex-1 relative bg-slate-50 overflow-hidden flex items-center justify-center">
-        {image && (
-          <Stage
-            width={stageSize.width}
-            height={stageSize.height}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            ref={stageRef}
-          >
-            <Layer>
-              <KonvaImage
-                id="background-image"
-                image={image}
-                x={(stageSize.width - (image.width * (stageSize.height / image.height))) / 2}
-                y={0}
-                height={stageSize.height}
-                width={image.width * (stageSize.height / image.height)}
-              />
-              {shapes.map((shape) => {
-                const commonProps = {
-                  key: shape.id,
-                  id: shape.id,
-                  x: shape.x,
-                  y: shape.y,
-                  rotation: shape.rotation || 0,
-                  scaleX: shape.scaleX || 1,
-                  scaleY: shape.scaleY || 1,
-                  stroke: shape.color,
-                  strokeWidth: 4,
-                  draggable: tool === 'select',
-                  onClick: () => setSelectedId(shape.id),
-                  onTap: () => setSelectedId(shape.id),
-                  onTransformEnd: handleTransformEnd,
-                  onDragEnd: handleDragEnd,
-                };
-
-                if (shape.type === 'arrow') {
-                  return (
-                    <Arrow
-                      {...commonProps}
-                      points={shape.points || [0, 0, 50, 50]}
-                      fill={shape.color}
-                      pointerLength={10}
-                      pointerWidth={10}
-                    />
-                  );
-                } else if (shape.type === 'circle') {
-                  return (
-                    <Circle
-                      {...commonProps}
-                      radius={shape.radius}
-                    />
-                  );
-                } else if (shape.type === 'rect') {
-                  return (
-                    <Rect
-                      {...commonProps}
-                      width={shape.width}
-                      height={shape.height}
-                    />
-                  );
-                }
-                return null;
-              })}
-              {selectedId && (
-                <Transformer
-                  ref={transformerRef}
-                  boundBoxFunc={(oldBox, newBox) => {
-                    // limit resize
-                    if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) {
-                      return oldBox;
-                    }
-                    return newBox;
-                  }}
+        {/* Canvas Area */}
+        <div ref={containerRef} style={{
+          flex: 1, position: 'relative', backgroundColor: '#1a1a2e',
+          overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {image && (
+            <Stage
+              width={stageSize.width}
+              height={stageSize.height}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              ref={stageRef}
+            >
+              <Layer>
+                <KonvaImage
+                  id="background-image"
+                  image={image}
+                  x={(stageSize.width - (image.width * (stageSize.height / image.height))) / 2}
+                  y={0}
+                  height={stageSize.height}
+                  width={image.width * (stageSize.height / image.height)}
                 />
-              )}
-            </Layer>
-          </Stage>
-        )}
+                {shapes.map((shape) => {
+                  const commonProps = {
+                    key: shape.id,
+                    id: shape.id,
+                    x: shape.x,
+                    y: shape.y,
+                    rotation: shape.rotation || 0,
+                    scaleX: shape.scaleX || 1,
+                    scaleY: shape.scaleY || 1,
+                    stroke: shape.color,
+                    strokeWidth: 4,
+                    draggable: tool === 'select',
+                    onClick: () => setSelectedId(shape.id),
+                    onTap: () => setSelectedId(shape.id),
+                    onTransformEnd: handleTransformEnd,
+                    onDragEnd: handleDragEnd,
+                  };
+
+                  if (shape.type === 'arrow') {
+                    return (
+                      <Arrow
+                        {...commonProps}
+                        points={shape.points || [0, 0, 50, 50]}
+                        fill={shape.color}
+                        pointerLength={10}
+                        pointerWidth={10}
+                      />
+                    );
+                  } else if (shape.type === 'circle') {
+                    return (
+                      <Circle
+                        {...commonProps}
+                        radius={shape.radius}
+                      />
+                    );
+                  } else if (shape.type === 'rect') {
+                    return (
+                      <Rect
+                        {...commonProps}
+                        width={shape.width}
+                        height={shape.height}
+                      />
+                    );
+                  }
+                  return null;
+                })}
+                {selectedId && (
+                  <Transformer
+                    ref={transformerRef}
+                    boundBoxFunc={(oldBox, newBox) => {
+                      if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) {
+                        return oldBox;
+                      }
+                      return newBox;
+                    }}
+                  />
+                )}
+              </Layer>
+            </Stage>
+          )}
+        </div>
+
+        {/* Color Palette Bar */}
+        <div style={{
+          backgroundColor: '#ffffff', borderTop: '1px solid #E2E8F0',
+          padding: '12px 16px', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', gap: 8, flexShrink: 0,
+        }}>
+          {COLORS.map(c => (
+            <button
+              key={c.value}
+              onClick={() => handleColorChange(c.value)}
+              title={c.label}
+              style={{
+                width: 24, height: 24, borderRadius: '50%',
+                backgroundColor: c.value,
+                border: color === c.value ? '2px solid #0C1E35' : '2px solid transparent',
+                cursor: 'pointer', transition: 'all 150ms',
+                transform: color === c.value ? 'scale(1.15)' : 'scale(1)',
+                boxShadow: c.value === '#ffffff' ? 'inset 0 0 0 1px #E2E8F0' : 'none',
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

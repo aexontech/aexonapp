@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { FileText, Printer, CheckCircle2, FileImage, ShieldAlert, ArrowLeft, Mail, MessageCircle, Info, AlertTriangle, Download, Video, Camera, Layout, Columns, Grid, Plus, Trash2, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { Session, Capture, HospitalSettings, UserProfile } from '../types';
 import ImageEditor from './ImageEditor';
@@ -43,7 +43,6 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
     }
   ]);
   const [activePageId, setActivePageId] = useState<string>('page-1');
-  const [isNavCollapsed] = useState(true);
   const [editingPhoto, setEditingPhoto] = useState<Capture | null>(null);
   const [pageToDelete, setPageToDelete] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -158,7 +157,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
         selectedPhotos: activePage.selectedPhotos.filter(p => p.id !== capture.id)
       });
     } else {
-      if (activePage.selectedPhotos.length < 9) { // Max 9 photos for a 3x3 grid
+      if (activePage.selectedPhotos.length < 9) {
         updateActivePage({
           selectedPhotos: [...activePage.selectedPhotos, capture]
         });
@@ -172,7 +171,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
         selectedVideos: activePage.selectedVideos.filter(p => p.id !== capture.id)
       });
     } else {
-      if (activePage.selectedVideos.length < 4) { // Max 4 videos
+      if (activePage.selectedVideos.length < 4) {
         updateActivePage({
           selectedVideos: [...activePage.selectedVideos, capture]
         });
@@ -306,8 +305,23 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
     document.body.removeChild(a);
   };
 
+  const sectionLabelStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, color: '#94A3B8',
+    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12,
+  };
+
+  const pillBtn = (active: boolean): React.CSSProperties => ({
+    flex: 1, padding: '10px 12px', borderRadius: 10,
+    fontSize: 12, fontWeight: 700, textAlign: 'center' as const,
+    border: active ? 'none' : '1px solid #E2E8F0',
+    backgroundColor: active ? '#0C1E35' : '#F8FAFC',
+    color: active ? '#ffffff' : '#64748B',
+    cursor: 'pointer', transition: 'all 150ms',
+    fontFamily: 'Plus Jakarta Sans, sans-serif',
+  });
+
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col font-sans text-slate-900 h-full overflow-hidden relative print:overflow-visible print:h-auto print:bg-white">
+    <div className="print:overflow-visible print:h-auto print:bg-white" style={{ flex: 1, backgroundColor: '#F8FAFC', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @page {
           size: ${activePage.pageSize === 'F4' ? '215mm 330mm' : activePage.pageSize === 'Letter' ? 'letter' : 'A4'} ${activePage.orientation};
@@ -376,389 +390,489 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
           }
         }
       `}} />
-      
-      {/* Background Elements */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none print:hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_70%)]" />
-      </div>
 
       {/* Header */}
-      <header className="h-20 border-b border-slate-200 bg-white/80 backdrop-blur-3xl flex items-center justify-between px-8 shrink-0 z-50 relative print:hidden">
-        <div className="flex items-center">
-          <motion.button 
-            whileHover={{ scale: 1.1, x: -2 }}
-            whileTap={{ scale: 0.9 }}
+      <header className="print:hidden" style={{
+        backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
+        padding: '0 24px', height: 64, display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', flexShrink: 0, position: 'relative', zIndex: 50,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button
             onClick={onBack}
-            className="mr-6 p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all border border-slate-200"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: 10,
+              backgroundColor: '#ffffff', color: '#0C1E35', cursor: 'pointer',
+              fontSize: 12, fontWeight: 700, transition: 'all 150ms',
+              fontFamily: 'Outfit, sans-serif',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.borderColor = '#0C1E35'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
           >
-            <ArrowLeft className="w-5 h-5" />
-          </motion.button>
-          <div className="w-12 h-12 bg-[#0C1E35] rounded-2xl flex items-center justify-center shadow-lg shadow-slate-900/10 mr-4">
-            <FileText className="w-6 h-6 text-white" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-1">Report Studio</span>
-            <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none uppercase">Generator Laporan</h1>
+            <ChevronLeft style={{ width: 16, height: 16 }} />
+            Kembali
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontWeight: 700, fontSize: 15, color: '#0C1E35' }}>{session.patient.name}</span>
+            <span style={{
+              padding: '3px 10px', backgroundColor: '#F1F5F9', borderRadius: 6,
+              fontSize: 11, fontWeight: 600, color: '#64748B',
+            }}>
+              {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handlePrint}
-            className="flex items-center px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-slate-900/10"
-          >
-            <Printer className="w-4 h-4 mr-2" />
-            CETAK LAPORAN
-          </motion.button>
-        </div>
+
+        <button
+          onClick={handlePrint}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 20px', backgroundColor: '#0C1E35', color: '#ffffff',
+            border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', transition: 'background-color 150ms',
+            fontFamily: 'Outfit, sans-serif',
+          }}
+          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a3a5c'}
+          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0C1E35'}
+        >
+          <Printer style={{ width: 16, height: 16 }} />
+          Cetak / PDF
+        </button>
       </header>
 
-      <div className="flex-1 flex overflow-hidden relative z-10 print:overflow-visible print:block">
-        {/* Sidebar Navigation */}
-        <div className={`${isNavCollapsed ? 'w-24' : 'w-64'} bg-white border-r border-slate-200 flex flex-col overflow-hidden transition-all duration-300 print:hidden`}>
-          <div className="p-6 border-b border-slate-100 flex items-center justify-center">
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={addNewPage}
-              className="w-12 h-12 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-900 rounded-2xl transition-all border border-slate-200 shadow-sm"
-              title="Tambah Halaman"
-            >
-              <Plus className="w-6 h-6" />
-            </motion.button>
-          </div>
-          <div className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-            {!isNavCollapsed && <h3 className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Daftar Halaman</h3>}
-            {pages.map((page, index) => (
-              <motion.div 
-                whileHover={{ x: 4 }}
-                key={page.id}
-                className={`group flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border ${
-                  activePageId === page.id 
-                    ? 'bg-[#0C1E35] border-blue-500 shadow-xl shadow-slate-900/10 text-white' 
-                    : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-100 text-slate-500'
-                } ${isNavCollapsed ? 'justify-center' : ''}`}
-                onClick={() => setActivePageId(page.id)}
-                title={isNavCollapsed ? page.name : ''}
-              >
-                <div className="flex items-center gap-4 overflow-hidden">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
-                    activePageId === page.id ? 'bg-white text-blue-600' : 'bg-white text-slate-400 border border-slate-100'
-                  }`}>
-                    {index + 1}
-                  </div>
-                  {!isNavCollapsed && <span className="text-xs font-black truncate uppercase tracking-widest">{page.name}</span>}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+      {/* Page Tabs */}
+      <div className="print:hidden" style={{
+        backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
+        padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8,
+        flexShrink: 0,
+      }}>
+        {pages.map((page, index) => (
+          <button
+            key={page.id}
+            onClick={() => setActivePageId(page.id)}
+            style={{
+              padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              border: 'none', cursor: 'pointer', transition: 'all 150ms',
+              backgroundColor: activePageId === page.id ? '#0C1E35' : '#F8FAFC',
+              color: activePageId === page.id ? '#ffffff' : '#64748B',
+              fontFamily: 'Plus Jakarta Sans, sans-serif',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            {page.name}
+            {pages.length > 1 && activePageId === page.id && (
+              <span
+                onClick={(e) => { e.stopPropagation(); handleDeletePage(page.id); }}
+                style={{ marginLeft: 4, opacity: 0.7, fontSize: 14, lineHeight: 1 }}
+              >×</span>
+            )}
+          </button>
+        ))}
+        <button
+          onClick={addNewPage}
+          style={{
+            padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+            backgroundColor: '#F8FAFC', color: '#94A3B8',
+            border: '1px dashed #CBD5E1', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 4,
+            transition: 'all 150ms', fontFamily: 'Plus Jakarta Sans, sans-serif',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#0C1E35'; e.currentTarget.style.color = '#0C1E35'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#94A3B8'; }}
+        >
+          <Plus style={{ width: 14, height: 14 }} />
+          Tambah
+        </button>
+      </div>
 
-        {/* Sidebar Controls */}
-        <div className="w-96 bg-white border-r border-slate-200 flex flex-col overflow-y-auto print:hidden custom-scrollbar">
-          <div className="p-8 border-b border-slate-100">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Pengaturan Halaman</h3>
-            <div className="space-y-6">
-              <div>
-                <label className="text-[9px] font-black text-blue-600 uppercase tracking-widest block mb-2">Nama Halaman</label>
-                <div className="flex gap-3">
-                  <input 
-                    type="text"
-                    value={activePage.name}
-                    onChange={(e) => updateActivePage({ name: e.target.value })}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  />
-                  {pages.length > 1 && (
-                    <button 
-                      onClick={() => handleDeletePage(activePageId)}
-                      className="px-6 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all border border-red-100"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </div>
+      {/* Main layout */}
+      <div className="print:overflow-visible print:block" style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 10 }}>
+        {/* Left Settings Panel */}
+        <div className="print:hidden custom-scrollbar" style={{
+          width: 288, backgroundColor: '#ffffff', borderRight: '1px solid #E2E8F0',
+          padding: 20, overflowY: 'auto', flexShrink: 0,
+          display: 'flex', flexDirection: 'column', gap: 20,
+        }}>
+          {/* Page Name */}
+          <div>
+            <div style={sectionLabelStyle}>Nama Halaman</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                value={activePage.name}
+                onChange={(e) => updateActivePage({ name: e.target.value })}
+                style={{
+                  flex: 1, padding: '10px 14px', backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13,
+                  color: '#0C1E35', outline: 'none',
+                  fontFamily: 'Plus Jakarta Sans, sans-serif',
+                  transition: 'border-color 150ms',
+                }}
+                onFocus={e => e.currentTarget.style.borderColor = '#0C1E35'}
+                onBlur={e => e.currentTarget.style.borderColor = '#E2E8F0'}
+              />
+              {pages.length > 1 && (
+                <button
+                  onClick={() => handleDeletePage(activePageId)}
+                  style={{
+                    padding: '0 14px', backgroundColor: '#FEF2F2', color: '#DC2626',
+                    border: '1px solid #FECACA', borderRadius: 12, fontSize: 11,
+                    fontWeight: 700, cursor: 'pointer', transition: 'all 150ms',
+                    fontFamily: 'Outfit, sans-serif',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#EF4444'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; }}
+                >
+                  Hapus
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="p-8 border-b border-slate-100">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Kop Surat</h3>
+          {/* Report Type */}
+          <div>
+            <div style={sectionLabelStyle}>Jenis Laporan</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['clinical', 'academic'] as const).map(t => (
+                <button key={t} onClick={() => updateActivePage({ reportType: t })} style={pillBtn(activePage.reportType === t)}>
+                  {t === 'clinical' ? 'Klinis' : 'Akademik'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Layout */}
+          <div>
+            <div style={sectionLabelStyle}>Layout</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {(['standard', 'beforeAfter', 'rightLeft'] as const).map(l => (
+                <button key={l} onClick={() => updateActivePage({ reportLayout: l })} style={{
+                  ...pillBtn(activePage.reportLayout === l),
+                  flex: 'none', display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 14px', textAlign: 'left' as const,
+                }}>
+                  {l === 'standard' && <Grid style={{ width: 14, height: 14 }} />}
+                  {l === 'beforeAfter' && <Columns style={{ width: 14, height: 14 }} />}
+                  {l === 'rightLeft' && <Layout style={{ width: 14, height: 14 }} />}
+                  {l === 'standard' ? 'Standar' : l === 'beforeAfter' ? 'Before-After' : 'Kiri-Kanan'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Paper Size */}
+          <div>
+            <div style={sectionLabelStyle}>Ukuran Kertas</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['A4', 'F4', 'Letter'] as const).map(s => (
+                <button key={s} onClick={() => updateActivePage({ pageSize: s })} style={pillBtn(activePage.pageSize === s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Orientation */}
+          <div>
+            <div style={sectionLabelStyle}>Orientasi</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['portrait', 'landscape'] as const).map(o => (
+                <button key={o} onClick={() => updateActivePage({ orientation: o })} style={pillBtn(activePage.orientation === o)}>
+                  {o === 'portrait' ? 'Portrait' : 'Landscape'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Kop Surat */}
+          <div>
+            <div style={sectionLabelStyle}>Kop Surat</div>
             {isEnterprise ? (
               <>
                 {selectedHospital ? (
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-sm font-bold text-slate-900">{selectedHospital.name}</p>
-                    {selectedHospital.address && <p className="text-xs text-slate-500 mt-1">{selectedHospital.address}</p>}
+                  <div style={{ padding: 14, backgroundColor: '#F8FAFC', borderRadius: 12, border: '1px solid #E2E8F0' }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35' }}>{selectedHospital.name}</p>
+                    {selectedHospital.address && <p style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>{selectedHospital.address}</p>}
                   </div>
                 ) : (
-                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                    <p className="text-xs text-amber-700">Kop surat belum dikonfigurasi oleh Admin Institusi.</p>
+                  <div style={{ padding: 14, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AlertTriangle style={{ width: 14, height: 14, color: '#F59E0B', flexShrink: 0 }} />
+                    <p style={{ fontSize: 12, color: '#92400E' }}>Kop surat belum dikonfigurasi oleh Admin Institusi.</p>
                   </div>
                 )}
-                <p className="text-[10px] text-slate-400 font-medium italic mt-3">Kop surat dikunci oleh institusi Anda.</p>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginTop: 8 }}>Kop surat dikunci oleh institusi Anda.</p>
               </>
             ) : (
               <>
                 {hospitalSettingsList.length > 0 ? (
-                  <div className="relative">
+                  <div style={{ position: 'relative' }}>
                     <select
                       value={selectedHospital?.id || ''}
                       onChange={(e) => {
                         const hospital = hospitalSettingsList.find(h => h.id === e.target.value);
                         if (hospital) setSelectedHospital(hospital);
                       }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
+                      style={{
+                        width: '100%', padding: '10px 14px', backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13,
+                        color: '#0C1E35', outline: 'none', cursor: 'pointer',
+                        appearance: 'none' as const,
+                      }}
                     >
                       {hospitalSettingsList.map(h => (
-                        <option key={h.id} value={h.id} className="bg-white">{h.name || 'Kop Surat'}</option>
+                        <option key={h.id} value={h.id}>{h.name || 'Kop Surat'}</option>
                       ))}
                     </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <Layout className="w-4 h-4 text-slate-400" />
+                    <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                      <ChevronRight style={{ width: 14, height: 14, color: '#94A3B8', transform: 'rotate(90deg)' }} />
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                    <p className="text-xs text-amber-700">Belum ada kop surat. Tambahkan di Settings → Kop Surat.</p>
+                  <div style={{ padding: 14, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AlertTriangle style={{ width: 14, height: 14, color: '#F59E0B', flexShrink: 0 }} />
+                    <p style={{ fontSize: 12, color: '#92400E' }}>Belum ada kop surat. Tambahkan di Settings → Kop Surat.</p>
                   </div>
                 )}
-                <p className="text-[10px] text-slate-400 font-medium italic mt-3">Pilih kop surat untuk laporan.</p>
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginTop: 8 }}>Pilih kop surat untuk laporan.</p>
               </>
             )}
           </div>
 
-          <div className="p-8 border-b border-slate-100">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Pilih Foto <span className="text-blue-600 ml-2">({activePage.selectedPhotos.length}/9)</span></h3>
-            <div className="grid grid-cols-3 gap-3">
-              {images.map(img => (
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  key={img.id}
-                  onClick={() => handlePhotoSelect(img)}
-                  className={`relative aspect-video rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-                    activePage.selectedPhotos.find(p => p.id === img.id) 
-                      ? 'border-blue-600 shadow-lg shadow-slate-900/10' 
-                      : 'border-slate-100 hover:border-blue-500/30'
-                  }`}
-                >
-                  <img src={img.url} alt="Capture" className="w-full h-full object-cover" />
-                  {activePage.selectedPhotos.find(p => p.id === img.id) && (
-                    <div className="absolute inset-0 bg-[#0C1E35]/20 flex items-center justify-center">
-                      <div className="bg-[#0C1E35] rounded-full p-1 shadow-lg">
-                        <CheckCircle2 className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-              {images.length === 0 && (
-                <div className="col-span-3 p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                  <FileImage className="w-8 h-8 mx-auto mb-3 text-slate-300" />
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tidak ada foto di sesi ini</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="p-8 border-b border-slate-100">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Keterangan Foto</h3>
-            <div className="space-y-6">
-              {activePage.selectedPhotos.map((photo, idx) => (
-                <div key={photo.id} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 relative group/thumb">
-                        <img src={photo.url} alt="Thumb" className="w-full h-full object-cover" />
-                      </div>
-                      <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Foto #{idx + 1}</span>
-                    </div>
-                    <motion.button 
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setEditingPhoto(photo)}
-                      className="text-[9px] font-black text-blue-600 bg-blue-50 hover:bg-[#0C1E35] hover:text-white px-3 py-2 rounded-xl transition-all border border-blue-100 flex items-center gap-2 uppercase tracking-widest"
-                    >
-                      <Plus className="w-3 h-3" /> Marker
-                    </motion.button>
-                  </div>
-                  <textarea 
-                    value={activePage.photoCaptions[photo.id] || ''}
-                    onChange={(e) => {
-                      const newCaptions = { ...activePage.photoCaptions, [photo.id]: e.target.value };
-                      updateActivePage({ photoCaptions: newCaptions });
+          {/* Photos */}
+          <div>
+            <div style={sectionLabelStyle}>Foto <span style={{ color: '#3B82F6', marginLeft: 4 }}>({activePage.selectedPhotos.length}/9)</span></div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+              {images.map(img => {
+                const isSelected = !!activePage.selectedPhotos.find(p => p.id === img.id);
+                return (
+                  <div
+                    key={img.id}
+                    onClick={() => handlePhotoSelect(img)}
+                    style={{
+                      position: 'relative', aspectRatio: '16/9', borderRadius: 8,
+                      overflow: 'hidden', cursor: 'pointer',
+                      border: isSelected ? '2px solid #0C1E35' : '2px solid transparent',
+                      transition: 'border-color 150ms',
                     }}
-                    placeholder="Keterangan foto..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 h-28 resize-none transition-all"
-                  />
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderColor = '#94A3B8'; }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderColor = 'transparent'; }}
+                  >
+                    <img src={img.url} alt="Capture" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {isSelected && (
+                      <div style={{
+                        position: 'absolute', top: 4, right: 4,
+                        width: 20, height: 20, borderRadius: '50%',
+                        backgroundColor: '#0C1E35', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <CheckCircle2 style={{ width: 14, height: 14, color: '#ffffff' }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {images.length === 0 && (
+                <div style={{
+                  gridColumn: 'span 3', padding: 24, textAlign: 'center',
+                  backgroundColor: '#F8FAFC', borderRadius: 12,
+                  border: '1px dashed #CBD5E1',
+                }}>
+                  <FileImage style={{ width: 24, height: 24, margin: '0 auto 8px', color: '#CBD5E1' }} />
+                  <p style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Tidak ada foto di sesi ini</p>
                 </div>
-              ))}
-              {activePage.selectedPhotos.length === 0 && (
-                <p className="text-[10px] text-slate-400 italic font-medium">Pilih foto terlebih dahulu untuk menambah keterangan.</p>
               )}
             </div>
           </div>
 
-          <div className="p-8 border-b border-slate-100">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Catatan Klinis</h3>
+          {/* Photo Captions */}
+          {activePage.selectedPhotos.length > 0 && (
+            <div>
+              <div style={sectionLabelStyle}>Keterangan Foto</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {activePage.selectedPhotos.map((photo, idx) => (
+                  <div key={photo.id}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 6, overflow: 'hidden', border: '1px solid #E2E8F0' }}>
+                          <img src={photo.url} alt="Thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#0C1E35' }}>Foto #{idx + 1}</span>
+                      </div>
+                      <button
+                        onClick={() => setEditingPhoto(photo)}
+                        style={{
+                          fontSize: 11, fontWeight: 700, color: '#3B82F6',
+                          backgroundColor: '#EFF6FF', border: '1px solid #DBEAFE',
+                          borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          transition: 'all 150ms',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#0C1E35'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#EFF6FF'; e.currentTarget.style.color = '#3B82F6'; e.currentTarget.style.borderColor = '#DBEAFE'; }}
+                      >
+                        <Plus style={{ width: 12, height: 12 }} /> Marker
+                      </button>
+                    </div>
+                    <textarea
+                      value={activePage.photoCaptions[photo.id] || ''}
+                      onChange={(e) => {
+                        const newCaptions = { ...activePage.photoCaptions, [photo.id]: e.target.value };
+                        updateActivePage({ photoCaptions: newCaptions });
+                      }}
+                      placeholder="Keterangan foto..."
+                      style={{
+                        width: '100%', padding: 10, backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0', borderRadius: 10, fontSize: 12,
+                        color: '#0C1E35', outline: 'none', resize: 'vertical' as const,
+                        minHeight: 60, fontFamily: 'Plus Jakarta Sans, sans-serif',
+                        transition: 'border-color 150ms',
+                      }}
+                      onFocus={e => e.currentTarget.style.borderColor = '#0C1E35'}
+                      onBlur={e => e.currentTarget.style.borderColor = '#E2E8F0'}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Clinical Notes */}
+          <div>
+            <div style={sectionLabelStyle}>Catatan Klinis</div>
             <textarea
               value={activePage.clinicalNotes}
               onChange={(e) => updateActivePage({ clinicalNotes: e.target.value })}
-              className="w-full h-64 bg-slate-50 border border-slate-200 rounded-2xl p-5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none transition-all"
-              placeholder="Masukkan temuan klinis, diagnosis, atau rekomendasi..."
+              placeholder="Tambahkan catatan klinis..."
+              style={{
+                width: '100%', padding: 12, backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13,
+                color: '#0C1E35', outline: 'none', resize: 'vertical' as const,
+                minHeight: 100, fontFamily: 'Plus Jakarta Sans, sans-serif',
+                transition: 'border-color 150ms',
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = '#0C1E35'}
+              onBlur={e => e.currentTarget.style.borderColor = '#E2E8F0'}
             />
           </div>
 
-          <div className="p-8 border-b border-slate-100 bg-blue-50/30">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Format & Layout</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => updateActivePage({ reportType: 'clinical' })}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2 ${
-                    activePage.reportType === 'clinical' 
-                      ? 'bg-[#0C1E35] border-blue-600 text-white shadow-xl shadow-slate-900/10' 
-                      : 'bg-white border-slate-100 text-slate-500 hover:border-blue-500/30'
-                  }`}
-                >
-                  <ShieldAlert className="w-5 h-5" />
-                  <span className="text-[9px] font-black uppercase tracking-widest">Clinical</span>
-                </button>
-                
-                <button
-                  onClick={() => updateActivePage({ reportType: 'academic' })}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2 ${
-                    activePage.reportType === 'academic' 
-                      ? 'bg-[#0C1E35] border-blue-600 text-white shadow-xl shadow-slate-900/10' 
-                      : 'bg-white border-slate-100 text-slate-500 hover:border-blue-500/30'
-                  }`}
-                >
-                  <FileText className="w-5 h-5" />
-                  <span className="text-[9px] font-black uppercase tracking-widest">Academic</span>
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 gap-2">
-                {(['standard', 'beforeAfter', 'rightLeft'] as const).map((layout) => (
-                  <button
-                    key={layout}
-                    onClick={() => updateActivePage({ reportLayout: layout })}
-                    className={`flex items-center p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                      activePage.reportLayout === layout 
-                        ? 'bg-blue-50 border-blue-500/50 text-blue-600' 
-                        : 'bg-white border-slate-100 text-slate-500 hover:border-blue-100'
-                    }`}
-                  >
-                    {layout === 'standard' && <Grid className="w-4 h-4 mr-3" />}
-                    {layout === 'beforeAfter' && <Columns className="w-4 h-4 mr-3" />}
-                    {layout === 'rightLeft' && <Layout className="w-4 h-4 mr-3" />}
-                    {layout === 'standard' ? 'Standard Grid' : layout === 'beforeAfter' ? 'Before / After' : 'Right / Left'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {(['A4', 'F4', 'Letter'] as const).map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => updateActivePage({ pageSize: size })}
-                    className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                      activePage.pageSize === size 
-                        ? 'bg-blue-50 border-blue-500/50 text-blue-600' 
-                        : 'bg-white border-slate-100 text-slate-500 hover:border-blue-100'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {(['portrait', 'landscape'] as const).map((orient) => (
-                  <button
-                    key={orient}
-                    onClick={() => updateActivePage({ orientation: orient })}
-                    className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                      activePage.orientation === orient 
-                        ? 'bg-blue-50 border-blue-500/50 text-blue-600' 
-                        : 'bg-white border-slate-100 text-slate-500 hover:border-blue-100'
-                    }`}
-                  >
-                    {orient}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-8 border-t border-slate-100 bg-white space-y-6">
-            <div className="grid grid-cols-2 gap-3">
-              <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+          {/* Action Buttons */}
+          <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button
                 onClick={handlePrint}
-                className="flex items-center justify-center py-4 px-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-slate-900/10"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '12px 0', backgroundColor: '#0C1E35', color: '#ffffff',
+                  border: 'none', borderRadius: 12, fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', transition: 'background-color 150ms',
+                  fontFamily: 'Outfit, sans-serif',
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a3a5c'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0C1E35'}
               >
-                <Printer className="w-4 h-4 mr-2" />
-                Cetak
-              </motion.button>
-              <motion.button 
-                whileHover={{ scale: isSaving ? 1 : 1.02 }}
-                whileTap={{ scale: isSaving ? 1 : 0.98 }}
+                <Printer style={{ width: 14, height: 14 }} /> Cetak
+              </button>
+              <button
                 onClick={handleSavePDF}
                 disabled={isSaving}
-                className="flex items-center justify-center py-4 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-60"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '12px 0', backgroundColor: '#6366F1', color: '#ffffff',
+                  border: 'none', borderRadius: 12, fontSize: 12, fontWeight: 700,
+                  cursor: isSaving ? 'not-allowed' : 'pointer', transition: 'background-color 150ms',
+                  opacity: isSaving ? 0.6 : 1, fontFamily: 'Outfit, sans-serif',
+                }}
+                onMouseEnter={e => { if (!isSaving) e.currentTarget.style.backgroundColor = '#4F46E5'; }}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#6366F1'}
               >
-                {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                {isSaving ? (
+                  <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />
+                ) : (
+                  <Download style={{ width: 14, height: 14 }} />
+                )}
                 {isSaving ? 'Menyimpan...' : 'Simpan PDF'}
-              </motion.button>
+              </button>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button
                 onClick={handleEmail}
-                className="flex items-center justify-center py-4 px-4 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '12px 0', backgroundColor: '#F8FAFC', color: '#475569',
+                  border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', transition: 'all 150ms',
+                  fontFamily: 'Plus Jakarta Sans, sans-serif',
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
               >
-                <Mail className="w-4 h-4 mr-2 text-blue-600" />
-                Email
+                <Mail style={{ width: 14, height: 14, color: '#3B82F6' }} /> Email
               </button>
-              <button 
+              <button
                 onClick={handleWhatsApp}
-                className="flex items-center justify-center py-4 px-4 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '12px 0', backgroundColor: '#F8FAFC', color: '#475569',
+                  border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', transition: 'all 150ms',
+                  fontFamily: 'Plus Jakarta Sans, sans-serif',
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
               >
-                <MessageCircle className="w-4 h-4 mr-2 text-emerald-600" />
-                WhatsApp
+                <MessageCircle style={{ width: 14, height: 14, color: '#10B981' }} /> WhatsApp
               </button>
             </div>
 
-            <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
-              <div className="flex items-center gap-3 mb-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Privacy Disclaimer</span>
+            <div style={{
+              padding: 12, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A',
+              borderRadius: 12, marginTop: 4,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <AlertTriangle style={{ width: 12, height: 12, color: '#F59E0B' }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#92400E' }}>Privacy Disclaimer</span>
               </div>
-              <p className="text-[9px] text-amber-600/70 leading-relaxed font-medium">
+              <p style={{ fontSize: 10, color: '#B45309', lineHeight: 1.5 }}>
                 Segala bentuk kebocoran data atau penyalahgunaan informasi medis yang terjadi di luar sistem Aexon adalah sepenuhnya di luar tanggung jawab Aexon.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Print Preview Area */}
-        <div ref={printAreaRef} className="flex-1 bg-slate-200 overflow-y-auto p-12 flex flex-col items-center gap-12 print:p-0 print:bg-white print:block print:overflow-visible custom-scrollbar">
+        {/* Right Preview Panel */}
+        <div
+          ref={printAreaRef}
+          className="print:p-0 print:bg-white print:block print:overflow-visible custom-scrollbar"
+          style={{
+            flex: 1, backgroundColor: '#F1F5F9', overflowY: 'auto',
+            padding: 32, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', gap: 48,
+          }}
+        >
           {pages.map((page) => (
             <div 
               key={page.id}
-              className={`bg-white shadow-2xl print:shadow-none p-16 relative flex flex-col transition-all duration-500 print-container ${
-                activePageId === page.id ? 'ring-8 ring-blue-500/20 scale-100' : 'opacity-30 grayscale scale-[0.95]'
-              } print:opacity-100 print:grayscale-0 print:scale-100 print:ring-0`}
+              className={`print-container print:opacity-100 print:grayscale-0 print:scale-100 print:ring-0 print:shadow-none`}
               style={{ 
+                backgroundColor: '#ffffff',
+                borderRadius: 8,
+                boxShadow: activePageId === page.id
+                  ? '0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)'
+                  : '0 4px 20px rgba(0,0,0,0.06)',
+                padding: 60,
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'all 500ms',
+                opacity: activePageId === page.id ? 1 : 0.3,
+                filter: activePageId === page.id ? 'none' : 'grayscale(1)',
+                transform: activePageId === page.id ? 'scale(1)' : 'scale(0.95)',
                 width: getPageDimensions(page).width, 
-                minHeight: getPageDimensions(page).minHeight 
+                minHeight: getPageDimensions(page).minHeight,
+                cursor: activePageId !== page.id ? 'pointer' : 'default',
               }}
+              onClick={() => { if (activePageId !== page.id) setActivePageId(page.id); }}
             >
               
               {/* Navy Top Accent Bar */}
@@ -921,8 +1035,11 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                     ))}
                   </div>
                 ) : (
-                  <div className="h-24 bg-slate-50 border border-slate-200 border-dashed rounded-xl flex items-center justify-center text-slate-400">
-                    <p className="text-xs">Tidak ada foto yang dipilih</p>
+                  <div style={{
+                    height: 96, backgroundColor: '#F8FAFC', border: '1px dashed #CBD5E1',
+                    borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <p style={{ fontSize: 12, color: '#94A3B8' }}>Tidak ada foto yang dipilih</p>
                   </div>
                 )}
               </div>
@@ -992,8 +1109,14 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#0C1E35]/30" />
             </div>
           ))}
+
+          {/* Page indicator */}
+          <p style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginTop: -32 }}>
+            Halaman {pages.findIndex(p => p.id === activePageId) + 1} dari {pages.length}
+          </p>
         </div>
       </div>
+
       {/* Modals */}
       {editingPhoto && (
         <ImageEditor
@@ -1015,40 +1138,70 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
         />
       )}
 
-      {pageToDelete && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-200"
-          >
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 mx-auto">
-              <AlertTriangle className="w-8 h-8 text-red-600" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 text-center mb-2">Hapus Halaman?</h3>
-            <p className="text-slate-500 text-center mb-8">
-              Halaman ini sudah berisi data. Apakah Anda yakin ingin menghapusnya? Tindakan ini tidak dapat dibatalkan.
-            </p>
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setPageToDelete(null)}
-                className="flex-1 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors"
-              >
-                Batal
-              </button>
-              <button 
-                onClick={() => {
-                  deletePage(pageToDelete);
-                  setPageToDelete(null);
-                }}
-                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-red-500/20"
-              >
-                Hapus
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <AnimatePresence>
+        {pageToDelete && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPageToDelete(null)}
+              style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              style={{
+                position: 'relative', backgroundColor: '#ffffff', borderRadius: 24,
+                padding: 32, maxWidth: 380, width: '100%',
+                boxShadow: '0 25px 50px rgba(0,0,0,0.15)',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{
+                width: 56, height: 56, backgroundColor: '#FEF2F2', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 20px',
+              }}>
+                <Trash2 style={{ width: 28, height: 28, color: '#EF4444' }} />
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0C1E35', textAlign: 'center', marginBottom: 8 }}>Hapus Halaman?</h3>
+              <p style={{ fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
+                Halaman ini sudah berisi data. Apakah Anda yakin ingin menghapusnya?
+              </p>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setPageToDelete(null)}
+                  style={{
+                    flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14,
+                    border: '1px solid #E2E8F0', backgroundColor: '#ffffff', color: '#64748B',
+                    cursor: 'pointer', transition: 'background-color 150ms',
+                    fontFamily: 'Outfit, sans-serif',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ffffff'}
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => { deletePage(pageToDelete); setPageToDelete(null); }}
+                  style={{
+                    flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14,
+                    border: 'none', backgroundColor: '#EF4444', color: '#ffffff',
+                    cursor: 'pointer', transition: 'background-color 150ms',
+                    fontFamily: 'Outfit, sans-serif',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#DC2626'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#EF4444'}
+                >
+                  Hapus
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
