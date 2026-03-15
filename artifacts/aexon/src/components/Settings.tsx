@@ -170,7 +170,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const COOLDOWN_DAYS = 30;
   const DELETE_COOLDOWN_DAYS = 7;
   const MIN_AGE_BEFORE_DELETE_DAYS = 3;
-  const MAX_OPS_PER_DAY = 3;
 
   const getKopOpsLog = useCallback((): { date: string; action: string }[] => {
     try {
@@ -187,12 +186,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
     localStorage.setItem(key, JSON.stringify(ops));
   }, [userProfile.id, getKopOpsLog]);
 
-  const getDailyOpsCount = useCallback((): number => {
-    const ops = getKopOpsLog();
-    const todayStr = new Date().toISOString().slice(0, 10);
-    return ops.filter(op => op.date.slice(0, 10) === todayStr).length;
-  }, [getKopOpsLog]);
-
   const getLastDeleteDate = useCallback((): Date | null => {
     const ops = getKopOpsLog();
     const deletes = ops.filter(op => op.action === 'delete').sort((a, b) => b.date.localeCompare(a.date));
@@ -201,7 +194,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
   const canAddNewKop = useCallback((): { allowed: boolean; reason?: string; unlockDate?: Date } => {
     if (kopForms.length >= 3) return { allowed: false, reason: 'Maksimal 3 kop surat.' };
-    if (getDailyOpsCount() >= MAX_OPS_PER_DAY) return { allowed: false, reason: `Batas operasi harian tercapai (maks. ${MAX_OPS_PER_DAY} per hari). Coba lagi besok.` };
     const lastDel = getLastDeleteDate();
     if (lastDel) {
       const diffDays = (Date.now() - lastDel.getTime()) / (1000 * 60 * 60 * 24);
@@ -211,10 +203,9 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       }
     }
     return { allowed: true };
-  }, [kopForms.length, getDailyOpsCount, getLastDeleteDate]);
+  }, [kopForms.length, getLastDeleteDate]);
 
   const canDeleteKop = useCallback((kop: HospitalSettings): { allowed: boolean; reason?: string } => {
-    if (getDailyOpsCount() >= MAX_OPS_PER_DAY) return { allowed: false, reason: `Batas operasi harian tercapai (maks. ${MAX_OPS_PER_DAY} per hari).` };
     if (kop.createdAt) {
       const createdDate = new Date(kop.createdAt);
       const ageDays = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
@@ -225,7 +216,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       return { allowed: false, reason: `Simpan kop surat terlebih dahulu sebelum menghapus.` };
     }
     return { allowed: true };
-  }, [getDailyOpsCount]);
+  }, []);
 
   const getCooldownInfo = (kop: HospitalSettings) => {
     const nameTs = kop.last_name_changed;
@@ -289,20 +280,16 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const handleSaveKop = (idx: number) => {
     const kop = kopForms[idx];
     const kopId = kop.id || `kop-${Date.now()}`;
-    if (!kop.name.trim()) {
-      showToast('Nama RS / Klinik wajib diisi.', 'error');
-      return;
-    }
-    if (getDailyOpsCount() >= MAX_OPS_PER_DAY) {
-      showToast(`Batas operasi harian tercapai (maks. ${MAX_OPS_PER_DAY} per hari). Coba lagi besok.`, 'warning', 5000);
-      return;
-    }
 
     const original = hospitalSettingsList.find(h => h.id === kopId);
     const nameChanged = original && kop.name.trim() !== original.name;
     const logoChanged = original && (kop.logoUrl || '') !== (original.logoUrl || '');
 
     if (nameChanged || logoChanged) {
+      if (!kop.name.trim() && nameChanged) {
+        showToast('Nama RS / Klinik tidak boleh dikosongkan setelah diisi.', 'error');
+        return;
+      }
       const cooldown = getCooldownInfo(kop);
       if (cooldown.locked) {
         showToast(`Nama dan logo masih dalam masa cooldown. Dapat diubah pada ${cooldown.unlockDate!.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.`, 'warning', 5000);
@@ -1181,30 +1168,19 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
           {isPersonal && (() => {
             const addCheck = canAddNewKop();
-            const dailyOps = getDailyOpsCount();
             return (
             <>
-              <div style={cardStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                  <div style={iconBoxStyle('#FFF7ED')}>
-                    <Shield style={{ width: 20, height: 20, color: '#EA580C' }} />
-                  </div>
-                  <div>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35' }}>Perlindungan Kop Surat</h4>
-                    <p style={{ fontSize: 11, color: '#64748B' }}>Perubahan nama & logo terkunci selama {COOLDOWN_DAYS} hari setelah diubah.</p>
-                  </div>
+              <div style={{ padding: 14, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Shield style={{ width: 16, height: 16, color: '#94A3B8', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+                    Nama & logo terkunci <strong>{COOLDOWN_DAYS} hari</strong> setelah diubah. Field lainnya (alamat, telepon, dll.) bebas diedit kapan saja.
+                  </p>
                 </div>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ padding: '8px 14px', backgroundColor: dailyOps >= MAX_OPS_PER_DAY ? '#FEF2F2' : '#F0FDF4', borderRadius: 10, border: `1px solid ${dailyOps >= MAX_OPS_PER_DAY ? '#FECACA' : '#BBF7D0'}` }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: dailyOps >= MAX_OPS_PER_DAY ? '#DC2626' : '#16A34A' }}>
-                      Operasi hari ini: {dailyOps}/{MAX_OPS_PER_DAY}
-                    </span>
-                  </div>
-                  <div style={{ padding: '8px 14px', backgroundColor: '#F8FAFC', borderRadius: 10, border: '1px solid #E2E8F0' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
-                      Slot terpakai: {kopForms.length}/3
-                    </span>
-                  </div>
+                <div style={{ padding: '6px 12px', backgroundColor: '#fff', borderRadius: 8, border: '1px solid #E2E8F0', flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
+                    {kopForms.length}/3 slot
+                  </span>
                 </div>
               </div>
 
@@ -1292,7 +1268,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginTop: 16 }}>
                               <div>
-                                <label style={labelStyle}>Nama RS / Klinik *</label>
+                                <label style={labelStyle}>Nama RS / Klinik</label>
                                 <input
                                   type="text"
                                   value={kop.name}
@@ -1301,8 +1277,11 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                   style={cooldownKop.locked ? readOnlyStyle : inputBaseStyle}
                                   onFocus={cooldownKop.locked ? undefined : handleInputFocus}
                                   onBlur={cooldownKop.locked ? undefined : handleInputBlur}
-                                  placeholder="Nama rumah sakit atau klinik"
+                                  placeholder="Nama rumah sakit atau klinik (boleh diisi nanti)"
                                 />
+                                {cooldownKop.locked && (
+                                  <p style={{ fontSize: 10, color: '#F59E0B', marginTop: 4 }}>Terkunci hingga {cooldownKop.unlockDate!.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                )}
                               </div>
                               <div>
                                 <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
