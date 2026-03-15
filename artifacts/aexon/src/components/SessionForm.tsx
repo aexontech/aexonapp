@@ -261,11 +261,10 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
             </div>
 
             <div style={{
-              background: 'linear-gradient(135deg, #0C1E35 0%, #1E3A5F 50%, #0C1E35 100%)',
-              padding: 2, borderRadius: 24,
-              boxShadow: '0 20px 60px rgba(12,30,53,0.18)',
+              backgroundColor: 'white', borderRadius: 20,
+              border: '1px solid #E2E8F0', padding: 32,
+              position: 'relative', overflow: 'visible',
             }}>
-              <div style={{ backgroundColor: 'white', borderRadius: 22, padding: 32, position: 'relative', overflow: 'visible' }}>
                 <h3 style={{ ...sectionLabelStyle, marginBottom: 24 }}>
                   <Activity style={{ width: 16, height: 16 }} />
                   Prosedur & Tindakan (ICD-9-CM)
@@ -338,7 +337,6 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                     </button>
                   )}
                 </div>
-              </div>
             </div>
 
             <div style={{ backgroundColor: 'white', borderRadius: 20, border: '1px solid #E2E8F0', padding: 32, position: 'relative', overflow: 'visible' }}>

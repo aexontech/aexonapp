@@ -204,7 +204,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             <div
               style={{
                 backgroundColor: '#ffffff',
-                borderRadius: i === 0 ? 22 : 20,
+                borderRadius: 20,
                 padding: 24,
                 position: 'relative',
                 overflow: 'hidden',
@@ -238,18 +238,6 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             </div>
           );
 
-          if (i === 0) {
-            return (
-              <div key={stat.label} style={{
-                background: 'linear-gradient(135deg, #0C1E35 0%, #1E3A5F 50%, #0C1E35 100%)',
-                padding: 2,
-                borderRadius: 24,
-                boxShadow: '0 8px 32px rgba(12,30,53,0.2)',
-              }}>
-                {cardInner}
-              </div>
-            );
-          }
           return (
             <div key={stat.label} style={{
               backgroundColor: '#ffffff',

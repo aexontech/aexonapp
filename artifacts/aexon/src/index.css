@@ -32,13 +32,6 @@ body {
   background: #E2E8F0; border-radius: 999px; 
 }
 
-.featured-border {
-  background: linear-gradient(135deg, #0C1E35 0%, #1E3A5F 50%, #0C1E35 100%);
-  padding: 2px;
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(12,30,53,0.18);
-}
-
 .card-base {
   background: white;
   border-radius: 20px;
