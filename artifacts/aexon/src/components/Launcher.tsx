@@ -231,13 +231,13 @@ export default function Launcher({ onLogin }: LauncherProps) {
       </div>
       <div className="flex flex-col items-center text-center">
         <div className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full mb-3">
-          <span className="text-[10px] font-bold text-[#0C1E35] uppercase tracking-[0.2em]">v1.0.0</span>
+          <span className="text-[10px] font-bold text-[#0C1E35] uppercase tracking-[0.2em]">Beta</span>
         </div>
-        <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 mb-2">
-          Selamat Datang
+        <h2 className="font-aexon text-[28px] tracking-tight text-gray-900 mb-2">
+          Masuk ke Aexon
         </h2>
-        <p className="text-gray-500 text-sm font-medium">
-          Masuk ke sistem manajemen endoskopi
+        <p className="text-gray-400 text-sm font-medium">
+          Bridging Innovation and Surgery
         </p>
       </div>
     </div>
@@ -252,7 +252,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-[420px] w-full relative z-10"
         >
-          <div className="bg-white rounded-3xl shadow-2xl p-10">
+          <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-10">
             <button
               onClick={() => { setViewMode('login'); setResetSent(false); setResetError(''); }}
               className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors mb-6"
@@ -333,7 +333,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
             animate={{ opacity: 1, y: 0 }}
             className="max-w-[420px] w-full relative z-10"
           >
-            <div className="bg-white rounded-3xl shadow-2xl p-10">
+            <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-10">
               <button
                 onClick={() => setViewMode('login')}
                 className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors mb-6"
@@ -388,7 +388,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-[420px] w-full relative z-10"
         >
-          <div className="bg-white rounded-3xl shadow-2xl p-10">
+          <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-10">
             <button
               onClick={() => { setViewMode('login'); setRegError(''); setRegSuccess(false); }}
               className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors mb-6"
@@ -573,7 +573,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="max-w-[420px] w-full relative z-10"
       >
-        <div className="bg-white rounded-3xl shadow-2xl p-10">
+        <div className="bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-10">
           {logoHeader}
 
           <div className="grid grid-cols-2 gap-3 mb-5">

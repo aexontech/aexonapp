@@ -67,10 +67,15 @@ export default function AdminDashboard({
   ];
 
   return (
-    <div className="flex-1 p-8 max-w-7xl mx-auto w-full font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar">
-      <div className="flex justify-between items-center mb-10">
+    <div className="flex-1 p-8 max-w-7xl mx-auto w-full font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar relative">
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-15%] right-[-10%] w-[45%] h-[45%] bg-[#0C1E35]/[0.04] rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[35%] h-[35%] bg-indigo-500/[0.03] rounded-full blur-[100px]" />
+      </div>
+
+      <div className="flex justify-between items-center mb-10 relative z-10">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Enterprise Admin Console</h2>
+          <h2 className="font-aexon text-[32px] leading-tight text-slate-900 tracking-tight mb-1">Enterprise Admin Console</h2>
           <p className="text-sm text-slate-500">Manajemen akun tenaga medis dan monitoring sistem korporat.</p>
         </div>
         
@@ -83,15 +88,14 @@ export default function AdminDashboard({
         </button>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 relative z-10">
         {stats.map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-slate-200 transition-all duration-200"
+            className="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.04)] relative overflow-hidden group hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] hover:border-slate-200 transition-all duration-200"
           >
             <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 bg-${stat.color}-500/5 rounded-full blur-2xl group-hover:bg-${stat.color}-500/10 transition-colors`} />
             <div className="flex items-center justify-between relative z-10">
@@ -107,7 +111,7 @@ export default function AdminDashboard({
         ))}
       </div>
 
-      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.04)] relative z-10">
         <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h3 className="text-lg font-bold text-slate-900 flex items-center">
             <ShieldCheck className="w-5 h-5 mr-2 text-blue-600" />
@@ -294,20 +298,20 @@ export default function AdminDashboard({
         )}
       </AnimatePresence>
 
-      {/* Enterprise Info Footer */}
-      <div className="mt-10 p-6 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-slate-900/10">
-        <div className="flex items-center">
+      <div className="mt-10 p-6 bg-[#0C1E35] rounded-3xl text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-slate-900/10 relative z-10 overflow-hidden">
+        <div className="absolute top-[-50%] right-[-10%] w-[40%] h-[200%] bg-white/5 rounded-full blur-[60px]" />
+        <div className="flex items-center relative z-10">
           <div className="p-3 bg-white/10 rounded-2xl mr-4">
             <Building2 className="w-8 h-8" />
           </div>
           <div>
             <h4 className="text-lg font-bold">Enterprise Plan: RSUP Jakarta</h4>
-            <p className="text-blue-100 text-sm opacity-80">Lisensi Aktif hingga 12 Des 2026 • {institutionDoctors.length}/50 Akun Terpakai</p>
+            <p className="text-white/60 text-sm">Lisensi Aktif hingga 12 Des 2026 • {institutionDoctors.length}/50 Akun Terpakai</p>
           </div>
         </div>
         <button 
           onClick={onManageSubscription}
-          className="px-6 py-2.5 bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
+          className="relative z-10 px-6 py-2.5 bg-white text-[#0C1E35] font-bold rounded-xl hover:bg-white/90 transition-colors shadow-lg"
         >
           Kelola Langganan
         </button>

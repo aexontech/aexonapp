@@ -90,6 +90,11 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
 
   return (
     <div className="flex-1 relative overflow-y-auto h-full custom-scrollbar bg-slate-50 px-8 py-8">
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-15%] right-[-10%] w-[45%] h-[45%] bg-[#0C1E35]/[0.04] rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[35%] h-[35%] bg-indigo-500/[0.03] rounded-full blur-[100px]" />
+      </div>
+
       {showSubscriptionBanner && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -121,17 +126,14 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
         className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mb-10 relative z-10"
       >
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+          <p className="text-sm font-medium text-slate-400 mb-1">{dateStr}</p>
+          <h2 className="font-aexon text-[40px] leading-[1.1] tracking-tight text-slate-900">
             Selamat datang,
           </h2>
-          <h2 className="text-2xl font-bold tracking-tight text-[#0C1E35] leading-tight">
+          <h2 className="font-aexon text-[40px] leading-[1.1] tracking-tight text-[#0C1E35]">
             {userProfile.name}
           </h2>
-          <div className="flex items-center gap-3 mt-2">
-            <p className="text-sm font-medium text-slate-400">{dateStr}</p>
-            <span className="text-slate-300">·</span>
-            <p className="text-sm font-medium text-slate-400">{userProfile.specialization}</p>
-          </div>
+          <p className="text-sm font-medium text-slate-400 mt-2">{userProfile.specialization}</p>
         </div>
 
         
@@ -150,7 +152,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + i * 0.1 }}
             whileHover={{ scale: 1.05 }}
-            className="group relative bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-200 overflow-hidden"
+            className="group relative bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] transition-all duration-200 overflow-hidden"
           >
             <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.gradient} opacity-5 group-hover:opacity-10 transition-opacity duration-200 rounded-full -mr-12 -mt-12`} />
             <div className="relative z-10">
@@ -203,9 +205,9 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.04)] overflow-hidden">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-b border-slate-100">
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">Riwayat Sesi</h3>
+              <h3 className="font-aexon text-xl text-slate-900 tracking-tight">Riwayat Sesi</h3>
               <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input

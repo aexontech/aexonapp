@@ -60,8 +60,10 @@ Aexon Endoscopy — React 19 + Vite + TypeScript desktop app for endoscopy sessi
 - Fonts: Plus Jakarta Sans (body text) + Outfit (brand "Aexon" wordmark only), loaded in index.html. `.font-aexon` utility class uses Outfit bold.
 - Auth: Supabase email+password via `src/lib/supabase.ts`. Requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY env vars. Falls back gracefully when not configured.
 - EULA: Per-user, shown after first login on new device. Plain/boring monospace style. Stored as `aexon_eula_accepted_[userId]` in localStorage.
-- Brand colors: Primary = navy #0C1E35 (buttons, selected states, accents), hover = #1a3a5c. Teal kept only for success states (CheckCircle). Background: slate-50. Cards: white + border-slate-100 + rounded-2xl + shadow-sm.
+- Brand colors: Primary = navy #0C1E35 (buttons, selected states, accents), hover = #1a3a5c. Teal kept only for success states (CheckCircle). Background: slate-50. Cards: white + border-slate-100 + rounded-2xl + shadow-[0_4px_24px_rgba(0,0,0,0.04)].
 - Global UI: Primary buttons bg-[#0C1E35] hover:bg-[#1a3a5c] rounded-xl. Inputs border-slate-200 rounded-xl focus:ring-[#0C1E35]/20. No blue-600 primary usage.
+- Visual system: Decorative radial gradient orbs (pointer-events-none, blur-[120px]) on Dashboard, SessionForm, AdminDashboard, Gallery backgrounds. CSS variables in :root for theme tokens. .scroll-animate utility for reveal animations.
+- Dark sections: SessionForm patient identity = dark navy bg with white/10 inputs. Gallery = full immersive dark (#0C1E35) bg with translucent glass controls. AdminDashboard enterprise footer = navy with subtle orb.
 - Sidebar (MainLayout.tsx): White bg, border-r border-slate-100. Active nav = bg-[#0C1E35] text-white rounded-xl, inactive = text-gray-500 hover:bg-slate-50. Bottom section: user initials circle (navy), name, role badge (Personal=blue, Dokter Institusi=teal, Admin Institusi=purple), subscription chip (Aktif=green, Trial X hari=yellow, Tidak Aktif=red), logout.
 - Login: 2-card selector (Personal / Institusi), Institusi sub-selector (Dokter/Admin), email+password form, forgot password flow, registration flow (Personal form / Institusi info screen). No Google OAuth.
 - handleLogin signature: `(role, email, fullName, plan, trialDaysLeft)` — receives plan/trial data from Supabase subscription query

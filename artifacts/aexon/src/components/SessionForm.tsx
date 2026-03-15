@@ -140,13 +140,13 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
           </div>
         </div>
 
-        <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm relative overflow-visible">
+        <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] relative overflow-visible">
           <div className="flex items-center mb-10">
             <div className="w-14 h-14 bg-[#0C1E35] rounded-2xl flex items-center justify-center mr-6">
               <ClipboardList className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Registrasi Sesi</h2>
+              <h2 className="font-aexon text-2xl text-slate-900 tracking-tight mb-1">Registrasi Sesi</h2>
               <p className="text-sm text-slate-500">Lengkapi data klinis pasien untuk memulai prosedur endoskopi.</p>
             </div>
           </div>
@@ -157,58 +157,58 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
+              className="bg-[#0C1E35] rounded-2xl p-6 border border-[#0C1E35] space-y-6"
             >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center">
+                <h3 className="text-sm font-semibold text-white/70 uppercase tracking-wider flex items-center">
                   <User className="w-4 h-4 mr-2" />
                   Identitas Pasien
                 </h3>
-                <span className="text-xs font-medium text-slate-400">Wajib Diisi *</span>
+                <span className="text-xs font-medium text-white/40">Wajib Diisi *</span>
               </div>
               
               <div className="grid md:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500">Nama Lengkap *</label>
+                  <label className="text-xs font-medium text-white/60">Nama Lengkap *</label>
                   <input
                     type="text"
                     name="name"
                     required
                     value={formData.name}
                     onChange={handleChange}
-                    className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
+                    className="block w-full px-4 py-2.5 border border-white/10 rounded-xl bg-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition-colors duration-150"
                     placeholder="Contoh: Budi Santoso"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500">No. Rekam Medis *</label>
+                  <label className="text-xs font-medium text-white/60">No. Rekam Medis *</label>
                   <input
                     type="text"
                     name="rmNumber"
                     required
                     value={formData.rmNumber}
                     onChange={handleChange}
-                    className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
+                    className="block w-full px-4 py-2.5 border border-white/10 rounded-xl bg-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition-colors duration-150"
                     placeholder="RM-XXXXXX"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500">Tanggal Lahir</label>
+                  <label className="text-xs font-medium text-white/60">Tanggal Lahir</label>
                   <div className="flex items-center gap-3">
                     <input
                       type="date"
                       name="dob"
                       value={formData.dob}
                       onChange={handleChange}
-                      className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150"
+                      className="block w-full px-4 py-2.5 border border-white/10 rounded-xl bg-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition-colors duration-150 [color-scheme:dark]"
                     />
                     {age !== null && (
                       <motion.span
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="shrink-0 px-3 py-1.5 bg-[#0C1E35] rounded-lg text-white font-semibold text-xs whitespace-nowrap"
+                        className="shrink-0 px-3 py-1.5 bg-white/20 rounded-lg text-white font-semibold text-xs whitespace-nowrap"
                       >
                         {age} thn
                       </motion.span>
@@ -217,19 +217,19 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500">Jenis Kelamin</label>
+                  <label className="text-xs font-medium text-white/60">Jenis Kelamin</label>
                   <div className="relative">
                     <select
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
-                      className="block w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150 appearance-none"
+                      className="block w-full px-4 py-2.5 border border-white/10 rounded-xl bg-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-white/30 transition-colors duration-150 appearance-none"
                     >
-                      <option value="Laki-laki">Laki-laki</option>
-                      <option value="Perempuan">Perempuan</option>
+                      <option value="Laki-laki" className="text-slate-900">Laki-laki</option>
+                      <option value="Perempuan" className="text-slate-900">Perempuan</option>
                     </select>
                     <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                      <ArrowRight className="w-4 h-4 text-slate-400 rotate-90" />
+                      <ArrowRight className="w-4 h-4 text-white/40 rotate-90" />
                     </div>
                   </div>
                 </div>
@@ -240,7 +240,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.2 }}
-              className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6"
+              className="bg-slate-50 rounded-2xl p-6 border-2 border-[#0C1E35]/10 space-y-6"
             >
               <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center">
                 <Stethoscope className="w-4 h-4 mr-2" />

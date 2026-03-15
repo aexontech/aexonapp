@@ -8,6 +8,17 @@
   --color-muted: #7A94A8;
 }
 
+:root {
+  --color-navy: #0C1E35;
+  --color-teal: #0D9488;
+  --color-teal-light: #14B8A6;
+  --color-border: #E2E8F0;
+  --color-muted: #64748B;
+  --color-hint: #94A3B8;
+  --color-bg-light: #F8FAFC;
+  --color-bg-card: #F1F5F9;
+}
+
 @layer base {
   html {
     font-size: 18px;
@@ -15,6 +26,8 @@
   }
   body {
     font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -43,4 +56,14 @@
     height: auto !important;
     overflow: visible !important;
   }
+}
+
+.scroll-animate {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 500ms ease-out, transform 500ms ease-out;
+}
+.scroll-animate.scroll-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
