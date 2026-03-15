@@ -154,7 +154,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const [billingLoading, setBillingLoading] = useState(false);
   const [plans, setPlans] = useState<ProductPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
-  const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'annual'>('monthly');
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -182,18 +181,31 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   }, [activeTab, isPersonal, userProfile.id]);
 
   useEffect(() => {
-    async function fetchPlans() {
+    async function fetchPlansAndSettings() {
       if (!supabase) { setPlansLoading(false); return; }
       try {
-        const { data, error } = await supabase
+        const { data: betaData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'beta_mode')
+          .maybeSingle();
+
+        const isBetaMode = betaData?.value === 'true';
+
+        const { data: allPlans, error } = await supabase
           .from('product_plans')
           .select('*, products(name)')
           .order('price', { ascending: true });
         if (error) {
           console.error('Failed to fetch plans:', error);
           showToast('Gagal memuat daftar paket. Silakan coba lagi nanti.', 'error');
-        } else if (data) {
-          setPlans(data);
+        } else if (allPlans) {
+          const filtered = allPlans.filter(p =>
+            isBetaMode
+              ? p.original_price !== null
+              : p.original_price === null
+          );
+          setPlans(filtered);
         }
       } catch (err) {
         console.error('Failed to fetch plans:', err);
@@ -202,13 +214,16 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         setPlansLoading(false);
       }
     }
-    fetchPlans();
+    fetchPlansAndSettings();
   }, []);
 
   const formatRupiah = (amount: number) =>
     'Rp' + amount.toLocaleString('id-ID');
 
-  const filteredPlans = plans.filter(p => p.billing_cycle === selectedBilling);
+  const monthlyPlan = plans.find(p => p.billing_cycle === 'monthly');
+  const annualPlan = plans.find(p => p.billing_cycle === 'annual');
+  const annualTotal = (annualPlan?.price ?? 0) * 12;
+  const monthlySavings = ((monthlyPlan?.price ?? 0) * 12) - annualTotal;
 
   const COOLDOWN_DAYS = 30;
   const DELETE_COOLDOWN_DAYS = 7;
@@ -1697,7 +1712,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     <p style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Jangan sampai akses Anda terputus.</p>
                   </div>
                   <button
-                    onClick={() => { setSelectedPlanId(null); setSelectedBilling('monthly'); setShowPlanModal(true); }}
+                    onClick={() => { setSelectedPlanId(null); setShowPlanModal(true); }}
                     style={{ ...btnPrimaryStyle, padding: '10px 20px', fontSize: 12 }}
                     onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
                     onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
@@ -2223,52 +2238,20 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
               </div>
 
               <div style={{ padding: 24, overflowY: 'auto', flex: 1 }}>
-                <div style={{
-                  display: 'flex', gap: 4, marginBottom: 24,
-                  backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4,
-                  width: 'fit-content',
-                }}>
-                  {(['monthly', 'annual'] as const).map(cycle => (
-                    <button
-                      key={cycle}
-                      onClick={() => { setSelectedBilling(cycle); setSelectedPlanId(null); }}
-                      style={{
-                        padding: '8px 20px', borderRadius: 8, border: 'none',
-                        cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                        transition: 'all 150ms', fontFamily: 'Outfit, sans-serif',
-                        backgroundColor: selectedBilling === cycle ? '#0C1E35' : 'transparent',
-                        color: selectedBilling === cycle ? '#ffffff' : '#94A3B8',
-                        boxShadow: selectedBilling === cycle ? '0 2px 8px rgba(12,30,53,0.2)' : 'none',
-                      }}
-                    >
-                      {cycle === 'monthly' ? 'Bulanan' : 'Tahunan'}
-                      {cycle === 'annual' && (
-                        <span style={{
-                          marginLeft: 6, fontSize: 10, fontWeight: 700,
-                          backgroundColor: selectedBilling === 'annual' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)',
-                          padding: '2px 6px', borderRadius: 999,
-                        }}>
-                          Hemat ~17%
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-
                 {plansLoading ? (
                   <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8', fontSize: 14 }}>
                     <Loader2 className="animate-spin" style={{ width: 24, height: 24, color: '#CBD5E1', margin: '0 auto 12px' }} />
                     Memuat paket...
                   </div>
-                ) : filteredPlans.length === 0 ? (
+                ) : plans.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8', fontSize: 14 }}>
                     Tidak ada paket tersedia
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {filteredPlans.map((planItem) => {
+                    {plans.map((planItem) => {
                       const isSelected = selectedPlanId === planItem.id;
-                      const isPro = planItem.products?.name?.toLowerCase() === 'pro';
+                      const isAnnual = planItem.billing_cycle === 'annual';
                       return (
                         <div
                           key={planItem.id}
@@ -2285,20 +2268,20 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                             position: 'relative',
                           }}
                         >
-                          {isPro && (
+                          {isAnnual && (
                             <span style={{
                               position: 'absolute', top: -10, right: 16,
                               backgroundColor: '#0C1E35', color: 'white',
                               fontSize: 10, fontWeight: 700, padding: '3px 12px',
                               borderRadius: 999, letterSpacing: '0.05em',
                             }}>
-                              POPULER
+                              PALING HEMAT
                             </span>
                           )}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
                               <div style={{ fontSize: 16, fontWeight: 700, color: '#0C1E35', marginBottom: 4 }}>
-                                {planItem.products?.name || 'Paket'}
+                                {planItem.products?.name || 'Paket'} — {isAnnual ? 'Tahunan' : 'Bulanan'}
                               </div>
                               {planItem.original_price && planItem.original_price > planItem.price && (
                                 <div style={{ fontSize: 13, color: '#94A3B8', textDecoration: 'line-through', marginBottom: 2 }}>
@@ -2308,9 +2291,14 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                               <div style={{ fontSize: 24, fontWeight: 800, color: '#0C1E35' }}>
                                 {formatRupiah(planItem.price)}
                                 <span style={{ fontSize: 13, fontWeight: 400, color: '#94A3B8', marginLeft: 4 }}>
-                                  /{selectedBilling === 'monthly' ? 'bulan' : 'tahun'}
+                                  /bulan
                                 </span>
                               </div>
+                              {isAnnual && monthlySavings > 0 && (
+                                <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
+                                  Ditagih {formatRupiah(annualTotal)}/tahun · Hemat {formatRupiah(monthlySavings)}
+                                </p>
+                              )}
                             </div>
                             <div style={{
                               width: 24, height: 24, borderRadius: '50%',
