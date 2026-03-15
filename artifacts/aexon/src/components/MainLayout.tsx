@@ -91,9 +91,6 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
             style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', overflow: 'hidden', gap: 8 }}
           >
             <Logo mSize={28} wSize={isCollapsed ? 0 : 18} />
-            {!isCollapsed && (
-              <span className="font-aexon" style={{ fontSize: 20, color: '#0C1E35' }}>Aexon</span>
-            )}
           </div>
           {!isCollapsed && (
             <button

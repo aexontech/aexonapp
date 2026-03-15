@@ -1,0 +1,163 @@
+Fix these specific visual bugs in Dashboard.tsx and MainLayout.tsx.
+Use ONLY inline styles. Do not use Tailwind classes for any styling.
+
+═══ FIX 1: MainLayout.tsx — Remove duplicate "Aexon" text ═══
+Find the sidebar header area. There are TWO instances of "Aexon" text.
+Remove one — keep only the span with font-family Outfit.
+The Logo component and "Aexon" text should appear only ONCE together.
+
+═══ FIX 2: Dashboard.tsx — Stats cards equal size ═══
+All 3 stats cards must be EQUAL WIDTH in a 3-column grid.
+The featured border wrapper for card 0 must NOT make it larger.
+
+Replace the entire stats grid with this exact code:
+
+<div style={{ 
+  display: 'grid', 
+  gridTemplateColumns: 'repeat(3, 1fr)', 
+  gap: 20, 
+  marginBottom: 40,
+  position: 'relative',
+  zIndex: 10
+}}>
+  {stats.map((stat, i) => {
+    const gradients = [
+      'linear-gradient(135deg, #3B82F6, #2563EB)',
+      'linear-gradient(135deg, #0C1E35, #1a3a5c)',
+      'linear-gradient(135deg, #8B5CF6, #7C3AED)',
+    ];
+    const cardInner = (
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: i === 0 ? 22 : 20,
+          padding: 24,
+          position: 'relative',
+          overflow: 'hidden',
+          height: '100%',
+        }}
+      >
+        <div style={{
+          position: 'absolute', top: -20, right: -20,
+          width: 80, height: 80, borderRadius: '50%',
+          background: gradients[i], opacity: 0.06,
+        }} />
+        <div style={{
+          width: 44, height: 44, borderRadius: 14,
+          background: gradients[i],
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 16,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        }}>
+          <stat.icon style={{ width: 22, height: 22, color: '#ffffff' }} />
+        </div>
+        <div style={{ 
+          fontSize: 36, fontWeight: 800, color: '#0C1E35', 
+          lineHeight: 1, marginBottom: 6,
+          fontFamily: 'Outfit, sans-serif',
+        }}>
+          <AnimatedNumber value={stat.value} />
+        </div>
+        <div style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500 }}>
+          {stat.label}
+        </div>
+      </div>
+    );
+
+    if (i === 0) {
+      return (
+        <div key={stat.label} style={{
+          background: 'linear-gradient(135deg, #0C1E35 0%, #1E3A5F 50%, #0C1E35 100%)',
+          padding: 2,
+          borderRadius: 24,
+          boxShadow: '0 8px 32px rgba(12,30,53,0.2)',
+        }}>
+          {cardInner}
+        </div>
+      );
+    }
+    return (
+      <div key={stat.label} style={{
+        backgroundColor: '#ffffff',
+        borderRadius: 20,
+        border: '1px solid #E2E8F0',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+      }}>
+        {cardInner}
+      </div>
+    );
+  })}
+</div>
+
+═══ FIX 3: Dashboard.tsx — Session list card styling ═══
+The session list container needs proper card styling.
+Find the sessions list outer div and replace with:
+
+<div style={{
+  backgroundColor: '#ffffff',
+  borderRadius: 24,
+  border: '1px solid #E2E8F0',
+  boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+  overflow: 'hidden',
+  position: 'relative',
+  zIndex: 10,
+}}>
+  {/* existing content inside unchanged */}
+</div>
+
+Also fix the session list header:
+Find the header div with "Riwayat Sesi" title and search input.
+Make sure it has:
+style={{
+  padding: '20px 24px',
+  borderBottom: '1px solid #F1F5F9',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 16,
+}}
+
+═══ FIX 4: Dashboard.tsx — Subscription banner ═══
+The yellow banner is too large. Make it more compact:
+style={{
+  marginBottom: 24,
+  backgroundColor: '#FFFBEB',
+  border: '1px solid #FDE68A',
+  borderRadius: 16,
+  padding: '12px 20px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 12,
+  position: 'relative',
+  zIndex: 10,
+}}
+
+Make the "Berlangganan Sekarang" button smaller:
+style={{
+  flexShrink: 0,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 16px',
+  backgroundColor: '#F59E0B',
+  color: '#ffffff',
+  borderRadius: 10,
+  fontSize: 12,
+  fontWeight: 700,
+  border: 'none',
+  cursor: 'pointer',
+  textDecoration: 'none',
+  whiteSpace: 'nowrap',
+}}
+
+═══ FIX 5: Dashboard.tsx — Page background and spacing ═══
+The outermost div of Dashboard should be:
+style={{
+  flex: 1,
+  position: 'relative',
+  overflowY: 'auto',
+  height: '100%',
+  backgroundColor: '#F8FAFC',
+  padding: '32px',
+}}

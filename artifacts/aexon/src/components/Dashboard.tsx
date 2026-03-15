@@ -68,10 +68,10 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
 
   const getCategoryBorderColor = (category: string) => {
     switch (category) {
-      case 'Poli': return 'border-l-4 border-l-blue-500';
-      case 'Kamar Operasi': return 'border-l-4 border-l-orange-500';
-      case 'IGD': return 'border-l-4 border-l-red-500';
-      default: return 'border-l-4 border-l-slate-300';
+      case 'Poli': return '#3B82F6';
+      case 'Kamar Operasi': return '#F97316';
+      case 'IGD': return '#EF4444';
+      default: return '#CBD5E1';
     }
   };
 
@@ -89,21 +89,33 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
   ];
 
   return (
-    <div className="flex-1 relative overflow-y-auto h-full custom-scrollbar bg-slate-50 px-8 py-8">
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-15%] right-[-10%] w-[45%] h-[45%] bg-[#0C1E35]/[0.04] rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[-5%] w-[35%] h-[35%] bg-indigo-500/[0.03] rounded-full blur-[100px]" />
+    <div style={{ flex: 1, position: 'relative', overflowY: 'auto', height: '100%', backgroundColor: '#F8FAFC', padding: 32 }} className="custom-scrollbar">
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <div className="orb-tr" />
+        <div className="orb-bl" />
       </div>
 
       {showSubscriptionBanner && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-center justify-between relative z-10"
+          style={{
+            marginBottom: 24,
+            backgroundColor: '#FFFBEB',
+            border: '1px solid #FDE68A',
+            borderRadius: 16,
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            position: 'relative',
+            zIndex: 10,
+          }}
         >
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
-            <p className="text-sm font-semibold text-amber-800">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <AlertTriangle style={{ width: 20, height: 20, color: '#F59E0B', flexShrink: 0 }} />
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#92400E' }}>
               Langganan Anda belum aktif. Untuk memulai sesi baru, silakan berlangganan di aexon.id
             </p>
           </div>
@@ -111,10 +123,25 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             href="https://aexon.id/harga"
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all duration-200"
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 16px',
+              backgroundColor: '#F59E0B',
+              color: '#ffffff',
+              borderRadius: 10,
+              fontSize: 12,
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
           >
             Berlangganan Sekarang
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink style={{ width: 14, height: 14 }} />
           </a>
         </motion.div>
       )}
@@ -166,216 +193,245 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 40, position: 'relative', zIndex: 10 }}>
-        {stats.map((stat, i) => (
-          <div
-            key={stat.label}
-            style={{
-              background: i === 0
-                ? 'linear-gradient(135deg, #0C1E35 0%, #1E3A5F 50%, #0C1E35 100%)'
-                : 'transparent',
-              padding: i === 0 ? 2 : 0,
-              borderRadius: 24,
-              boxShadow: i === 0 ? '0 20px 60px rgba(12,30,53,0.18)' : 'none',
-            }}
-          >
-            <div style={{
-              backgroundColor: '#ffffff',
-              borderRadius: i === 0 ? 22 : 20,
-              border: i === 0 ? 'none' : '1px solid #E2E8F0',
-              boxShadow: i === 0 ? 'none' : '0 4px 24px rgba(0,0,0,0.04)',
-              padding: 24,
-              position: 'relative',
-              overflow: 'hidden',
-              transition: 'transform 150ms, box-shadow 150ms',
-              cursor: 'default',
-            }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 40, position: 'relative', zIndex: 10 }}>
+        {stats.map((stat, i) => {
+          const gradients = [
+            'linear-gradient(135deg, #3B82F6, #2563EB)',
+            'linear-gradient(135deg, #0C1E35, #1a3a5c)',
+            'linear-gradient(135deg, #8B5CF6, #7C3AED)',
+          ];
+          const cardInner = (
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: i === 0 ? 22 : 20,
+                padding: 24,
+                position: 'relative',
+                overflow: 'hidden',
+                height: '100%',
+              }}
+            >
               <div style={{
-                position: 'absolute', top: 0, right: 0,
+                position: 'absolute', top: -20, right: -20,
                 width: 80, height: 80, borderRadius: '50%',
-                background: i === 0
-                  ? 'linear-gradient(135deg, #3B82F6, #2563EB)'
-                  : i === 1
-                  ? 'linear-gradient(135deg, #0C1E35, #1a3a5c)'
-                  : 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
-                opacity: 0.06,
-                marginRight: -40, marginTop: -40,
+                background: gradients[i], opacity: 0.06,
               }} />
               <div style={{
-                width: 40, height: 40, borderRadius: 14,
-                background: i === 0
-                  ? 'linear-gradient(135deg, #3B82F6, #2563EB)'
-                  : i === 1
-                  ? 'linear-gradient(135deg, #0C1E35, #1a3a5c)'
-                  : 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
+                width: 44, height: 44, borderRadius: 14,
+                background: gradients[i],
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 marginBottom: 16,
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               }}>
-                <stat.icon style={{ width: 20, height: 20, color: '#ffffff' }} />
+                <stat.icon style={{ width: 22, height: 22, color: '#ffffff' }} />
               </div>
-              <div style={{ fontSize: 36, fontWeight: 800, color: '#0C1E35', lineHeight: 1, marginBottom: 4 }}>
+              <div style={{
+                fontSize: 36, fontWeight: 800, color: '#0C1E35',
+                lineHeight: 1, marginBottom: 6,
+                fontFamily: 'Outfit, sans-serif',
+              }}>
                 <AnimatedNumber value={stat.value} />
               </div>
               <div style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500 }}>
                 {stat.label}
               </div>
             </div>
-          </div>
-        ))}
+          );
+
+          if (i === 0) {
+            return (
+              <div key={stat.label} style={{
+                background: 'linear-gradient(135deg, #0C1E35 0%, #1E3A5F 50%, #0C1E35 100%)',
+                padding: 2,
+                borderRadius: 24,
+                boxShadow: '0 8px 32px rgba(12,30,53,0.2)',
+              }}>
+                {cardInner}
+              </div>
+            );
+          }
+          return (
+            <div key={stat.label} style={{
+              backgroundColor: '#ffffff',
+              borderRadius: 20,
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+            }}>
+              {cardInner}
+            </div>
+          );
+        })}
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="relative z-10"
-      >
+      <div style={{ position: 'relative', zIndex: 10 }}>
         {sessions.length === 0 && !searchTerm ? (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Stethoscope className="w-10 h-10 text-slate-300" />
+          <div style={{ backgroundColor: '#ffffff', borderRadius: 24, border: '1px solid #E2E8F0', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', padding: 64, textAlign: 'center' }}>
+            <div style={{ width: 80, height: 80, backgroundColor: '#F8FAFC', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+              <Stethoscope style={{ width: 40, height: 40, color: '#CBD5E1' }} />
             </div>
-            <h3 className="text-xl font-bold text-slate-700 mb-2 tracking-tight">Belum ada sesi tercatat</h3>
-            <p className="text-sm text-slate-400 font-medium max-w-sm mx-auto mb-6">
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#334155', marginBottom: 8, letterSpacing: '-0.01em' }}>Belum ada sesi tercatat</h3>
+            <p style={{ fontSize: 14, color: '#94A3B8', fontWeight: 500, maxWidth: 384, margin: '0 auto 24px' }}>
               Mulai sesi pertama Anda untuk mendokumentasikan prosedur endoskopi
             </p>
             {hasActiveAccess ? (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <button
                 onClick={onNewSession}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl font-semibold text-sm transition-colors shadow-lg shadow-[#0C1E35]/20"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '12px 24px', backgroundColor: '#0C1E35', color: '#ffffff',
+                  border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 14,
+                  cursor: 'pointer', boxShadow: '0 4px 20px rgba(12,30,53,0.25)',
+                }}
               >
-                <Plus className="w-5 h-5" />
+                <Plus style={{ width: 20, height: 20 }} />
                 Mulai Sesi Baru
-              </motion.button>
+              </button>
             ) : (
               <button
                 disabled
-                className="inline-flex items-center gap-2 px-6 py-3 bg-slate-200 text-slate-400 rounded-xl font-semibold text-sm cursor-not-allowed"
                 title="Diperlukan langganan aktif"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '12px 24px', backgroundColor: '#E2E8F0', color: '#94A3B8',
+                  border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 14,
+                  cursor: 'not-allowed',
+                }}
               >
-                <Lock className="w-4 h-4" />
+                <Lock style={{ width: 16, height: 16 }} />
                 Mulai Sesi Baru
               </button>
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.04)] overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 border-b border-slate-100">
-              <h3 className="font-aexon text-xl text-slate-900 tracking-tight">Riwayat Sesi</h3>
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: 24,
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #F1F5F9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+            }}>
+              <h3 style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 800, fontSize: 20, color: '#0C1E35', letterSpacing: '-0.01em' }}>Riwayat Sesi</h3>
+              <div style={{ position: 'relative', width: 288 }}>
+                <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: '#94A3B8', pointerEvents: 'none' }} />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all"
+                  className="input-base"
+                  style={{ paddingLeft: 40, paddingRight: 40, backgroundColor: '#F8FAFC' }}
                   placeholder="Cari prosedur, ICD, RM..."
                 />
                 {searchTerm && (
                   <button
                     onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 transition-colors"
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 2 }}
                   >
-                    <X className="w-4 h-4" />
+                    <X style={{ width: 16, height: 16 }} />
                   </button>
                 )}
               </div>
             </div>
 
             {filteredSessions.length === 0 ? (
-              <div className="py-16 text-center">
-                <FileText className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                <p className="text-sm font-medium text-slate-400">Data Tidak Ditemukan</p>
+              <div style={{ padding: '64px 0', textAlign: 'center' }}>
+                <FileText style={{ width: 40, height: 40, color: '#E2E8F0', margin: '0 auto 12px' }} />
+                <p style={{ fontSize: 14, fontWeight: 500, color: '#94A3B8' }}>Data Tidak Ditemukan</p>
               </div>
             ) : (
               <>
-                <div className="divide-y divide-slate-50">
-                  {currentSessions.map((session, i) => (
-                    <motion.div
+                <div>
+                  {currentSessions.map((session, idx) => (
+                    <div
                       key={session.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className={`group flex items-center justify-between px-6 py-4 hover:bg-slate-50 ${getCategoryBorderColor(session.patient.category)} transition-all duration-200 cursor-pointer`}
-                      style={{ transform: 'translateY(0)' }}
-                      whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                       onClick={() => onViewSession(session)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '16px 24px',
+                        borderLeft: `4px solid ${getCategoryBorderColor(session.patient.category)}`,
+                        borderBottom: idx < currentSessions.length - 1 ? '1px solid #F8FAFC' : 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 150ms',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                      <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0, flex: 1 }}>
                         <div>
-                          <div className="text-base font-semibold text-slate-900 group-hover:text-[#0C1E35] transition-colors">
+                          <div style={{ fontSize: 15, fontWeight: 600, color: '#0C1E35' }}>
                             {session.patient.name}
                           </div>
-                          <div className="text-sm text-slate-500 mt-0.5">
+                          <div style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>
                             {session.patient.procedures_icd9?.[0] || session.patient.procedures?.[0] || 'Prosedur'}
                           </div>
-                          <div className="flex items-center gap-3 mt-1.5">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6 }}>
                             {session.patient.diagnosis_icd10 && (
-                              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md">
+                              <span style={{ padding: '2px 8px', backgroundColor: '#EFF6FF', color: '#2563EB', fontSize: 10, fontWeight: 700, borderRadius: 6 }}>
                                 {session.patient.diagnosis_icd10.split(' - ')[0]}
                               </span>
                             )}
-                            <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-md">
+                            <span style={{ padding: '2px 8px', backgroundColor: '#F1F5F9', color: '#64748B', fontSize: 10, fontWeight: 700, borderRadius: 6 }}>
                               {session.patient.category}
                             </span>
-                            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                              <Camera className="w-3 h-3" />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#94A3B8' }}>
+                              <Camera style={{ width: 12, height: 12 }} />
                               {session.captures.length}
                             </div>
-                            <span className="text-xs text-slate-400">
+                            <span style={{ fontSize: 12, color: '#94A3B8' }}>
                               {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <button
                           onClick={(e) => { e.stopPropagation(); onViewGallery(session); }}
-                          className="p-2.5 bg-slate-50 hover:bg-slate-900 text-slate-400 hover:text-white rounded-xl transition-all duration-200 border border-slate-100 hover:border-slate-900"
                           title="Galeri Media"
+                          style={{ padding: 10, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <Camera className="w-4 h-4" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
+                          <Camera style={{ width: 16, height: 16 }} />
+                        </button>
+                        <button
                           onClick={(e) => { e.stopPropagation(); onViewSession(session); }}
-                          className="flex items-center gap-2 px-4 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl transition-all duration-200 text-xs font-bold"
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', backgroundColor: '#0C1E35', color: '#ffffff', border: 'none', borderRadius: 12, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                         >
                           Laporan
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
+                          <ArrowRight style={{ width: 14, height: 14 }} />
+                        </button>
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteClick(session.id, session.patient.name); }}
-                          className="p-2.5 bg-slate-50 hover:bg-red-600 text-slate-400 hover:text-white rounded-xl transition-all duration-200 border border-slate-100 hover:border-red-600"
                           title="Hapus Sesi"
+                          style={{ padding: 10, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </motion.button>
+                          <Trash2 style={{ width: 16, height: 16 }} />
+                        </button>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
 
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 p-4 border-t border-slate-100">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderTop: '1px solid #F1F5F9' }}>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                       <button
                         key={p}
                         onClick={() => setCurrentPage(p)}
-                        className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
-                          currentPage === p
-                            ? 'bg-slate-900 text-white'
-                            : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-                        }`}
+                        style={{
+                          width: 36, height: 36, borderRadius: 8, fontSize: 12, fontWeight: 700,
+                          border: 'none', cursor: 'pointer', transition: 'all 150ms',
+                          backgroundColor: currentPage === p ? '#0C1E35' : '#F8FAFC',
+                          color: currentPage === p ? '#ffffff' : '#94A3B8',
+                        }}
                       >
                         {p}
                       </button>
@@ -386,7 +442,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             )}
           </div>
         )}
-      </motion.div>
+      </div>
 
       <AnimatePresence>
         {sessionToDelete && (
@@ -394,33 +450,33 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
             onClick={() => setSessionToDelete(null)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl"
+              style={{ backgroundColor: '#ffffff', borderRadius: 24, padding: 32, maxWidth: 384, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <Trash2 className="w-7 h-7 text-red-500" />
+              <div style={{ width: 56, height: 56, backgroundColor: '#FEF2F2', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <Trash2 style={{ width: 28, height: 28, color: '#EF4444' }} />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 text-center mb-2">Hapus Sesi?</h3>
-              <p className="text-sm text-slate-500 text-center mb-6">
-                Sesi untuk <span className="font-semibold text-slate-700">{sessionToDelete.name}</span> akan dihapus permanen.
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0C1E35', textAlign: 'center', marginBottom: 8 }}>Hapus Sesi?</h3>
+              <p style={{ fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 24 }}>
+                Sesi untuk <span style={{ fontWeight: 600, color: '#334155' }}>{sessionToDelete.name}</span> akan dihapus permanen.
               </p>
-              <div className="flex gap-3">
+              <div style={{ display: 'flex', gap: 12 }}>
                 <button
                   onClick={() => setSessionToDelete(null)}
-                  className="flex-1 py-3 rounded-xl font-bold text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                  style={{ flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14, border: '1px solid #E2E8F0', backgroundColor: '#ffffff', color: '#64748B', cursor: 'pointer' }}
                 >
                   Batal
                 </button>
                 <button
                   onClick={confirmDelete}
-                  className="flex-1 py-3 rounded-xl font-bold text-sm bg-red-600 text-white hover:bg-red-700 transition-colors"
+                  style={{ flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14, border: 'none', backgroundColor: '#EF4444', color: '#ffffff', cursor: 'pointer' }}
                 >
                   Hapus
                 </button>
