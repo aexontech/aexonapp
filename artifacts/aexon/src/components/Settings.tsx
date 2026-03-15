@@ -605,28 +605,149 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
   visibleTabs.push({ id: 'backup', label: 'Backup & Restore', icon: HardDrive });
 
-  const inputClass = "w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-colors duration-150";
-  const readOnlyClass = "w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed text-sm";
+  const inputBaseStyle: React.CSSProperties = {
+    width: '100%',
+    paddingTop: 11,
+    paddingBottom: 11,
+    paddingLeft: 14,
+    paddingRight: 14,
+    border: '1px solid #CBD5E1',
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    fontSize: 14,
+    color: '#0C1E35',
+    outline: 'none',
+    transition: 'box-shadow 0.15s, border-color 0.15s',
+    fontFamily: 'Outfit, sans-serif',
+  };
+
+  const readOnlyStyle: React.CSSProperties = {
+    ...inputBaseStyle,
+    backgroundColor: '#F8FAFC',
+    color: '#64748B',
+    cursor: 'not-allowed',
+  };
+
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.style.borderColor = '#0C1E35';
+    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(12,30,53,0.08)';
+  };
+
+  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.style.borderColor = '#CBD5E1';
+    e.currentTarget.style.boxShadow = 'none';
+  };
+
+  const cardStyle: React.CSSProperties = {
+    background: '#fff',
+    border: '1px solid #E2E8F0',
+    borderRadius: 16,
+    boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+    padding: 32,
+  };
+
+  const sectionHeadingStyle: React.CSSProperties = {
+    fontSize: 18,
+    fontWeight: 800,
+    color: '#0C1E35',
+    fontFamily: 'Outfit, sans-serif',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#475569',
+    marginLeft: 2,
+    display: 'block',
+    marginBottom: 6,
+  };
+
+  const mutedTextStyle: React.CSSProperties = {
+    fontSize: 14,
+    color: '#64748B',
+  };
+
+  const btnPrimaryStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '12px 24px',
+    backgroundColor: '#0C1E35',
+    color: '#fff',
+    fontWeight: 700,
+    borderRadius: 12,
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontFamily: 'Outfit, sans-serif',
+    transition: 'background-color 0.15s',
+  };
+
+  const dividerStyle: React.CSSProperties = {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    border: 'none',
+    margin: '24px 0',
+  };
+
+  const iconBoxStyle = (bg: string): React.CSSProperties => ({
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: bg,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  });
 
   return (
-    <div className="flex-1 p-8 max-w-5xl mx-auto w-full font-sans text-slate-900 overflow-y-auto h-full custom-scrollbar">
-      <div className="mb-8">
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Pengaturan</h2>
-        <p className="text-slate-500 text-sm">Kelola profil, keamanan, dan preferensi akun Anda.</p>
+    <div
+      className="custom-scrollbar"
+      style={{
+        flex: 1,
+        padding: 32,
+        maxWidth: 1024,
+        margin: '0 auto',
+        width: '100%',
+        fontFamily: 'Outfit, sans-serif',
+        color: '#0C1E35',
+        overflowY: 'auto',
+        height: '100%',
+        position: 'relative',
+      }}
+    >
+      <div className="orb-tr" />
+      <div className="orb-bl" />
+
+      <div style={{ marginBottom: 32 }}>
+        <h2 className="font-aexon" style={{ fontSize: 26, fontWeight: 800, color: '#0C1E35', letterSpacing: '-0.01em', marginBottom: 4 }}>Pengaturan</h2>
+        <p style={{ ...mutedTextStyle, fontSize: 14 }}>Kelola profil, keamanan, dan preferensi akun Anda.</p>
       </div>
 
-      <div className="bg-slate-100 rounded-2xl p-1 inline-flex gap-1 mb-6">
+      <div style={{ backgroundColor: '#F1F5F9', borderRadius: 16, padding: 4, display: 'inline-flex', gap: 4, marginBottom: 24 }}>
         {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition-colors ${
-              activeTab === tab.id
-                ? 'bg-white text-slate-900 font-semibold shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 cursor-pointer'
-            }`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              fontSize: 14,
+              borderRadius: 12,
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              fontFamily: 'Outfit, sans-serif',
+              fontWeight: activeTab === tab.id ? 600 : 400,
+              backgroundColor: activeTab === tab.id ? '#fff' : 'transparent',
+              color: activeTab === tab.id ? '#0C1E35' : '#64748B',
+              boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            }}
           >
-            <tab.icon className="w-4 h-4" />
+            <tab.icon style={{ width: 16, height: 16 }} />
             {tab.label}
           </button>
         ))}
@@ -638,9 +759,24 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             initial={{ opacity: 0, y: -20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className="fixed top-6 right-6 bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-lg z-50"
+            style={{
+              position: 'fixed',
+              top: 24,
+              right: 24,
+              backgroundColor: '#10B981',
+              color: '#fff',
+              padding: '10px 20px',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              boxShadow: '0 8px 24px rgba(16,185,129,0.25)',
+              zIndex: 50,
+              fontFamily: 'Outfit, sans-serif',
+            }}
           >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
+            <CheckCircle2 style={{ width: 16, height: 16, marginRight: 8 }} />
             Perubahan Berhasil Disimpan
           </motion.div>
         )}
@@ -649,112 +785,124 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       {/* ═══════════════ TAB: PROFIL ═══════════════ */}
       {activeTab === 'profil' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-            <div className="flex flex-col items-center mb-8">
-              <div className="w-16 h-16 rounded-full bg-[#0C1E35] flex items-center justify-center mb-3">
-                <span className="text-white font-black text-lg">{getInitials(profileForm.name)}</span>
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32 }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', backgroundColor: '#0C1E35', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <span style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>{getInitials(profileForm.name)}</span>
               </div>
-              <h3 className="text-xl font-black text-slate-900">{profileForm.name}</h3>
-              <p className="text-sm text-slate-500">{profileForm.specialization}</p>
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0C1E35', fontFamily: 'Outfit, sans-serif' }}>{profileForm.name}</h3>
+              <p style={mutedTextStyle}>{profileForm.specialization}</p>
               {isDokterInstitusi && (
-                <span className="inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-teal-50 text-teal-700">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 6, padding: '2px 10px', fontSize: 10, fontWeight: 700, borderRadius: 20, backgroundColor: '#F0FDFA', color: '#0F766E' }}>
                   Dokter Institusi
                 </span>
               )}
             </div>
 
             {isDokterInstitusi && (
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3 mb-6">
-                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-700 leading-relaxed">
+              <div style={{ padding: 16, backgroundColor: '#EFF6FF', border: '1px solid #DBEAFE', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24 }}>
+                <Info style={{ width: 16, height: 16, color: '#3B82F6', flexShrink: 0, marginTop: 2 }} />
+                <p style={{ fontSize: 12, color: '#1D4ED8', lineHeight: 1.6 }}>
                   Nama dan email dikelola oleh Admin Institusi Anda. Anda hanya dapat mengubah spesialisasi.
                 </p>
               </div>
             )}
 
-            <div className="h-px bg-slate-100 mb-8" />
+            <div style={{ ...dividerStyle, marginBottom: 32 }} />
 
-            <form onSubmit={handleSaveProfile} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-slate-500 ml-1">Nama Lengkap & Gelar</label>
+            <form onSubmit={handleSaveProfile}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+                <div>
+                  <label style={labelStyle}>Nama Lengkap & Gelar</label>
                   <input
                     type="text"
                     name="name"
                     value={profileForm.name}
                     onChange={handleProfileChange}
                     readOnly={isDokterInstitusi}
-                    className={isDokterInstitusi ? readOnlyClass : inputClass}
+                    style={isDokterInstitusi ? readOnlyStyle : inputBaseStyle}
+                    onFocus={isDokterInstitusi ? undefined : handleInputFocus}
+                    onBlur={isDokterInstitusi ? undefined : handleInputBlur}
                   />
                   {!isDokterInstitusi && (
-                    <p className="text-[10px] text-slate-400 ml-1 italic">Dapat diubah sekali setiap 7 hari.</p>
+                    <p style={{ fontSize: 10, color: '#94A3B8', marginLeft: 2, fontStyle: 'italic', marginTop: 4 }}>Dapat diubah sekali setiap 7 hari.</p>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-slate-500 ml-1">Email</label>
+                <div>
+                  <label style={labelStyle}>Email</label>
                   <input
                     type="email"
                     value={profileForm.email}
                     readOnly
-                    className={readOnlyClass}
+                    style={readOnlyStyle}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-slate-500 ml-1">Spesialisasi</label>
+                <div>
+                  <label style={labelStyle}>Spesialisasi</label>
                   <input
                     type="text"
                     name="specialization"
                     value={profileForm.specialization}
                     onChange={handleProfileChange}
-                    className={inputClass}
+                    style={inputBaseStyle}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                   />
                 </div>
 
                 {!isDokterInstitusi && (
                   <>
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-slate-500 ml-1">Nomor WhatsApp</label>
+                    <div>
+                      <label style={labelStyle}>Nomor WhatsApp</label>
                       <input
                         type="tel"
                         name="phone"
                         value={profileForm.phone}
                         onChange={handleProfileChange}
-                        className={inputClass}
+                        style={inputBaseStyle}
+                        onFocus={handleInputFocus}
+                        onBlur={handleInputBlur}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-slate-500 ml-1">No. STR (Surat Tanda Registrasi)</label>
+                    <div>
+                      <label style={labelStyle}>No. STR (Surat Tanda Registrasi)</label>
                       <input
                         type="text"
                         name="strNumber"
                         value={profileForm.strNumber || ''}
                         onChange={handleProfileChange}
                         placeholder="16 digit nomor STR"
-                        className={inputClass + " placeholder:text-slate-300"}
+                        style={inputBaseStyle}
+                        onFocus={handleInputFocus}
+                        onBlur={handleInputBlur}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-slate-500 ml-1">No. SIP (Surat Izin Praktik)</label>
+                    <div>
+                      <label style={labelStyle}>No. SIP (Surat Izin Praktik)</label>
                       <input
                         type="text"
                         name="sipNumber"
                         value={profileForm.sipNumber || ''}
                         onChange={handleProfileChange}
                         placeholder="Nomor SIP aktif"
-                        className={inputClass + " placeholder:text-slate-300"}
+                        style={inputBaseStyle}
+                        onFocus={handleInputFocus}
+                        onBlur={handleInputBlur}
                       />
                     </div>
                   </>
                 )}
               </div>
-              <div className="pt-4 flex justify-end">
+              <div style={{ paddingTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   type="submit"
                   disabled={profileSaving}
-                  className="flex items-center gap-2 px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all disabled:opacity-50"
+                  style={{ ...btnPrimaryStyle, opacity: profileSaving ? 0.5 : 1 }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                 >
-                  {profileSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {profileSaving ? <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> : <Save style={{ width: 16, height: 16 }} />}
                   {profileSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </motion.button>
               </div>
@@ -765,63 +913,69 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
       {/* ═══════════════ TAB: KEAMANAN ═══════════════ */}
       {activeTab === 'keamanan' && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-          <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
-                <Key className="w-5 h-5 text-[#0C1E35]" />
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+              <div style={iconBoxStyle('#F8FAFC')}>
+                <Key style={{ width: 20, height: 20, color: '#0C1E35' }} />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-900">Ganti Password</h3>
-                <p className="text-sm text-slate-500">Perbarui password akun Anda.</p>
+                <h3 style={sectionHeadingStyle}>Ganti Password</h3>
+                <p style={mutedTextStyle}>Perbarui password akun Anda.</p>
               </div>
             </div>
 
-            <div className="h-px bg-slate-100 mb-6" />
+            <div style={dividerStyle} />
 
-            <form onSubmit={handleChangePassword} className="max-w-md space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-500 ml-1">Password Saat Ini</label>
-                <div className="relative">
+            <form onSubmit={handleChangePassword} style={{ maxWidth: 440, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={labelStyle}>Password Saat Ini</label>
+                <div style={{ position: 'relative' }}>
                   <input
                     type={showCurrentPass ? 'text' : 'password'}
                     value={currentPassword}
                     onChange={e => setCurrentPassword(e.target.value)}
                     placeholder="Masukkan password saat ini"
-                    className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm"
+                    style={{ ...inputBaseStyle, paddingRight: 48 }}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                   />
-                  <button type="button" onClick={() => setShowCurrentPass(!showCurrentPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <button type="button" onClick={() => setShowCurrentPass(!showCurrentPass)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 4 }}>
+                    {showCurrentPass ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
                   </button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-500 ml-1">Password Baru</label>
-                <div className="relative">
+              <div>
+                <label style={labelStyle}>Password Baru</label>
+                <div style={{ position: 'relative' }}>
                   <input
                     type={showNewPass ? 'text' : 'password'}
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     placeholder="Minimal 8 karakter"
-                    className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm"
+                    style={{ ...inputBaseStyle, paddingRight: 48 }}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                   />
-                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 4 }}>
+                    {showNewPass ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
                   </button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-500 ml-1">Konfirmasi Password Baru</label>
-                <div className="relative">
+              <div>
+                <label style={labelStyle}>Konfirmasi Password Baru</label>
+                <div style={{ position: 'relative' }}>
                   <input
                     type={showConfirmPass ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Ulangi password baru"
-                    className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-[#0C1E35]/20 focus:border-[#0C1E35] transition-all text-sm"
+                    style={{ ...inputBaseStyle, paddingRight: 48 }}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                   />
-                  <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 4 }}>
+                    {showConfirmPass ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
                   </button>
                 </div>
               </div>
@@ -829,28 +983,32 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 whileTap={{ scale: 0.95 }}
                 type="submit"
                 disabled={passwordSaving}
-                className="flex items-center gap-2 px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all disabled:opacity-50"
+                style={{ ...btnPrimaryStyle, opacity: passwordSaving ? 0.5 : 1 }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
               >
-                {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                {passwordSaving ? <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> : <Lock style={{ width: 16, height: 16 }} />}
                 {passwordSaving ? 'Mengubah...' : 'Update Password'}
               </motion.button>
             </form>
           </div>
 
           {!isAdmin && (
-            <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-              <h3 className="text-lg font-black text-slate-900 mb-6">Manajemen Data</h3>
-              <div className="flex items-center justify-between p-5 bg-amber-50 rounded-xl border border-amber-100">
-                <div className="flex items-center gap-3">
-                  <Database className="w-5 h-5 text-amber-600" />
+            <div style={cardStyle}>
+              <h3 style={{ ...sectionHeadingStyle, marginBottom: 24 }}>Manajemen Data</h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, backgroundColor: '#FFFBEB', borderRadius: 12, border: '1px solid #FDE68A' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Database style={{ width: 20, height: 20, color: '#D97706' }} />
                   <div>
-                    <h4 className="text-sm font-bold text-amber-900">Hapus Data Lokal</h4>
-                    <p className="text-xs text-amber-700/70">Hapus semua riwayat sesi di browser ini.</p>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#78350F' }}>Hapus Data Lokal</h4>
+                    <p style={{ fontSize: 12, color: '#92400E', opacity: 0.7 }}>Hapus semua riwayat sesi di browser ini.</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowClearDataModal(true)}
-                  className="px-5 py-2 bg-white text-amber-600 font-bold rounded-xl hover:bg-amber-100 transition-colors border border-amber-200 text-sm"
+                  style={{ padding: '8px 20px', backgroundColor: '#fff', color: '#D97706', fontWeight: 700, borderRadius: 12, border: '1px solid #FDE68A', cursor: 'pointer', fontSize: 14, transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FEF3C7'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; }}
                 >
                   Hapus
                 </button>
@@ -862,30 +1020,30 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
       {/* ═══════════════ TAB: KOP SURAT ═══════════════ */}
       {activeTab === 'kop-surat' && !isAdmin && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
           {isDokterInstitusi && (
             <>
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
-                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-700 leading-relaxed">
+              <div style={{ padding: 16, backgroundColor: '#EFF6FF', border: '1px solid #DBEAFE', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <Info style={{ width: 16, height: 16, color: '#3B82F6', flexShrink: 0, marginTop: 2 }} />
+                <p style={{ fontSize: 12, color: '#1D4ED8', lineHeight: 1.6 }}>
                   Kop surat dikelola oleh Admin Institusi Anda. Hubungi admin untuk perubahan.
                 </p>
               </div>
 
               {hospitalSettingsList.length > 0 ? (
-                <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-indigo-600" />
+                <div style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                    <div style={iconBoxStyle('#EEF2FF')}>
+                      <FileText style={{ width: 20, height: 20, color: '#4F46E5' }} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-black text-slate-900">{hospitalSettingsList[0].name || 'Kop Surat Institusi'}</h3>
-                      <p className="text-sm text-slate-500">Kop surat yang ditetapkan oleh institusi Anda.</p>
+                      <h3 style={sectionHeadingStyle}>{hospitalSettingsList[0].name || 'Kop Surat Institusi'}</h3>
+                      <p style={mutedTextStyle}>Kop surat yang ditetapkan oleh institusi Anda.</p>
                     </div>
                   </div>
-                  <div className="h-px bg-slate-100 mb-6" />
-                  <div className="grid md:grid-cols-2 gap-5">
+                  <div style={dividerStyle} />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
                     {[
                       { label: 'Nama RS / Institusi', value: hospitalSettingsList[0].name },
                       { label: 'Alamat', value: hospitalSettingsList[0].address },
@@ -894,23 +1052,23 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                       { label: 'Email', value: hospitalSettingsList[0].email },
                       { label: 'Website', value: hospitalSettingsList[0].website || '-' },
                     ].map((field) => (
-                      <div key={field.label} className="space-y-1">
-                        <label className="text-xs font-medium text-slate-500 ml-1">{field.label}</label>
-                        <input type="text" value={field.value || ''} readOnly className={readOnlyClass} />
+                      <div key={field.label}>
+                        <label style={labelStyle}>{field.label}</label>
+                        <input type="text" value={field.value || ''} readOnly style={readOnlyStyle} />
                       </div>
                     ))}
                   </div>
                   {hospitalSettingsList[0].logoUrl && (
-                    <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                      <p className="text-xs font-medium text-slate-500 mb-2">Logo Institusi</p>
-                      <img src={hospitalSettingsList[0].logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+                    <div style={{ marginTop: 20, padding: 16, backgroundColor: '#F8FAFC', borderRadius: 12, border: '1px solid #E2E8F0' }}>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>Logo Institusi</p>
+                      <img src={hospitalSettingsList[0].logoUrl} alt="Logo" style={{ height: 64, width: 'auto', objectFit: 'contain' }} />
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8 text-center">
-                  <FileText className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm text-slate-500 font-medium">Kop surat belum dikonfigurasi oleh Admin Institusi.</p>
+                <div style={{ ...cardStyle, textAlign: 'center' }}>
+                  <FileText style={{ width: 48, height: 48, color: '#E2E8F0', margin: '0 auto 12px' }} />
+                  <p style={{ fontSize: 14, color: '#64748B', fontWeight: 500 }}>Kop surat belum dikonfigurasi oleh Admin Institusi.</p>
                 </div>
               )}
             </>
@@ -918,28 +1076,30 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
           {isPersonal && (
             <>
-              <div className="flex items-center justify-between">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Kop Surat Praktik</h3>
-                  <p className="text-sm text-slate-500">Kelola kop surat tempat praktik Anda (maks. 3).</p>
+                  <h3 style={sectionHeadingStyle}>Kop Surat Praktik</h3>
+                  <p style={mutedTextStyle}>Kelola kop surat tempat praktik Anda (maks. 3).</p>
                 </div>
                 {kopForms.length < 3 && (
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     onClick={handleAddKop}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
+                    style={{ ...btnPrimaryStyle, padding: '10px 16px', fontSize: 12 }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus style={{ width: 16, height: 16 }} />
                     Tambah Kop Surat
                   </motion.button>
                 )}
               </div>
 
               {kopForms.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
-                  <FileText className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm text-slate-500 font-medium mb-1">Belum ada kop surat.</p>
-                  <p className="text-xs text-slate-400">Klik "Tambah Kop Surat" untuk menambahkan tempat praktik.</p>
+                <div style={{ ...cardStyle, border: '2px dashed #CBD5E1', textAlign: 'center', padding: 48 }}>
+                  <FileText style={{ width: 48, height: 48, color: '#E2E8F0', margin: '0 auto 12px' }} />
+                  <p style={{ fontSize: 14, color: '#64748B', fontWeight: 500, marginBottom: 4 }}>Belum ada kop surat.</p>
+                  <p style={{ fontSize: 12, color: '#94A3B8' }}>Klik "Tambah Kop Surat" untuk menambahkan tempat praktik.</p>
                 </div>
               )}
 
@@ -949,21 +1109,23 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 const isSavingThis = kopSaving === idx;
 
                 return (
-                  <div key={kop.id || idx} className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden">
+                  <div key={kop.id || idx} style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
                     <button
                       onClick={() => setExpandedKopIdx(isExpanded ? null : idx)}
-                      className="w-full flex items-center justify-between p-5 hover:bg-slate-50/50 transition-colors"
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20, background: 'none', border: 'none', cursor: 'pointer', transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
+                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#0C1E35] flex items-center justify-center text-white text-xs font-black">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#0C1E35', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 900 }}>
                           {idx + 1}
                         </div>
-                        <div className="text-left">
-                          <h4 className="text-sm font-bold text-slate-900">{kop.name || `Kop Surat ${idx + 1}`}</h4>
-                          {kop.address && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-sm">{kop.address}</p>}
+                        <div style={{ textAlign: 'left' }}>
+                          <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>{kop.name || `Kop Surat ${idx + 1}`}</h4>
+                          {kop.address && <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 2, maxWidth: 384, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kop.address}</p>}
                         </div>
                       </div>
-                      {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                      {isExpanded ? <ChevronUp style={{ width: 16, height: 16, color: '#94A3B8' }} /> : <ChevronDown style={{ width: 16, height: 16, color: '#94A3B8' }} />}
                     </button>
 
                     <AnimatePresence>
@@ -972,49 +1134,51 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden"
+                          style={{ overflow: 'hidden' }}
                         >
-                          <div className="p-6 pt-0 border-t border-slate-100">
+                          <div style={{ padding: '0 24px 24px', borderTop: '1px solid #E2E8F0' }}>
                             {cooldown.locked && (
-                              <div className="mb-5 p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2">
-                                <CalendarClock className="w-4 h-4 text-amber-500 shrink-0" />
-                                <p className="text-xs text-amber-700">
+                              <div style={{ marginBottom: 20, marginTop: 16, padding: 12, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <CalendarClock style={{ width: 16, height: 16, color: '#F59E0B', flexShrink: 0 }} />
+                                <p style={{ fontSize: 12, color: '#92400E' }}>
                                   Nama dan logo dapat diubah kembali pada <strong>{cooldown.unlockDate!.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
                                 </p>
                               </div>
                             )}
 
-                            <div className="grid md:grid-cols-2 gap-5 mt-4">
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-500 ml-1">Nama RS / Klinik *</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginTop: 16 }}>
+                              <div>
+                                <label style={labelStyle}>Nama RS / Klinik *</label>
                                 <input
                                   type="text"
                                   value={kop.name}
                                   onChange={(e) => handleKopFieldChange(idx, 'name', e.target.value)}
                                   readOnly={cooldown.locked}
-                                  className={cooldown.locked ? readOnlyClass : inputClass}
+                                  style={cooldown.locked ? readOnlyStyle : inputBaseStyle}
+                                  onFocus={cooldown.locked ? undefined : handleInputFocus}
+                                  onBlur={cooldown.locked ? undefined : handleInputBlur}
                                   placeholder="Nama rumah sakit atau klinik"
                                 />
                               </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
-                                  <ImagePlus className="w-3 h-3" /> Logo RS / Institusi
+                              <div>
+                                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <ImagePlus style={{ width: 12, height: 12 }} /> Logo RS / Institusi
                                 </label>
                                 <input
                                   type="file"
                                   accept=".jpg,.jpeg,.png"
                                   ref={(el) => { if (el) logoInputRefs.current.set(idx, el); }}
                                   onChange={(e) => handleLogoFileSelect(idx, e)}
-                                  className="hidden"
+                                  style={{ display: 'none' }}
                                 />
-                                <div className="flex items-center gap-3">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                   {kop.logoUrl ? (
-                                    <div className="h-12 w-12 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 shrink-0">
-                                      <img src={kop.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                    <div style={{ height: 48, width: 48, borderRadius: 8, border: '1px solid #E2E8F0', overflow: 'hidden', backgroundColor: '#F8FAFC', flexShrink: 0 }}>
+                                      <img src={kop.logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                     </div>
                                   ) : (
-                                    <div className="h-12 w-12 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 shrink-0">
-                                      <ImagePlus className="w-5 h-5 text-slate-300" />
+                                    <div style={{ height: 48, width: 48, borderRadius: 8, border: '2px dashed #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', flexShrink: 0 }}>
+                                      <ImagePlus style={{ width: 20, height: 20, color: '#CBD5E1' }} />
                                     </div>
                                   )}
                                   <button
@@ -1026,110 +1190,127 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                       }
                                     }}
                                     disabled={cooldown.locked}
-                                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
-                                      cooldown.locked
-                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                        : 'bg-[#0C1E35]/5 hover:bg-[#0C1E35]/10 text-[#0C1E35] border border-[#0C1E35]/15'
-                                    }`}
+                                    style={{
+                                      display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 12, fontWeight: 700, borderRadius: 12, transition: 'all 0.15s', cursor: cooldown.locked ? 'not-allowed' : 'pointer', fontFamily: 'Outfit, sans-serif',
+                                      ...(cooldown.locked
+                                        ? { backgroundColor: '#F1F5F9', color: '#94A3B8', border: '1px solid #E2E8F0' }
+                                        : { backgroundColor: 'rgba(12,30,53,0.05)', color: '#0C1E35', border: '1px solid rgba(12,30,53,0.15)' }),
+                                    }}
                                   >
-                                    <Upload className="w-3.5 h-3.5" />
+                                    <Upload style={{ width: 14, height: 14 }} />
                                     {kop.logoUrl ? 'Ganti Logo' : 'Upload Logo'}
                                   </button>
                                   {kop.logoUrl && !cooldown.locked && (
                                     <button
                                       type="button"
                                       onClick={() => handleKopFieldChange(idx, 'logoUrl', '')}
-                                      className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                      style={{ padding: 10, color: '#EF4444', background: 'none', border: 'none', borderRadius: 12, cursor: 'pointer', transition: 'background-color 0.15s' }}
                                       title="Hapus logo"
+                                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
+                                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                                     >
-                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <Trash2 style={{ width: 14, height: 14 }} />
                                     </button>
                                   )}
                                 </div>
-                                <p className="text-[10px] text-slate-400 ml-1">Format: .jpg, .png (maks. 5 MB)</p>
+                                <p style={{ fontSize: 10, color: '#94A3B8', marginLeft: 2, marginTop: 4 }}>Format: .jpg, .png (maks. 5 MB)</p>
                               </div>
-                              <div className="md:col-span-2 space-y-2">
-                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" /> Alamat
+                              <div style={{ gridColumn: '1 / -1' }}>
+                                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <MapPin style={{ width: 12, height: 12 }} /> Alamat
                                 </label>
                                 <input
                                   type="text"
                                   value={kop.address}
                                   onChange={(e) => handleKopFieldChange(idx, 'address', e.target.value)}
-                                  className={inputClass}
+                                  style={inputBaseStyle}
+                                  onFocus={handleInputFocus}
+                                  onBlur={handleInputBlur}
                                   placeholder="Jl. Kesehatan No. 1, Jakarta"
                                 />
                               </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
-                                  <Phone className="w-3 h-3" /> No. Telepon
+                              <div>
+                                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Phone style={{ width: 12, height: 12 }} /> No. Telepon
                                 </label>
                                 <input
                                   type="tel"
                                   value={kop.phone}
                                   onChange={(e) => handleKopFieldChange(idx, 'phone', e.target.value)}
-                                  className={inputClass}
+                                  style={inputBaseStyle}
+                                  onFocus={handleInputFocus}
+                                  onBlur={handleInputBlur}
                                   placeholder="(021) 1234567"
                                 />
                               </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-500 ml-1">No. Fax</label>
+                              <div>
+                                <label style={labelStyle}>No. Fax</label>
                                 <input
                                   type="tel"
                                   value={kop.fax || ''}
                                   onChange={(e) => handleKopFieldChange(idx, 'fax', e.target.value)}
-                                  className={inputClass}
+                                  style={inputBaseStyle}
+                                  onFocus={handleInputFocus}
+                                  onBlur={handleInputBlur}
                                   placeholder="(021) 1234568"
                                 />
                               </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
-                                  <MailIcon className="w-3 h-3" /> Email RS
+                              <div>
+                                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <MailIcon style={{ width: 12, height: 12 }} /> Email RS
                                 </label>
                                 <input
                                   type="email"
                                   value={kop.email}
                                   onChange={(e) => handleKopFieldChange(idx, 'email', e.target.value)}
-                                  className={inputClass}
+                                  style={inputBaseStyle}
+                                  onFocus={handleInputFocus}
+                                  onBlur={handleInputBlur}
                                   placeholder="info@rumahsakit.co.id"
                                 />
                               </div>
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium text-slate-500 ml-1 flex items-center gap-1">
-                                  <Globe className="w-3 h-3" /> Website RS
+                              <div>
+                                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Globe style={{ width: 12, height: 12 }} /> Website RS
                                 </label>
                                 <input
                                   type="url"
                                   value={kop.website || ''}
                                   onChange={(e) => handleKopFieldChange(idx, 'website', e.target.value)}
-                                  className={inputClass}
+                                  style={inputBaseStyle}
+                                  onFocus={handleInputFocus}
+                                  onBlur={handleInputBlur}
                                   placeholder="www.rumahsakit.co.id"
                                 />
                               </div>
                             </div>
 
                             {kop.logoUrl && (
-                              <div className="mt-5 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <p className="text-xs font-medium text-slate-500 mb-2">Preview Logo</p>
-                                <img src={kop.logoUrl} alt="Logo" className="h-20 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              <div style={{ marginTop: 20, padding: 16, backgroundColor: '#F8FAFC', borderRadius: 12, border: '1px solid #E2E8F0' }}>
+                                <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>Preview Logo</p>
+                                <img src={kop.logoUrl} alt="Logo" style={{ height: 80, width: 'auto', objectFit: 'contain' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                               </div>
                             )}
 
-                            <div className="mt-6 flex items-center justify-between">
+                            <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <button
                                 onClick={() => setKopToDelete(idx)}
-                                className="flex items-center gap-2 px-4 py-2 text-red-500 hover:bg-red-50 text-xs font-bold rounded-xl transition-all"
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', color: '#EF4444', background: 'none', border: 'none', fontSize: 12, fontWeight: 700, borderRadius: 12, cursor: 'pointer', transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 style={{ width: 14, height: 14 }} />
                                 Hapus Kop Surat
                               </button>
                               <motion.button
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleSaveKop(idx)}
                                 disabled={isSavingThis}
-                                className="flex items-center gap-2 px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all disabled:opacity-50"
+                                style={{ ...btnPrimaryStyle, opacity: isSavingThis ? 0.5 : 1 }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                               >
-                                {isSavingThis ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                {isSavingThis ? <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> : <Save style={{ width: 16, height: 16 }} />}
                                 {isSavingThis ? 'Menyimpan...' : 'Simpan'}
                               </motion.button>
                             </div>
@@ -1149,95 +1330,96 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       {activeTab === 'langganan' && !isDokterInstitusi && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
 
-          {/* ── ADMIN INSTITUSI: enterprise plan + seat management ── */}
           {isAdmin && (
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                    <CreditCard className="w-5 h-5 text-purple-600" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={cardStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                  <div style={iconBoxStyle('#FAF5FF')}>
+                    <CreditCard style={{ width: 20, height: 20, color: '#9333EA' }} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-slate-900">Paket Enterprise</h3>
-                    <p className="text-sm text-slate-500">Kelola paket enterprise institusi Anda.</p>
+                    <h3 style={sectionHeadingStyle}>Paket Enterprise</h3>
+                    <p style={mutedTextStyle}>Kelola paket enterprise institusi Anda.</p>
                   </div>
                 </div>
 
-                <div className="h-px bg-slate-100 mb-6" />
+                <div style={dividerStyle} />
 
-                <div className="p-6 bg-[#0C1E35] rounded-2xl text-white mb-6">
-                  <div className="flex justify-between items-start mb-6">
+                <div style={{ padding: 24, backgroundColor: '#0C1E35', borderRadius: 16, color: '#fff', marginBottom: 24 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
                     <div>
-                      <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest block mb-1">Paket Aktif</span>
-                      <h4 className="text-2xl font-black">Enterprise Access</h4>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Paket Aktif</span>
+                      <h4 style={{ fontSize: 24, fontWeight: 900 }}>Enterprise Access</h4>
                     </div>
-                    <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-full">Aktif</span>
+                    <span style={{ padding: '4px 12px', backgroundColor: 'rgba(16,185,129,0.2)', color: '#6EE7B7', fontSize: 12, fontWeight: 700, borderRadius: 20 }}>Aktif</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-6">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Berlaku Hingga</p>
-                      <p className="text-lg font-black">12 Des 2026</p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Berlaku Hingga</p>
+                      <p style={{ fontSize: 18, fontWeight: 900 }}>12 Des 2026</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Admin</p>
-                      <p className="text-lg font-black">{userProfile.name}</p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Admin</p>
+                      <p style={{ fontSize: 18, fontWeight: 900 }}>{userProfile.name}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Enterprise ID</p>
-                      <p className="text-sm font-bold font-mono">{userProfile.enterprise_id || '-'}</p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Enterprise ID</p>
+                      <p style={{ fontSize: 14, fontWeight: 700, fontFamily: 'monospace' }}>{userProfile.enterprise_id || '-'}</p>
                     </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => showToast('Hubungi tim sales Aexon untuk perpanjangan enterprise.', 'info')}
-                  className="px-6 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl transition-all text-sm"
+                  style={{ ...btnPrimaryStyle, fontSize: 14 }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                 >
                   Perpanjang Enterprise
                 </button>
               </div>
 
-              <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-indigo-600" />
+              <div style={cardStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                  <div style={iconBoxStyle('#EEF2FF')}>
+                    <Users style={{ width: 20, height: 20, color: '#4F46E5' }} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-slate-900">Seat Dokter</h3>
-                    <p className="text-sm text-slate-500">Kelola jumlah seat dokter di institusi Anda.</p>
+                    <h3 style={sectionHeadingStyle}>Seat Dokter</h3>
+                    <p style={mutedTextStyle}>Kelola jumlah seat dokter di institusi Anda.</p>
                   </div>
                 </div>
 
-                <div className="h-px bg-slate-100 mb-6" />
+                <div style={dividerStyle} />
 
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="p-5 bg-slate-50 rounded-xl text-center">
-                    <p className="text-2xl font-black text-[#0C1E35]">10</p>
-                    <p className="text-xs font-medium text-slate-500 mt-1">Total Seat</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+                  <div style={{ padding: 20, backgroundColor: '#F8FAFC', borderRadius: 12, textAlign: 'center' }}>
+                    <p style={{ fontSize: 24, fontWeight: 900, color: '#0C1E35' }}>10</p>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#64748B', marginTop: 4 }}>Total Seat</p>
                   </div>
-                  <div className="p-5 bg-emerald-50 rounded-xl text-center">
-                    <p className="text-2xl font-black text-emerald-600">7</p>
-                    <p className="text-xs font-medium text-slate-500 mt-1">Terpakai</p>
+                  <div style={{ padding: 20, backgroundColor: '#ECFDF5', borderRadius: 12, textAlign: 'center' }}>
+                    <p style={{ fontSize: 24, fontWeight: 900, color: '#059669' }}>7</p>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#64748B', marginTop: 4 }}>Terpakai</p>
                   </div>
-                  <div className="p-5 bg-blue-50 rounded-xl text-center">
-                    <p className="text-2xl font-black text-blue-600">3</p>
-                    <p className="text-xs font-medium text-slate-500 mt-1">Tersedia</p>
+                  <div style={{ padding: 20, backgroundColor: '#EFF6FF', borderRadius: 12, textAlign: 'center' }}>
+                    <p style={{ fontSize: 24, fontWeight: 900, color: '#2563EB' }}>3</p>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: '#64748B', marginTop: 4 }}>Tersedia</p>
                   </div>
                 </div>
 
-                <div className="space-y-3 mb-6">
-                  <h4 className="text-sm font-bold text-slate-900">Dokter Terdaftar</h4>
-                  <div className="rounded-xl border border-slate-100 overflow-hidden">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-50">
+                <div style={{ marginBottom: 24 }}>
+                  <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35', marginBottom: 12 }}>Dokter Terdaftar</h4>
+                  <div style={{ borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', textAlign: 'left', fontSize: 14, borderCollapse: 'collapse' }}>
+                      <thead style={{ backgroundColor: '#F8FAFC' }}>
                         <tr>
-                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Nama</th>
-                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Spesialisasi</th>
-                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Status</th>
-                          <th className="px-5 py-3 text-right text-xs font-medium text-slate-500">Aksi</th>
+                          <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#475569' }}>Nama</th>
+                          <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#475569' }}>Spesialisasi</th>
+                          <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#475569' }}>Status</th>
+                          <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#475569', textAlign: 'right' }}>Aksi</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
+                      <tbody>
                         {[
                           { name: 'Dr. Budi Santoso, Sp.PD', spec: 'Penyakit Dalam', status: 'active' },
                           { name: 'Dr. Rina Wijaya, Sp.B', spec: 'Bedah Umum', status: 'active' },
@@ -1247,20 +1429,22 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                           { name: 'Dr. Siti Nurhaliza, Sp.M', spec: 'Mata', status: 'inactive' },
                           { name: 'Dr. Dedi Kurniawan, Sp.THT', spec: 'THT-KL', status: 'active' },
                         ].map((doc, i) => (
-                          <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-5 py-3 font-bold text-slate-900">{doc.name}</td>
-                            <td className="px-5 py-3 text-slate-600">{doc.spec}</td>
-                            <td className="px-5 py-3">
-                              <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full ${
-                                doc.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
-                              }`}>
+                          <tr key={i} style={{ borderTop: '1px solid #F1F5F9' }}>
+                            <td style={{ padding: '12px 20px', fontWeight: 700, color: '#0C1E35' }}>{doc.name}</td>
+                            <td style={{ padding: '12px 20px', color: '#475569' }}>{doc.spec}</td>
+                            <td style={{ padding: '12px 20px' }}>
+                              <span style={{
+                                padding: '4px 10px', fontSize: 10, fontWeight: 700, borderRadius: 20,
+                                backgroundColor: doc.status === 'active' ? '#ECFDF5' : '#F1F5F9',
+                                color: doc.status === 'active' ? '#059669' : '#64748B',
+                              }}>
                                 {doc.status === 'active' ? 'Aktif' : 'Nonaktif'}
                               </span>
                             </td>
-                            <td className="px-5 py-3 text-right">
+                            <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                               <button
                                 onClick={() => showToast('Fitur kelola seat akan tersedia segera.', 'info')}
-                                className="text-xs text-red-500 hover:text-red-700 font-bold transition-colors"
+                                style={{ fontSize: 12, color: '#EF4444', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.15s', fontFamily: 'Outfit, sans-serif' }}
                               >
                                 Hapus
                               </button>
@@ -1274,7 +1458,9 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
                 <button
                   onClick={() => showToast('Fitur tambah seat akan tersedia segera.', 'info')}
-                  className="px-5 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
+                  style={{ ...btnPrimaryStyle, padding: '10px 20px', fontSize: 12 }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                 >
                   + Tambah Seat Dokter
                 </button>
@@ -1282,116 +1468,119 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             </div>
           )}
 
-          {/* ── PERSONAL: plan status + billing + CTA ── */}
           {isPersonal && (
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
-                    <CreditCard className="w-5 h-5 text-[#0C1E35]" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={cardStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                  <div style={iconBoxStyle('#F8FAFC')}>
+                    <CreditCard style={{ width: 20, height: 20, color: '#0C1E35' }} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-slate-900">Langganan & Pembayaran</h3>
-                    <p className="text-sm text-slate-500">Kelola paket aktif dan riwayat transaksi.</p>
+                    <h3 style={sectionHeadingStyle}>Langganan & Pembayaran</h3>
+                    <p style={mutedTextStyle}>Kelola paket aktif dan riwayat transaksi.</p>
                   </div>
                 </div>
 
-                <div className="h-px bg-slate-100 mb-6" />
+                <div style={dividerStyle} />
 
-                <div className="p-6 bg-[#0C1E35] rounded-2xl text-white mb-8">
-                  <div className="flex justify-between items-start mb-6">
+                <div style={{ padding: 24, backgroundColor: '#0C1E35', borderRadius: 16, color: '#fff', marginBottom: 32 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
                     <div>
-                      <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest block mb-1">Paket Saat Ini</span>
-                      <h4 className="text-2xl font-black">
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Paket Saat Ini</span>
+                      <h4 style={{ fontSize: 24, fontWeight: 900 }}>
                         {plan === 'subscription' ? 'Annual Subscription' : 'Trial Period'}
                       </h4>
                     </div>
-                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                      plan === 'subscription' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-yellow-500/20 text-yellow-300'
-                    }`}>
+                    <span style={{
+                      padding: '4px 12px', fontSize: 12, fontWeight: 700, borderRadius: 20,
+                      backgroundColor: plan === 'subscription' ? 'rgba(16,185,129,0.2)' : 'rgba(234,179,8,0.2)',
+                      color: plan === 'subscription' ? '#6EE7B7' : '#FDE047',
+                    }}>
                       {plan === 'subscription' ? 'Aktif' : 'Trial'}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Terdaftar</p>
-                      <p className="text-sm font-bold">12 Des 2025</p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Terdaftar</p>
+                      <p style={{ fontSize: 14, fontWeight: 700 }}>12 Des 2025</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Berlaku Hingga</p>
-                      <p className="text-sm font-bold">12 Des 2026</p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Berlaku Hingga</p>
+                      <p style={{ fontSize: 14, fontWeight: 700 }}>12 Des 2026</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Status</p>
-                      <p className="text-sm font-bold">{plan === 'subscription' ? 'Aktif' : 'Trial'}</p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Status</p>
+                      <p style={{ fontSize: 14, fontWeight: 700 }}>{plan === 'subscription' ? 'Aktif' : 'Trial'}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-5 bg-blue-50 rounded-xl border border-blue-100 flex items-center justify-between">
+                <div style={{ padding: 20, backgroundColor: '#EFF6FF', borderRadius: 12, border: '1px solid #DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <h4 className="text-sm font-bold text-[#0C1E35]">Perpanjang Langganan</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Jangan sampai akses Anda terputus.</p>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>Perpanjang Langganan</h4>
+                    <p style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Jangan sampai akses Anda terputus.</p>
                   </div>
                   <button
                     onClick={() => { setSelectedPlanOption(null); setShowPlanModal(true); }}
-                    className="px-5 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
+                    style={{ ...btnPrimaryStyle, padding: '10px 20px', fontSize: 12 }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                   >
                     Perpanjang Sekarang
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-                <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Riwayat Pembayaran</h4>
+              <div style={cardStyle}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>Riwayat Pembayaran</h4>
                 {billingLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0' }}>
+                    <Loader2 className="animate-spin" style={{ width: 24, height: 24, color: '#CBD5E1' }} />
                   </div>
                 ) : billingHistory.length === 0 ? (
-                  <div className="py-12 text-center">
-                    <CreditCard className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-slate-400">Belum ada riwayat pembayaran</p>
+                  <div style={{ padding: '48px 0', textAlign: 'center' }}>
+                    <CreditCard style={{ width: 40, height: 40, color: '#E2E8F0', margin: '0 auto 12px' }} />
+                    <p style={{ fontSize: 14, fontWeight: 500, color: '#94A3B8' }}>Belum ada riwayat pembayaran</p>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-slate-100 overflow-hidden">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-50">
+                  <div style={{ borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', textAlign: 'left', fontSize: 14, borderCollapse: 'collapse' }}>
+                      <thead style={{ backgroundColor: '#F8FAFC' }}>
                         <tr>
-                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Tanggal</th>
-                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Paket</th>
-                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Jumlah</th>
-                          <th className="px-5 py-3 text-xs font-medium text-slate-500">Status</th>
-                          <th className="px-5 py-3 text-right text-xs font-medium text-slate-500">Aksi</th>
+                          <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#475569' }}>Tanggal</th>
+                          <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#475569' }}>Paket</th>
+                          <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#475569' }}>Jumlah</th>
+                          <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#475569' }}>Status</th>
+                          <th style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#475569', textAlign: 'right' }}>Aksi</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
+                      <tbody>
                         {billingHistory.map((row: any, i: number) => {
-                          const statusMap: Record<string, { label: string; cls: string }> = {
-                            paid: { label: 'Lunas', cls: 'bg-emerald-50 text-emerald-600' },
-                            pending: { label: 'Pending', cls: 'bg-yellow-50 text-yellow-600' },
-                            failed: { label: 'Gagal', cls: 'bg-red-50 text-red-600' },
+                          const statusMap: Record<string, { label: string; bg: string; color: string }> = {
+                            paid: { label: 'Lunas', bg: '#ECFDF5', color: '#059669' },
+                            pending: { label: 'Pending', bg: '#FFFBEB', color: '#D97706' },
+                            failed: { label: 'Gagal', bg: '#FEF2F2', color: '#DC2626' },
                           };
                           const st = statusMap[row.status] || statusMap['pending'];
                           return (
-                            <tr key={row.id || i} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="px-5 py-3 font-medium text-slate-600">
+                            <tr key={row.id || i} style={{ borderTop: '1px solid #F1F5F9' }}>
+                              <td style={{ padding: '12px 20px', fontWeight: 500, color: '#475569' }}>
                                 {new Date(row.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </td>
-                              <td className="px-5 py-3 font-bold text-slate-900">{row.plan_name || row.package || '-'}</td>
-                              <td className="px-5 py-3 font-bold text-slate-900">
+                              <td style={{ padding: '12px 20px', fontWeight: 700, color: '#0C1E35' }}>{row.plan_name || row.package || '-'}</td>
+                              <td style={{ padding: '12px 20px', fontWeight: 700, color: '#0C1E35' }}>
                                 {row.amount ? `Rp ${Number(row.amount).toLocaleString('id-ID')}` : '-'}
                               </td>
-                              <td className="px-5 py-3">
-                                <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full ${st.cls}`}>
+                              <td style={{ padding: '12px 20px' }}>
+                                <span style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, borderRadius: 20, backgroundColor: st.bg, color: st.color }}>
                                   {st.label}
                                 </span>
                               </td>
-                              <td className="px-5 py-3 text-right">
+                              <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                                 <button
                                   onClick={() => showToast('Fitur invoice segera hadir', 'info')}
-                                  className="text-xs text-[#0C1E35] hover:text-[#1a3a5c] font-bold transition-colors"
+                                  style={{ fontSize: 12, color: '#0C1E35', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.15s', fontFamily: 'Outfit, sans-serif' }}
                                 >
                                   Unduh Invoice
                                 </button>
@@ -1411,85 +1600,91 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
       {/* ═══════════════ TAB: BACKUP ═══════════════ */}
       {activeTab === 'backup' && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {isDokterInstitusi && (
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
-              <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-700 leading-relaxed">
+            <div style={{ padding: 16, backgroundColor: '#EFF6FF', border: '1px solid #DBEAFE', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <Info style={{ width: 16, height: 16, color: '#3B82F6', flexShrink: 0, marginTop: 2 }} />
+              <p style={{ fontSize: 12, color: '#1D4ED8', lineHeight: 1.6 }}>
                 Langganan Anda dikelola oleh <strong>Admin Institusi</strong>. Hubungi admin Anda untuk informasi paket dan pembayaran.
               </p>
             </div>
           )}
 
-          <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <Download className="w-5 h-5 text-emerald-600" />
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+              <div style={iconBoxStyle('#ECFDF5')}>
+                <Download style={{ width: 20, height: 20, color: '#059669' }} />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-900">Ekspor Backup</h3>
-                <p className="text-sm text-slate-500">Unduh data sesi dalam format ZIP.</p>
+                <h3 style={sectionHeadingStyle}>Ekspor Backup</h3>
+                <p style={mutedTextStyle}>Unduh data sesi dalam format ZIP.</p>
               </div>
             </div>
 
-            <div className="h-px bg-slate-100 mb-6" />
+            <div style={dividerStyle} />
 
-            <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+            <p style={{ fontSize: 12, color: '#64748B', marginBottom: 20, lineHeight: 1.6 }}>
               File backup berisi semua data sesi. Foto dan video tidak termasuk dalam backup. Anda dapat memfilter berdasarkan rentang tanggal.
             </p>
 
-            <div className="grid grid-cols-2 gap-4 mb-5">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-500 ml-1">Dari Tanggal</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div>
+                <label style={labelStyle}>Dari Tanggal</label>
                 <input
                   type="date"
                   value={backupDateFrom}
                   onChange={(e) => setBackupDateFrom(e.target.value)}
-                  className={inputClass}
+                  style={inputBaseStyle}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-500 ml-1">Sampai Tanggal</label>
+              <div>
+                <label style={labelStyle}>Sampai Tanggal</label>
                 <input
                   type="date"
                   value={backupDateTo}
                   onChange={(e) => setBackupDateTo(e.target.value)}
-                  className={inputClass}
+                  style={inputBaseStyle}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>
                 {sessions.length} sesi tersedia
               </span>
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={handleExportBackup}
-                className="flex items-center gap-2 px-5 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all"
+                style={{ ...btnPrimaryStyle, padding: '12px 20px', fontSize: 12 }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
               >
-                <Download className="w-4 h-4" />
+                <Download style={{ width: 16, height: 16 }} />
                 Unduh Backup
               </motion.button>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-100 shadow-sm bg-white p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                <RefreshCw className="w-5 h-5 text-blue-600" />
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+              <div style={iconBoxStyle('#EFF6FF')}>
+                <RefreshCw style={{ width: 20, height: 20, color: '#2563EB' }} />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-900">Restore dari Backup</h3>
-                <p className="text-sm text-slate-500">Impor file backup yang sebelumnya diekspor.</p>
+                <h3 style={sectionHeadingStyle}>Restore dari Backup</h3>
+                <p style={mutedTextStyle}>Impor file backup yang sebelumnya diekspor.</p>
               </div>
             </div>
 
-            <div className="h-px bg-slate-100 mb-6" />
+            <div style={dividerStyle} />
 
-            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-3 mb-6">
-              <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-              <p className="text-[11px] text-emerald-700 leading-relaxed">
+            <div style={{ padding: 16, backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24 }}>
+              <CheckCircle style={{ width: 16, height: 16, color: '#10B981', flexShrink: 0, marginTop: 2 }} />
+              <p style={{ fontSize: 11, color: '#065F46', lineHeight: 1.6 }}>
                 Restore <strong>menggabungkan</strong> data backup dengan data yang ada. Sesi baru otomatis ditambahkan, sesi duplikat akan dikonfirmasi.
               </p>
             </div>
@@ -1498,9 +1693,11 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
               whileTap={{ scale: 0.95 }}
               onClick={handleImportBackup}
               disabled={restoreLoading}
-              className="flex items-center gap-2 px-5 py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white text-xs font-bold rounded-xl transition-all disabled:opacity-50"
+              style={{ ...btnPrimaryStyle, padding: '12px 20px', fontSize: 12, opacity: restoreLoading ? 0.5 : 1 }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
             >
-              {restoreLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {restoreLoading ? <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> : <Upload style={{ width: 16, height: 16 }} />}
               {restoreLoading ? 'Memproses...' : 'Pilih File Backup (.zip)'}
             </motion.button>
           </div>
@@ -1535,26 +1732,28 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
             onClick={() => setShowMismatchModal(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full"
+              style={{ backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 25px 50px rgba(0,0,0,0.15)', padding: 32, maxWidth: 448, width: '100%' }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-red-500" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={iconBoxStyle('#FEF2F2')}>
+                  <AlertTriangle style={{ width: 20, height: 20, color: '#EF4444' }} />
                 </div>
-                <h3 className="text-lg font-black text-slate-900">Akun Tidak Cocok</h3>
+                <h3 style={sectionHeadingStyle}>Akun Tidak Cocok</h3>
               </div>
-              <p className="text-sm text-slate-600 mb-6">File backup ini milik akun lain. Restore hanya dapat dilakukan menggunakan backup dari akun yang sama.</p>
+              <p style={{ fontSize: 14, color: '#475569', marginBottom: 24 }}>File backup ini milik akun lain. Restore hanya dapat dilakukan menggunakan backup dari akun yang sama.</p>
               <button
                 onClick={() => setShowMismatchModal(false)}
-                className="w-full py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl text-sm font-bold transition-all"
+                style={{ ...btnPrimaryStyle, width: '100%', justifyContent: 'center', padding: '12px 24px' }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
               >
                 Tutup
               </button>
@@ -1569,65 +1768,69 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full"
+              style={{ backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 25px 50px rgba(0,0,0,0.15)', padding: 32, maxWidth: 512, width: '100%' }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
-                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={iconBoxStyle('#FFFBEB')}>
+                    <AlertTriangle style={{ width: 20, height: 20, color: '#F59E0B' }} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-slate-900">Konflik Sesi</h3>
-                    <p className="text-xs text-slate-400">{currentConflictIdx + 1} dari {restoreConflicts.length} konflik</p>
+                    <h3 style={sectionHeadingStyle}>Konflik Sesi</h3>
+                    <p style={{ fontSize: 12, color: '#94A3B8' }}>{currentConflictIdx + 1} dari {restoreConflicts.length} konflik</p>
                   </div>
                 </div>
-                <button onClick={() => { setShowConflictModal(false); finalizeRestore(restoreNewSessions, conflictResults); }} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                  <X className="w-4 h-4 text-slate-400" />
+                <button onClick={() => { setShowConflictModal(false); finalizeRestore(restoreNewSessions, conflictResults); }} style={{ padding: 8, background: 'none', border: 'none', borderRadius: 8, cursor: 'pointer', transition: 'background-color 0.15s' }}>
+                  <X style={{ width: 16, height: 16, color: '#94A3B8' }} />
                 </button>
               </div>
 
-              <p className="text-sm text-slate-600 mb-4">Sesi dengan ID yang sama sudah ada di data lokal:</p>
+              <p style={{ fontSize: 14, color: '#475569', marginBottom: 16 }}>Sesi dengan ID yang sama sudah ada di data lokal:</p>
 
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <p className="text-xs font-medium text-slate-500 mb-2">Data Lokal</p>
-                  <p className="text-sm font-bold text-slate-900">{restoreConflicts[currentConflictIdx].existingSession.patient.name}</p>
-                  <p className="text-xs text-slate-500 mt-1">{new Date(restoreConflicts[currentConflictIdx].existingSession.date).toLocaleDateString('id-ID')}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+                <div style={{ padding: 16, backgroundColor: '#F8FAFC', borderRadius: 12, border: '1px solid #E2E8F0' }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 8 }}>Data Lokal</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>{restoreConflicts[currentConflictIdx].existingSession.patient.name}</p>
+                  <p style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>{new Date(restoreConflicts[currentConflictIdx].existingSession.date).toLocaleDateString('id-ID')}</p>
                 </div>
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
-                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">Dari Backup</p>
-                  <p className="text-sm font-bold text-slate-900">{restoreConflicts[currentConflictIdx].backupSession.patient.name}</p>
-                  <p className="text-xs text-slate-500 mt-1">{new Date(restoreConflicts[currentConflictIdx].backupSession.date).toLocaleDateString('id-ID')}</p>
+                <div style={{ padding: 16, backgroundColor: '#EFF6FF', borderRadius: 12, border: '1px solid #BFDBFE' }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Dari Backup</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>{restoreConflicts[currentConflictIdx].backupSession.patient.name}</p>
+                  <p style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>{new Date(restoreConflicts[currentConflictIdx].backupSession.date).toLocaleDateString('id-ID')}</p>
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 mb-6 cursor-pointer">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={applyToAll}
                   onChange={e => setApplyToAll(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-[#0C1E35] focus:ring-[#0C1E35]/20"
+                  style={{ width: 16, height: 16, accentColor: '#0C1E35' }}
                 />
-                <span className="text-xs text-slate-600 font-medium">Terapkan ke semua konflik tersisa</span>
+                <span style={{ fontSize: 12, color: '#475569', fontWeight: 500 }}>Terapkan ke semua konflik tersisa</span>
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button
                   onClick={() => handleConflictAction('skip')}
-                  className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all"
+                  style={{ padding: '12px 0', backgroundColor: '#F1F5F9', color: '#475569', borderRadius: 12, fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#E2E8F0'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F1F5F9'; }}
                 >
                   {applyToAll ? 'Lewati Semua' : 'Lewati'}
                 </button>
                 <button
                   onClick={() => handleConflictAction('overwrite')}
-                  className="py-3 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl text-sm font-bold transition-all"
+                  style={{ ...btnPrimaryStyle, justifyContent: 'center', padding: '12px 0', width: '100%' }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                 >
                   {applyToAll ? 'Timpa Semua' : 'Timpa'}
                 </button>
@@ -1643,35 +1846,35 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
             onClick={() => setCropModalOpen(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+              style={{ backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 25px 50px rgba(0,0,0,0.15)', width: '100%', maxWidth: 512, overflow: 'hidden' }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#0C1E35]/10 rounded-xl flex items-center justify-center">
-                    <Crop className="w-5 h-5 text-[#0C1E35]" />
+              <div style={{ padding: 20, borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={iconBoxStyle('rgba(12,30,53,0.1)')}>
+                    <Crop style={{ width: 20, height: 20, color: '#0C1E35' }} />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">Crop & Zoom Logo</h3>
-                    <p className="text-xs text-slate-500">Sesuaikan area logo yang akan digunakan.</p>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0C1E35' }}>Crop & Zoom Logo</h3>
+                    <p style={{ fontSize: 12, color: '#64748B' }}>Sesuaikan area logo yang akan digunakan.</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setCropModalOpen(false)}
-                  className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
+                  style={{ padding: 8, borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', transition: 'background-color 0.15s' }}
                 >
-                  <X className="w-5 h-5" />
+                  <X style={{ width: 20, height: 20 }} />
                 </button>
               </div>
 
-              <div className="relative w-full h-80 bg-slate-900">
+              <div style={{ position: 'relative', width: '100%', height: 320, backgroundColor: '#0F172A' }}>
                 <Cropper
                   image={cropImageSrc}
                   crop={cropState}
@@ -1688,9 +1891,9 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 />
               </div>
 
-              <div className="p-5 space-y-4">
-                <div className="flex items-center gap-3">
-                  <ZoomOut className="w-4 h-4 text-slate-400 shrink-0" />
+              <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <ZoomOut style={{ width: 16, height: 16, color: '#94A3B8', flexShrink: 0 }} />
                   <input
                     type="range"
                     min={1}
@@ -1698,24 +1901,28 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     step={0.1}
                     value={cropZoom}
                     onChange={(e) => setCropZoom(Number(e.target.value))}
-                    className="flex-1 accent-[#0C1E35] h-1.5"
+                    style={{ flex: 1, accentColor: '#0C1E35', height: 6 }}
                   />
-                  <ZoomIn className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span className="text-xs font-bold text-slate-500 w-10 text-right">{Math.round(cropZoom * 100)}%</span>
+                  <ZoomIn style={{ width: 16, height: 16, color: '#94A3B8', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B', width: 40, textAlign: 'right' }}>{Math.round(cropZoom * 100)}%</span>
                 </div>
 
-                <div className="flex gap-3">
+                <div style={{ display: 'flex', gap: 12 }}>
                   <button
                     onClick={() => setCropModalOpen(false)}
-                    className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors"
+                    style={{ flex: 1, padding: '12px 16px', backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 700, borderRadius: 12, fontSize: 14, border: 'none', cursor: 'pointer', transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#E2E8F0'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F1F5F9'; }}
                   >
                     Batal
                   </button>
                   <button
                     onClick={handleCropConfirm}
-                    className="flex-1 py-3 px-4 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center gap-2"
+                    style={{ ...btnPrimaryStyle, flex: 1, justifyContent: 'center', padding: '12px 16px', boxShadow: '0 8px 24px rgba(12,30,53,0.1)' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                   >
-                    <CheckCircle2 className="w-4 h-4" />
+                    <CheckCircle2 style={{ width: 16, height: 16 }} />
                     Terapkan Logo
                   </button>
                 </div>
@@ -1731,28 +1938,28 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
             onClick={() => setShowPlanModal(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden"
+              style={{ backgroundColor: '#fff', borderRadius: 16, maxWidth: 672, width: '100%', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', overflow: 'hidden' }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div style={{ padding: 24, borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">Pilih Paket</h3>
-                  <p className="text-sm text-slate-500 mt-0.5">Pilih paket yang sesuai kebutuhan Anda</p>
+                  <h3 style={sectionHeadingStyle}>Pilih Paket</h3>
+                  <p style={{ ...mutedTextStyle, marginTop: 2 }}>Pilih paket yang sesuai kebutuhan Anda</p>
                 </div>
-                <button onClick={() => setShowPlanModal(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-colors">
-                  <X className="w-5 h-5 text-slate-400" />
+                <button onClick={() => setShowPlanModal(false)} style={{ padding: 8, background: 'none', border: 'none', borderRadius: 12, cursor: 'pointer', transition: 'background-color 0.15s' }}>
+                  <X style={{ width: 20, height: 20, color: '#94A3B8' }} />
                 </button>
               </div>
 
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div style={{ padding: 24 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
                   {[
                     { id: 'basic', name: 'BASIC', price: 'Rp 299.000', period: '/bulan', features: ['1 akun dokter', 'Laporan standar', 'Penyimpanan 5 GB', 'Dukungan email'] },
                     { id: 'pro', name: 'PRO', price: 'Rp 599.000', period: '/bulan', popular: true, features: ['1 akun dokter', 'Laporan kustom', 'Penyimpanan 25 GB', 'Dukungan prioritas', 'Export PDF'] },
@@ -1761,26 +1968,27 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     <div
                       key={p.id}
                       onClick={() => setSelectedPlanOption(p.id)}
-                      className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200 ${
-                        selectedPlanOption === p.id
-                          ? 'border-[#0C1E35] bg-[#0C1E35]/5 shadow-md'
-                          : 'border-slate-100 hover:border-slate-200 hover:shadow-sm'
-                      }`}
+                      style={{
+                        position: 'relative', cursor: 'pointer', borderRadius: 16, padding: 20, transition: 'all 0.2s',
+                        border: selectedPlanOption === p.id ? '2px solid #0C1E35' : '2px solid #E2E8F0',
+                        backgroundColor: selectedPlanOption === p.id ? 'rgba(12,30,53,0.05)' : '#fff',
+                        boxShadow: selectedPlanOption === p.id ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
+                      }}
                     >
                       {p.popular && (
-                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-[#0C1E35] text-white text-[10px] font-bold rounded-full flex items-center gap-1">
-                          <Star className="w-3 h-3" /> Populer
+                        <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', padding: '2px 12px', backgroundColor: '#0C1E35', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 20, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                          <Star style={{ width: 12, height: 12 }} /> Populer
                         </span>
                       )}
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{p.name}</h4>
-                      <div className="flex items-baseline gap-1 mb-4">
-                        <span className="text-2xl font-black text-slate-900">{p.price}</span>
-                        <span className="text-xs text-slate-400">{p.period}</span>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{p.name}</h4>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 16 }}>
+                        <span style={{ fontSize: 24, fontWeight: 900, color: '#0C1E35' }}>{p.price}</span>
+                        <span style={{ fontSize: 12, color: '#94A3B8' }}>{p.period}</span>
                       </div>
-                      <ul className="space-y-2">
+                      <ul style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {p.features.map((f, fi) => (
-                          <li key={fi} className="flex items-center gap-2 text-xs text-slate-600">
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <li key={fi} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#475569' }}>
+                            <CheckCircle style={{ width: 14, height: 14, color: '#10B981', flexShrink: 0 }} />
                             {f}
                           </li>
                         ))}
@@ -1789,17 +1997,21 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   ))}
                 </div>
 
-                <div className="mt-6 flex justify-end gap-3">
+                <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                   <button
                     onClick={() => setShowPlanModal(false)}
-                    className="px-5 py-2.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold transition-colors"
+                    style={{ padding: '10px 20px', border: '1px solid #E2E8F0', color: '#475569', backgroundColor: '#fff', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; }}
                   >
                     Batal
                   </button>
                   <button
                     disabled={!selectedPlanOption}
                     onClick={() => { setShowPlanModal(false); setShowPaymentInfoModal(true); }}
-                    className="px-6 py-2.5 bg-[#0C1E35] hover:bg-[#1a3a5c] text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ ...btnPrimaryStyle, padding: '10px 24px', opacity: selectedPlanOption ? 1 : 0.4, cursor: selectedPlanOption ? 'pointer' : 'not-allowed' }}
+                    onMouseEnter={e => { if (selectedPlanOption) e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; }}
                   >
                     Lanjutkan Pembayaran
                   </button>
@@ -1816,46 +2028,46 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
             onClick={() => setShowPaymentInfoModal(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl max-w-md w-full shadow-2xl p-8 text-center"
+              style={{ backgroundColor: '#fff', borderRadius: 16, maxWidth: 448, width: '100%', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', padding: 32, textAlign: 'center' }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <Clock className="w-8 h-8 text-[#0C1E35]" />
+              <div style={{ width: 64, height: 64, backgroundColor: '#EFF6FF', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <Clock style={{ width: 32, height: 32, color: '#0C1E35' }} />
               </div>
-              <h3 className="text-xl font-black text-slate-900 mb-2">Pembayaran Segera Hadir</h3>
-              <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+              <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0C1E35', marginBottom: 8, fontFamily: 'Outfit, sans-serif' }}>Pembayaran Segera Hadir</h3>
+              <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24, lineHeight: 1.6 }}>
                 Sistem pembayaran otomatis sedang dikembangkan. Untuk berlangganan, silakan hubungi tim Aexon:
               </p>
-              <div className="space-y-3 mb-6">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
                 <a
                   href="https://wa.me/6281234567890"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-3 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-sm transition-colors"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', padding: '12px 0', backgroundColor: '#10B981', color: '#fff', fontWeight: 700, borderRadius: 12, fontSize: 14, textDecoration: 'none', transition: 'background-color 0.15s' }}
                 >
-                  <MessageCircle className="w-4 h-4" />
+                  <MessageCircle style={{ width: 16, height: 16 }} />
                   WhatsApp
-                  <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                  <ExternalLink style={{ width: 14, height: 14, opacity: 0.6 }} />
                 </a>
                 <a
                   href="mailto:hello@aexon.id"
-                  className="flex items-center justify-center gap-3 w-full py-3 border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold rounded-xl text-sm transition-colors"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', padding: '12px 0', border: '1px solid #E2E8F0', color: '#475569', fontWeight: 700, borderRadius: 12, fontSize: 14, textDecoration: 'none', backgroundColor: '#fff', transition: 'background-color 0.15s' }}
                 >
-                  <MailIcon className="w-4 h-4" />
+                  <MailIcon style={{ width: 16, height: 16 }} />
                   hello@aexon.id
-                  <ExternalLink className="w-3.5 h-3.5 opacity-40" />
+                  <ExternalLink style={{ width: 14, height: 14, opacity: 0.4 }} />
                 </a>
               </div>
               <button
                 onClick={() => setShowPaymentInfoModal(false)}
-                className="text-sm text-slate-400 hover:text-slate-600 font-semibold transition-colors"
+                style={{ fontSize: 14, color: '#94A3B8', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.15s', fontFamily: 'Outfit, sans-serif' }}
               >
                 Tutup
               </button>
