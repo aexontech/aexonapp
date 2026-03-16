@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, FileText, Activity, TrendingUp, Camera, ChevronRight, ArrowRight, Trash2, X, Lock, AlertTriangle, Stethoscope } from 'lucide-react';
+import { Plus, Search, FileText, Activity, TrendingUp, Camera, ChevronRight, ArrowRight, Trash2, X, Lock, AlertTriangle, Stethoscope, Sparkles, Zap, Crown } from 'lucide-react';
 import { Session, UserProfile } from '../types';
 
 interface DashboardProps {
@@ -39,6 +39,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [sessionToDelete, setSessionToDelete] = useState<{ id: string, name: string } | null>(null);
+  const [ctaHover, setCtaHover] = useState(false);
   const itemsPerPage = 5;
 
   const handleDeleteClick = (sessionId: string, patientName: string) => {
@@ -80,6 +81,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
   const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const showSubscriptionBanner = !hasActiveAccess && selectedPlan === null && (trialDaysLeft === null || trialDaysLeft === 0);
+  const showTrialWarning = selectedPlan === null && trialDaysLeft !== null && trialDaysLeft > 0 && trialDaysLeft <= 7;
 
   const stats = [
     { label: 'Total Sesi', value: sessions.length, icon: Activity, gradient: 'linear-gradient(135deg, #3B82F6, #2563EB)' },
@@ -87,8 +89,24 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
     { label: 'Total Media', value: totalMedia, icon: Camera, gradient: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' },
   ];
 
+  const ctaKeyframes = `
+    @keyframes ctaGlow {
+      0%, 100% { box-shadow: 0 4px 30px rgba(12,30,53,0.15), 0 0 0 0 rgba(245,158,11,0); }
+      50% { box-shadow: 0 8px 40px rgba(12,30,53,0.2), 0 0 30px rgba(245,158,11,0.15); }
+    }
+    @keyframes floatY {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+  `;
+
   return (
     <div style={{ flex: 1, position: 'relative', overflowY: 'auto', height: '100%', backgroundColor: '#F8FAFC', padding: 32 }} className="custom-scrollbar">
+      <style>{ctaKeyframes}</style>
       <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
         <div className="orb-tr" />
         <div className="orb-bl" />
@@ -96,51 +114,154 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
 
       {showSubscriptionBanner && (
         <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          style={{
+            marginBottom: 32, position: 'relative', zIndex: 10,
+            borderRadius: 24, overflow: 'hidden',
+            background: 'linear-gradient(135deg, #0C1E35 0%, #1a3a5c 40%, #0C1E35 100%)',
+            animation: 'ctaGlow 4s ease-in-out infinite',
+          }}
+        >
+          <div style={{
+            position: 'absolute', top: -60, right: -60, width: 200, height: 200,
+            borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%)',
+          }} />
+          <div style={{
+            position: 'absolute', bottom: -40, left: -40, width: 160, height: 160,
+            borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)',
+          }} />
+          <div style={{
+            position: 'absolute', top: 0, right: 0, bottom: 0, width: '40%',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.02))',
+          }} />
+
+          <div style={{ padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, position: 'relative' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 12,
+                  background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(245,158,11,0.3)',
+                  animation: 'floatY 3s ease-in-out infinite',
+                }}>
+                  <Crown style={{ width: 18, height: 18, color: '#fff' }} />
+                </div>
+                <span style={{
+                  fontSize: 10, fontWeight: 800, color: '#F59E0B',
+                  textTransform: 'uppercase', letterSpacing: '0.1em',
+                  fontFamily: 'Outfit, sans-serif',
+                }}>
+                  Upgrade Akun Anda
+                </span>
+              </div>
+              <h3 style={{
+                fontSize: 22, fontWeight: 800, color: '#ffffff',
+                fontFamily: 'Outfit, sans-serif', lineHeight: 1.3, marginBottom: 8,
+                letterSpacing: '-0.01em',
+              }}>
+                Buka akses penuh ke semua fitur Aexon
+              </h3>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, maxWidth: 440 }}>
+                Dokumentasi endoskopi profesional, laporan PDF, galeri media, dan backup data — semua dalam satu langganan.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+                {['PDF Report', 'Galeri Media', 'Backup & Restore', 'ICD Autocomplete'].map(feat => (
+                  <span key={feat} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '4px 10px', borderRadius: 8,
+                    backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)',
+                    fontSize: 11, fontWeight: 600,
+                    border: '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                    <Zap style={{ width: 10, height: 10, color: '#F59E0B' }} />
+                    {feat}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={onSubscribe}
+                onMouseEnter={() => setCtaHover(true)}
+                onMouseLeave={() => setCtaHover(false)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '16px 32px',
+                  background: ctaHover
+                    ? 'linear-gradient(135deg, #F59E0B, #D97706)'
+                    : 'linear-gradient(135deg, #F59E0B, #EAB308)',
+                  color: '#0C1E35',
+                  borderRadius: 16, fontSize: 15, fontWeight: 800,
+                  border: 'none', cursor: 'pointer',
+                  fontFamily: 'Outfit, sans-serif',
+                  boxShadow: ctaHover
+                    ? '0 8px 32px rgba(245,158,11,0.5), 0 0 20px rgba(245,158,11,0.3)'
+                    : '0 4px 20px rgba(245,158,11,0.35)',
+                  transform: ctaHover ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)',
+                  transition: 'all 250ms cubic-bezier(0.22, 1, 0.36, 1)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Sparkles style={{ width: 18, height: 18 }} />
+                Perpanjang Sekarang
+                <ArrowRight style={{ width: 16, height: 16, transition: 'transform 200ms', transform: ctaHover ? 'translateX(3px)' : 'translateX(0)' }} />
+              </button>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>
+                Mulai dari Rp 99.000/bulan
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {showTrialWarning && (
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           style={{
-            marginBottom: 32,
-            backgroundColor: '#FFFBEB',
+            marginBottom: 32, position: 'relative', zIndex: 10,
+            borderRadius: 20, overflow: 'hidden',
+            background: 'linear-gradient(135deg, #FEF3C7, #FFFBEB)',
             border: '1px solid #FDE68A',
-            borderRadius: 20,
-            padding: 20,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            position: 'relative',
-            zIndex: 10,
+            padding: '16px 24px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <AlertTriangle style={{ width: 20, height: 20, color: '#F59E0B', flexShrink: 0 }} />
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#92400E' }}>
-              Langganan Anda belum aktif. Untuk memulai sesi baru, silakan berlangganan di aexon.id
-            </p>
+            <div style={{
+              width: 36, height: 36, borderRadius: 12,
+              background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <AlertTriangle style={{ width: 18, height: 18, color: '#fff' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#92400E', margin: 0 }}>
+                Trial berakhir dalam {trialDaysLeft} hari
+              </p>
+              <p style={{ fontSize: 12, color: '#B45309', margin: 0, marginTop: 2 }}>
+                Perpanjang langganan untuk tetap mengakses semua fitur
+              </p>
+            </div>
           </div>
           <button
             onClick={onSubscribe}
             style={{
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '10px 20px',
-              backgroundColor: '#F59E0B',
-              color: '#ffffff',
-              borderRadius: 12,
-              fontSize: 13,
-              fontWeight: 700,
-              border: 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              fontFamily: 'Outfit, sans-serif',
-              transition: 'background-color 150ms',
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
+              padding: '10px 20px', backgroundColor: '#D97706', color: '#ffffff',
+              borderRadius: 12, fontSize: 13, fontWeight: 700, border: 'none',
+              cursor: 'pointer', fontFamily: 'Outfit, sans-serif',
+              transition: 'all 150ms', boxShadow: '0 2px 12px rgba(217,119,6,0.3)',
             }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D97706'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F59E0B'}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#B45309'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#D97706'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            Berlangganan Sekarang
+            <Sparkles style={{ width: 14, height: 14 }} />
+            Perpanjang
           </button>
         </motion.div>
       )}
@@ -154,9 +275,11 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
           <h2 className="font-aexon" style={{ fontSize: 44, fontWeight: 800, color: '#0C1E35', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
             {userProfile.name}
           </h2>
-          <p style={{ fontSize: 14, color: '#94A3B8', marginTop: 32, fontWeight: 500 }}>
-            {userProfile.specialization}
-          </p>
+          {userProfile.specialization && (
+            <p style={{ fontSize: 14, color: '#94A3B8', marginTop: 32, fontWeight: 500 }}>
+              {userProfile.specialization}
+            </p>
+          )}
         </div>
         <div>
           {hasActiveAccess ? (
@@ -283,17 +406,22 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
               </button>
             ) : (
               <button
-                disabled
-                title="Diperlukan langganan aktif"
+                onClick={onSubscribe}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '14px 28px', backgroundColor: '#E2E8F0', color: '#94A3B8',
-                  border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14,
-                  cursor: 'not-allowed', fontFamily: 'Outfit, sans-serif',
+                  padding: '14px 28px',
+                  background: 'linear-gradient(135deg, #F59E0B, #EAB308)',
+                  color: '#0C1E35',
+                  border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14,
+                  cursor: 'pointer', fontFamily: 'Outfit, sans-serif',
+                  boxShadow: '0 4px 20px rgba(245,158,11,0.35)',
+                  transition: 'all 200ms',
                 }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(245,158,11,0.4)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(245,158,11,0.35)'; }}
               >
-                <Lock style={{ width: 16, height: 16 }} />
-                Mulai Sesi Baru
+                <Sparkles style={{ width: 18, height: 18 }} />
+                Mulai Berlangganan
               </button>
             )}
           </div>

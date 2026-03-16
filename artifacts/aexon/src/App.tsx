@@ -98,7 +98,7 @@ function AppContent() {
       return;
     }
     if ((menu === 'session-form' || menu === 'active-session') && !hasActiveAccess) {
-      setCurrentView('pricing');
+      setCurrentView('plan-selection');
       return;
     }
     setCurrentView(menu);

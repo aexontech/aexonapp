@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Settings, LogOut, ChevronLeft, ChevronRight, LayoutDashboard } from 'lucide-react';
+import { FileText, Plus, Settings, LogOut, ChevronLeft, ChevronRight, LayoutDashboard, CreditCard, ChevronDown, User, Shield, Sparkles } from 'lucide-react';
 import { UserProfile } from '../types';
 import { Logo } from './Logo';
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  activeMenu: 'dashboard' | 'admin-dashboard' | 'admin-kop-surat' | 'pricing' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'launcher' | 'add-doctor' | 'manage-subscription';
+  activeMenu: 'dashboard' | 'admin-dashboard' | 'admin-kop-surat' | 'pricing' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'launcher' | 'add-doctor' | 'manage-subscription' | 'plan-selection' | 'checkout';
   onNavigate: (menu: any) => void;
   onLogout: () => void;
   plan: 'subscription' | 'enterprise' | null;
@@ -17,6 +17,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hoveredLogout, setHoveredLogout] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const isAdmin = userProfile.role === 'admin';
   const isEnterprise = plan === 'enterprise';
 
@@ -31,12 +32,17 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
     };
   }, []);
 
+  useEffect(() => {
+    if (isCollapsed) setProfileOpen(false);
+  }, [isCollapsed]);
+
   const menuItems = isAdmin ? [
     { id: 'admin-dashboard', label: 'Admin Console', icon: <LayoutDashboard style={{ width: 20, height: 20 }} /> },
     { id: 'admin-kop-surat', label: 'Kop Surat Institusi', icon: <FileText style={{ width: 20, height: 20 }} /> },
   ] : [
     { id: 'dashboard', label: 'Beranda', icon: <LayoutDashboard style={{ width: 20, height: 20 }} /> },
     { id: 'session-form', label: 'Mulai Sesi Baru', icon: <Plus style={{ width: 20, height: 20 }} /> },
+    { id: 'plan-selection', label: 'Langganan', icon: <CreditCard style={{ width: 20, height: 20 }} /> },
   ];
 
   const isActive = (itemId: string) =>
@@ -44,7 +50,8 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
     (activeMenu === 'active-session' && itemId === 'session-form') ||
     (activeMenu === 'report-generator' && itemId === 'dashboard') ||
     (activeMenu === 'add-doctor' && itemId === 'admin-dashboard') ||
-    (activeMenu === 'manage-subscription' && itemId === 'admin-dashboard');
+    (activeMenu === 'manage-subscription' && itemId === 'admin-dashboard') ||
+    (activeMenu === 'checkout' && itemId === 'plan-selection');
 
   const getInitials = (name: string) =>
     name.split(' ').filter(n => !n.startsWith('Dr.')).map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -71,12 +78,16 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
   const roleBadge = getRoleBadge();
   const subStatus = getSubscriptionStatus();
 
-  const sidebarWidth = isCollapsed ? 72 : 256;
+  const sidebarWidth = isCollapsed ? 72 : 264;
 
   const pulseKeyframes = `
     @keyframes dotPulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
+    }
+    @keyframes subtleShine {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
     }
   `;
 
@@ -117,9 +128,122 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
           </div>
         )}
 
+        {!isCollapsed && (
+          <div style={{ padding: '16px 12px 8px', flexShrink: 0 }}>
+            <div
+              onClick={() => setProfileOpen(!profileOpen)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+                borderRadius: 16, cursor: 'pointer', transition: 'background-color 150ms',
+                backgroundColor: profileOpen ? '#F1F5F9' : 'transparent',
+              }}
+              onMouseEnter={e => { if (!profileOpen) e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+              onMouseLeave={e => { if (!profileOpen) e.currentTarget.style.backgroundColor = 'transparent'; }}
+            >
+              <div style={{
+                width: 42, height: 42, borderRadius: 14,
+                background: 'linear-gradient(135deg, #0C1E35 0%, #1a3a5c 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(12,30,53,0.2)',
+              }}>
+                <span style={{ color: 'white', fontWeight: 800, fontSize: 13, fontFamily: 'Outfit, sans-serif' }}>{getInitials(userProfile.name)}</span>
+              </div>
+              <div style={{ overflow: 'hidden', flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0, lineHeight: 1.3 }}>{userProfile.name}</p>
+                <p style={{ fontSize: 11, color: '#94A3B8', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3, marginTop: 2 }}>
+                  {userProfile.specialization || userProfile.email}
+                </p>
+              </div>
+              <ChevronDown style={{
+                width: 16, height: 16, color: '#94A3B8', flexShrink: 0,
+                transition: 'transform 200ms',
+                transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              }} />
+            </div>
+
+            {profileOpen && (
+              <div style={{
+                marginTop: 4, padding: '8px',
+                backgroundColor: '#F8FAFC', borderRadius: 14,
+                border: '1px solid #F1F5F9',
+              }}>
+                <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      display: 'inline-flex', padding: '3px 10px', borderRadius: 999,
+                      fontSize: 10, fontWeight: 700,
+                      background: roleBadge.bg, color: roleBadge.color,
+                    }}>
+                      {roleBadge.label}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{
+                        width: 7, height: 7, borderRadius: '50%',
+                        background: subStatus.dotColor,
+                        animation: subStatus.pulse ? 'dotPulse 2s ease-in-out infinite' : 'none',
+                      }} />
+                      <span style={{ fontSize: 10, fontWeight: 600, color: subStatus.textColor }}>{subStatus.label}</span>
+                    </div>
+                  </div>
+                  {userProfile.email && (
+                    <p style={{ fontSize: 11, color: '#94A3B8', margin: 0, wordBreak: 'break-all' }}>{userProfile.email}</p>
+                  )}
+                </div>
+                <div style={{ height: 1, background: '#E2E8F0', margin: '6px 0' }} />
+                <button
+                  onClick={() => { setProfileOpen(false); onNavigate('settings'); }}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 10px', borderRadius: 10, border: 'none',
+                    cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#64748B',
+                    background: 'transparent', transition: 'all 150ms',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.color = '#0C1E35'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#64748B'; }}
+                >
+                  <User style={{ width: 14, height: 14 }} />
+                  Profil & Pengaturan
+                </button>
+                <button
+                  onClick={() => { setProfileOpen(false); onNavigate('settings'); }}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 10px', borderRadius: 10, border: 'none',
+                    cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#64748B',
+                    background: 'transparent', transition: 'all 150ms',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.color = '#0C1E35'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#64748B'; }}
+                >
+                  <Shield style={{ width: 14, height: 14 }} />
+                  Keamanan
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isCollapsed && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+            <div
+              onClick={() => setIsCollapsed(false)}
+              title={userProfile.name}
+              style={{
+                width: 38, height: 38, borderRadius: 12,
+                background: 'linear-gradient(135deg, #0C1E35 0%, #1a3a5c 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', boxShadow: '0 2px 8px rgba(12,30,53,0.2)',
+              }}
+            >
+              <span style={{ color: 'white', fontWeight: 800, fontSize: 12, fontFamily: 'Outfit, sans-serif' }}>{getInitials(userProfile.name)}</span>
+            </div>
+          </div>
+        )}
+
         <nav style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {menuItems.map((item) => {
             const active = isActive(item.id);
+            const isSubscription = item.id === 'plan-selection';
             return (
               <button
                 key={item.id}
@@ -135,17 +259,25 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: 14,
-                  fontWeight: 500,
+                  fontWeight: active ? 700 : 500,
                   gap: isCollapsed ? 0 : 10,
                   backgroundColor: active ? '#0C1E35' : 'transparent',
                   color: active ? '#ffffff' : '#64748B',
                   transition: 'all 150ms',
+                  position: 'relative',
                 }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 {item.icon}
                 {!isCollapsed && item.label}
+                {isSubscription && !isCollapsed && subStatus.showCta && !active && (
+                  <span style={{
+                    marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%',
+                    background: '#F59E0B',
+                    animation: 'dotPulse 2s ease-in-out infinite',
+                  }} />
+                )}
               </button>
             );
           })}
@@ -161,34 +293,27 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
               }} />
             </div>
           ) : (
-            <div style={{
-              background: subStatus.bg,
-              border: `1px solid ${subStatus.border}`,
-              borderRadius: 14,
-              padding: '10px 12px',
-              marginLeft: 0, marginRight: 0, marginBottom: 8,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                  background: subStatus.dotColor,
-                  animation: subStatus.pulse ? 'dotPulse 2s ease-in-out infinite' : 'none',
-                }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: subStatus.textColor }}>{subStatus.label}</span>
-              </div>
-              {subStatus.showCta && (
-                <button
-                  onClick={() => onNavigate('settings')}
-                  style={{
-                    width: '100%', marginTop: 6, padding: '6px 10px',
-                    background: '#0C1E35', color: 'white', borderRadius: 8,
-                    fontSize: 11, fontWeight: 700, border: 'none', cursor: 'pointer',
-                  }}
-                >
-                  Perpanjang Sekarang
-                </button>
-              )}
-            </div>
+            subStatus.showCta && (
+              <button
+                onClick={() => onNavigate('plan-selection')}
+                style={{
+                  width: '100%', padding: '10px 14px',
+                  background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                  color: 'white', borderRadius: 12,
+                  fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontFamily: 'Outfit, sans-serif',
+                  marginBottom: 8,
+                  boxShadow: '0 2px 12px rgba(245,158,11,0.3)',
+                  transition: 'all 150ms',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(245,158,11,0.4)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(245,158,11,0.3)'; }}
+              >
+                <Sparkles style={{ width: 14, height: 14 }} />
+                Perpanjang Sekarang
+              </button>
+            )
           )}
 
           {(() => {
@@ -221,27 +346,6 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
               </button>
             );
           })()}
-
-          <div style={{ padding: isCollapsed ? '4px 0' : '4px 0', display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: isCollapsed ? 0 : 12, marginTop: 4 }}>
-            <div style={{
-              width: 40, height: 40, background: '#0C1E35', borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <span style={{ color: 'white', fontWeight: 700, fontSize: 12 }}>{getInitials(userProfile.name)}</span>
-            </div>
-            {!isCollapsed && (
-              <div style={{ overflow: 'hidden', flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{userProfile.name}</p>
-                <span style={{
-                  display: 'inline-block', padding: '2px 8px', borderRadius: 999,
-                  fontSize: 10, fontWeight: 700, marginTop: 2,
-                  background: roleBadge.bg, color: roleBadge.color,
-                }}>
-                  {roleBadge.label}
-                </span>
-              </div>
-            )}
-          </div>
 
           <button
             onClick={onLogout}
