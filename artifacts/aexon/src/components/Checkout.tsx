@@ -218,9 +218,9 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
   if (orderPlaced) {
     return (
       <div style={{
-        minHeight: '100vh', backgroundColor: '#F8FAFC',
+        height: '100%', backgroundColor: '#F8FAFC',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 24,
+        padding: 24, overflowY: 'auto',
       }}>
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
@@ -358,7 +358,7 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{
         backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
         padding: '14px 32px', display: 'flex', alignItems: 'center', gap: 16,
@@ -401,14 +401,13 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex' }}>
+      <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#F8FAFC' }} className="custom-scrollbar">
         <div style={{
-          flex: 1, backgroundColor: '#ffffff',
-          display: 'flex', justifyContent: 'flex-end',
-          padding: '40px 48px 60px 24px',
-          borderRight: '1px solid #E2E8F0',
+          maxWidth: 960, width: '100%', margin: '0 auto',
+          padding: '40px 32px 60px',
+          display: 'flex', gap: 40,
         }}>
-          <div style={{ maxWidth: 520, width: '100%', display: 'flex', flexDirection: 'column', gap: 28 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 28 }}>
             <motion.div
               initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -697,15 +696,17 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
               </div>
             </motion.div>
           </div>
-        </div>
 
-        <div style={{
-          width: 440, backgroundColor: '#F8FAFC',
-          padding: '40px 24px 60px 48px',
-          display: 'flex', justifyContent: 'flex-start',
-          flexShrink: 0,
-        }}>
-          <div style={{ maxWidth: 380, width: '100%', position: 'sticky', top: 80 }}>
+          <div style={{
+            width: 360, flexShrink: 0,
+          }}>
+            <div style={{
+              position: 'sticky', top: 40,
+              backgroundColor: '#ffffff', borderRadius: 20,
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+              padding: 28,
+            }}>
             <motion.div
               initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -822,6 +823,7 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
                 </div>
               </div>
             </motion.div>
+            </div>
           </div>
         </div>
       </div>
