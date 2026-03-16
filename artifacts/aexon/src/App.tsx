@@ -537,6 +537,7 @@ function AppContent() {
       {currentView === 'gallery' && viewingSession && (
         <Gallery 
           session={viewingSession}
+          userId={userProfile?.id || ''}
           onBack={() => {
             setViewingSession(null);
             setCurrentView('dashboard');

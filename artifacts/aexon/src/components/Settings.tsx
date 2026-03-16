@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
-import { UserProfile, HospitalSettings, Session } from '../types';
+import { UserProfile, HospitalSettings, Session, Capture } from '../types';
 
 interface ProductPlan {
   id: string;
@@ -57,7 +57,7 @@ interface ProductPlan {
 }
 import { useToast } from './ToastProvider';
 import ConfirmModal from './ConfirmModal';
-import { saveUserData, loadUserData, getLocalStorageUsage } from '../lib/storage';
+import { saveUserData, loadUserData, getLocalStorageUsage, decryptData, getEncryptionKey } from '../lib/storage';
 import { supabase } from '../lib/supabase';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
@@ -606,15 +606,110 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         const JSZip = (await import('jszip')).default;
         const zip = await JSZip.loadAsync(file);
 
+        let manifestEncFile: any = null;
+        let sessionEncFile: any = null;
         let manifestFile: any = null;
         let sessionsFile: any = null;
         zip.forEach((path, entry) => {
+          if (path.endsWith('manifest.enc')) manifestEncFile = entry;
+          if (path.endsWith('session.enc')) sessionEncFile = entry;
           if (path.endsWith('manifest.json')) manifestFile = entry;
           if (path.endsWith('sessions.json')) sessionsFile = entry;
         });
 
+        if (manifestEncFile && sessionEncFile) {
+          const key = getEncryptionKey(userProfile.id);
+
+          const manifestEncText = await manifestEncFile.async('text');
+          let manifest: any;
+          try {
+            manifest = JSON.parse(decryptData(manifestEncText, key));
+          } catch {
+            setShowMismatchModal(true);
+            setRestoreLoading(false);
+            return;
+          }
+
+          if (manifest.type !== 'aexon_case_export' || manifest.userId !== userProfile.id) {
+            setShowMismatchModal(true);
+            setRestoreLoading(false);
+            return;
+          }
+
+          const sessionEncText = await sessionEncFile.async('text');
+          let caseSession: Session;
+          try {
+            caseSession = JSON.parse(decryptData(sessionEncText, key));
+          } catch {
+            showToast('Gagal mendekripsi data case. File mungkin rusak atau bukan milik akun ini.', 'error');
+            setRestoreLoading(false);
+            return;
+          }
+
+          const mediaEntries: { id: string; ext: string; entry: any }[] = [];
+          zip.forEach((path, entry) => {
+            const mediaMatch = path.match(/media\/([^.]+)\.(png|mp4)$/);
+            if (mediaMatch) {
+              mediaEntries.push({ id: mediaMatch[1], ext: mediaMatch[2], entry });
+            }
+          });
+
+          const restoredCaptures: Capture[] = [];
+          for (const me of mediaEntries) {
+            const blob = await me.entry.async('blob');
+            const mimeType = me.ext === 'png' ? 'image/png' : 'video/mp4';
+            const blobWithType = new Blob([blob], { type: mimeType });
+            const url = URL.createObjectURL(blobWithType);
+
+            const originalCapture = caseSession.captures.find(c => c.id === me.id);
+            restoredCaptures.push({
+              id: me.id,
+              type: me.ext === 'png' ? 'image' : 'video',
+              url,
+              timestamp: originalCapture?.timestamp || new Date(),
+              caption: originalCapture?.caption,
+            });
+          }
+
+          caseSession.date = new Date(caseSession.date);
+          caseSession.captures = restoredCaptures.map(c => ({
+            ...c,
+            timestamp: new Date(c.timestamp),
+          }));
+
+          const backupSessions = [caseSession];
+          const existingIds = new Set(sessions.map(s => s.id));
+          const newSessions: Session[] = [];
+          const conflicts: RestoreConflict[] = [];
+
+          for (const bs of backupSessions) {
+            if (existingIds.has(bs.id)) {
+              const existing = sessions.find(s => s.id === bs.id)!;
+              conflicts.push({ backupSession: bs, existingSession: existing });
+            } else {
+              newSessions.push(bs);
+            }
+          }
+
+          setRestoreNewSessions(newSessions);
+
+          if (conflicts.length > 0) {
+            setRestoreConflicts(conflicts);
+            setCurrentConflictIdx(0);
+            setConflictResults(new Map());
+            setApplyToAll(false);
+            setShowConflictModal(true);
+          } else {
+            finalizeRestore(newSessions, new Map());
+            showToast(`Case "${caseSession.patient.name}" berhasil di-restore dengan ${restoredCaptures.length} media.`, 'success', 5000);
+          }
+
+          setRestoreLoading(false);
+          return;
+        }
+
         if (!manifestFile || !sessionsFile) {
-          showToast('Format file backup tidak valid. File manifest.json atau sessions.json tidak ditemukan.', 'error');
+          showToast('Format file backup tidak valid. File manifest atau sessions tidak ditemukan.', 'error');
           setRestoreLoading(false);
           return;
         }

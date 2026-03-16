@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Download, FileImage, FileVideo, Edit3, Trash2, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Download, FileImage, FileVideo, Edit3, Trash2, AlertTriangle, FileText, ChevronDown, ChevronUp, Lock, Loader2 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { Session, Capture } from '../types';
 import ImageEditor from './ImageEditor';
 import { useToast } from './ToastProvider';
+import { encryptData, getEncryptionKey } from '../lib/storage';
 
 interface GalleryProps {
   session: Session;
+  userId: string;
   onBack: () => void;
   onUpdateSession?: (session: Session) => void;
   onViewReport?: (session: Session) => void;
 }
 
-export default function Gallery({ session, onBack, onUpdateSession, onViewReport }: GalleryProps) {
+export default function Gallery({ session, userId, onBack, onUpdateSession, onViewReport }: GalleryProps) {
   const { showToast } = useToast();
   const [captures, setCaptures] = useState<Capture[]>(session.captures);
   const [editingPhoto, setEditingPhoto] = useState<Capture | null>(null);
@@ -21,6 +23,7 @@ export default function Gallery({ session, onBack, onUpdateSession, onViewReport
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [photosCollapsed, setPhotosCollapsed] = useState(false);
   const [videosCollapsed, setVideosCollapsed] = useState(false);
+  const [exportingCase, setExportingCase] = useState(false);
 
   const photos = captures.filter(c => c.type === 'image');
   const videos = captures.filter(c => c.type === 'video');
@@ -83,6 +86,73 @@ export default function Gallery({ session, onBack, onUpdateSession, onViewReport
       }, i * 300);
     });
     setSelectedIds([]);
+  };
+
+  const handleExportCase = async () => {
+    if (exportingCase) return;
+    setExportingCase(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      const key = getEncryptionKey(userId);
+
+      const sessionData = {
+        ...session,
+        captures: captures.map(c => ({ ...c, url: '', originalUrl: undefined, shapes: undefined })),
+      };
+      const encryptedSession = encryptData(JSON.stringify(sessionData), key);
+      zip.file('session.enc', encryptedSession);
+
+      const mediaFolder = zip.folder('media')!;
+      const exportedMediaIds: string[] = [];
+      let skippedCount = 0;
+      for (let i = 0; i < captures.length; i++) {
+        const cap = captures[i];
+        try {
+          const resp = await fetch(cap.url);
+          const blob = await resp.blob();
+          const ext = cap.type === 'image' ? 'png' : 'mp4';
+          mediaFolder.file(`${cap.id}.${ext}`, blob);
+          exportedMediaIds.push(cap.id);
+        } catch {
+          skippedCount++;
+        }
+      }
+
+      const manifest = {
+        type: 'aexon_case_export',
+        userId,
+        sessionId: session.id,
+        patientRM: session.patient.rmNumber,
+        exportDate: new Date().toISOString(),
+        appVersion: '2.5.0',
+        mediaCount: exportedMediaIds.length,
+        mediaIds: exportedMediaIds,
+      };
+      const encryptedManifest = encryptData(JSON.stringify(manifest), key);
+      zip.file('manifest.enc', encryptedManifest);
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.download = `Aexon_Case_${session.patient.rmNumber}_${dateStr}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      const msg = skippedCount > 0
+        ? `Case berhasil diekspor (${exportedMediaIds.length} media, ${skippedCount} gagal). Restore melalui menu Backup & Restore.`
+        : 'Case berhasil diekspor (terenkripsi). Restore melalui menu Backup & Restore.';
+      showToast(msg, skippedCount > 0 ? 'warning' : 'success', 5000);
+    } catch (err) {
+      console.error('Export case error:', err);
+      showToast('Gagal mengekspor case. Silakan coba lagi.', 'error');
+    } finally {
+      setExportingCase(false);
+    }
   };
 
   const toggleSelect = (id: string) => {
@@ -355,6 +425,27 @@ export default function Gallery({ session, onBack, onUpdateSession, onViewReport
               Download Semua ({captures.length})
             </button>
           ) : null}
+
+          <button
+            onClick={handleExportCase}
+            disabled={exportingCase}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px',
+              backgroundColor: '#F8FAFC', color: '#0C1E35', border: '1px solid #E2E8F0', borderRadius: 14,
+              fontSize: 13, fontWeight: 700, cursor: exportingCase ? 'not-allowed' : 'pointer',
+              transition: 'all 150ms', fontFamily: 'Outfit, sans-serif',
+              opacity: exportingCase ? 0.6 : 1,
+            }}
+            onMouseEnter={e => { if (!exportingCase) { e.currentTarget.style.backgroundColor = '#F1F5F9'; e.currentTarget.style.borderColor = '#0C1E35'; } }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
+          >
+            {exportingCase ? (
+              <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
+            ) : (
+              <Lock style={{ width: 14, height: 14 }} />
+            )}
+            {exportingCase ? 'Mengekspor...' : 'Export Case'}
+          </button>
         </div>
 
         <button
