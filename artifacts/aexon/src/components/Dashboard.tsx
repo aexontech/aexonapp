@@ -211,7 +211,7 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
                 <ArrowRight style={{ width: 16, height: 16, transition: 'transform 200ms', transform: ctaHover ? 'translateX(3px)' : 'translateX(0)' }} />
               </button>
               <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>
-                Mulai dari Rp 99.000/bulan
+                Lihat paket langganan
               </span>
             </div>
           </div>
