@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
   ShieldCheck,
   CreditCard,
-  Clock,
   CheckCircle2,
   Loader2,
   MessageCircle,
@@ -14,6 +13,10 @@ import {
   Tag,
   Calendar,
   Building2,
+  Ticket,
+  X,
+  ChevronRight,
+  Lock,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ToastProvider';
@@ -25,6 +28,13 @@ interface CheckoutPlan {
   original_price: number | null;
   features: string[];
   products: { name: string };
+}
+
+interface PromoResult {
+  code: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  label: string;
 }
 
 interface CheckoutProps {
@@ -40,14 +50,28 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState('');
 
+  const [promoCode, setPromoCode] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<PromoResult | null>(null);
+  const [promoError, setPromoError] = useState('');
+  const [showPromoInput, setShowPromoInput] = useState(false);
+
   const isAnnual = plan.billing_cycle === 'annual';
   const pricePerMonth = plan.price;
-  const totalPrice = isAnnual ? pricePerMonth * 12 : pricePerMonth;
+  const subtotal = isAnnual ? pricePerMonth * 12 : pricePerMonth;
   const hasDiscount = plan.original_price !== null && plan.original_price > plan.price;
   const originalTotal = hasDiscount
     ? (plan.original_price! * (isAnnual ? 12 : 1))
-    : totalPrice;
-  const savings = hasDiscount ? originalTotal - totalPrice : 0;
+    : subtotal;
+  const betaSavings = hasDiscount ? originalTotal - subtotal : 0;
+
+  const promoDiscount = appliedPromo
+    ? appliedPromo.discount_type === 'percentage'
+      ? Math.round(subtotal * (appliedPromo.discount_value / 100))
+      : appliedPromo.discount_value
+    : 0;
+
+  const totalPrice = Math.max(0, subtotal - promoDiscount);
 
   const formatRupiah = (amount: number) =>
     'Rp' + amount.toLocaleString('id-ID');
@@ -61,19 +85,66 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
     return `AXN-${y}${m}${d}-${r}`;
   };
 
+  const handleApplyPromo = async () => {
+    const code = promoCode.trim().toUpperCase();
+    if (!code) return;
+    setPromoLoading(true);
+    setPromoError('');
+    try {
+      if (!supabase) throw new Error('Database tidak tersedia');
+
+      const { data, error } = await supabase
+        .from('promo_codes')
+        .select('code, discount_type, discount_value, label, is_active, expires_at, usage_limit, usage_count')
+        .eq('code', code)
+        .maybeSingle();
+
+      if (error || !data) {
+        setPromoError('Kode promo tidak ditemukan');
+        return;
+      }
+      if (!data.is_active) {
+        setPromoError('Kode promo sudah tidak aktif');
+        return;
+      }
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        setPromoError('Kode promo sudah kadaluarsa');
+        return;
+      }
+      if (data.usage_limit && data.usage_count >= data.usage_limit) {
+        setPromoError('Kode promo sudah mencapai batas penggunaan');
+        return;
+      }
+
+      setAppliedPromo({
+        code: data.code,
+        discount_type: data.discount_type,
+        discount_value: data.discount_value,
+        label: data.label || `Diskon ${data.discount_type === 'percentage' ? data.discount_value + '%' : formatRupiah(data.discount_value)}`,
+      });
+      showToast('Kode promo berhasil diterapkan!', 'success');
+    } catch (err) {
+      setPromoError('Gagal memvalidasi kode promo');
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+    setPromoError('');
+  };
+
   const handlePlaceOrder = async () => {
     setProcessing(true);
     try {
       const newOrderId = generateOrderId();
 
-      if (!supabase) {
-        throw new Error('Koneksi database tidak tersedia');
-      }
+      if (!supabase) throw new Error('Koneksi database tidak tersedia');
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Sesi login tidak ditemukan. Silakan login ulang.');
-      }
+      if (!user) throw new Error('Sesi login tidak ditemukan. Silakan login ulang.');
 
       const { error: insertError } = await supabase.from('payment_logs').insert({
         user_id: user.id,
@@ -82,6 +153,7 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
         status: 'pending',
         order_id: newOrderId,
         billing_cycle: plan.billing_cycle,
+        ...(appliedPromo ? { promo_code: appliedPromo.code, promo_discount: promoDiscount } : {}),
       });
 
       if (insertError) {
@@ -98,23 +170,6 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
     } finally {
       setProcessing(false);
     }
-  };
-
-  const sectionStyle: React.CSSProperties = {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    border: '1px solid #E2E8F0',
-    padding: 24,
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 700,
-    color: '#94A3B8',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.06em',
-    marginBottom: 12,
-    fontFamily: 'Outfit, sans-serif',
   };
 
   if (orderPlaced) {
@@ -230,14 +285,11 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
   }
 
   return (
-    <div style={{
-      minHeight: '100vh', backgroundColor: '#F8FAFC',
-      display: 'flex', flexDirection: 'column',
-    }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div style={{
         backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
-        padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16,
-        position: 'sticky', top: 0, zIndex: 10,
+        padding: '14px 32px', display: 'flex', alignItems: 'center', gap: 16,
+        position: 'sticky', top: 0, zIndex: 20,
       }}>
         <button
           onClick={onBack}
@@ -245,259 +297,443 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'none', border: 'none', cursor: 'pointer',
             fontSize: 14, fontWeight: 600, color: '#64748B',
-            fontFamily: 'Outfit, sans-serif',
-            transition: 'color 150ms',
+            fontFamily: 'Outfit, sans-serif', transition: 'color 150ms',
           }}
           onMouseEnter={e => e.currentTarget.style.color = '#0C1E35'}
           onMouseLeave={e => e.currentTarget.style.color = '#64748B'}
         >
           <ArrowLeft style={{ width: 18, height: 18 }} />
-          Kembali
         </button>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: 'linear-gradient(135deg, #0C1E35, #1e3a5f)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Lock style={{ width: 13, height: 13, color: '#fff' }} />
+          </div>
+          <span style={{ fontSize: 16, fontWeight: 800, color: '#0C1E35', fontFamily: 'Outfit, sans-serif' }}>
+            Checkout
+          </span>
+        </div>
         <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94A3B8', fontSize: 12 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          fontSize: 12, color: '#94A3B8', fontFamily: 'Plus Jakarta Sans, sans-serif',
+        }}>
           <ShieldCheck style={{ width: 14, height: 14 }} />
-          Transaksi Aman
+          Transaksi Aman & Terenkripsi
         </div>
       </div>
 
-      <div style={{
-        flex: 1, display: 'flex', justifyContent: 'center',
-        padding: '32px 24px 60px',
-      }}>
+      <div style={{ flex: 1, display: 'flex' }}>
         <div style={{
-          maxWidth: 880, width: '100%',
-          display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24,
-          alignItems: 'start',
+          flex: 1, backgroundColor: '#ffffff',
+          display: 'flex', justifyContent: 'flex-end',
+          padding: '40px 48px 60px 24px',
+          borderRight: '1px solid #E2E8F0',
         }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ maxWidth: 520, width: '100%', display: 'flex', flexDirection: 'column', gap: 28 }}>
             <motion.div
-              initial={{ y: 12, opacity: 0 }}
+              initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.05 }}
             >
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                fontSize: 12, color: '#94A3B8', marginBottom: 20,
+                fontFamily: 'Plus Jakarta Sans, sans-serif',
+              }}>
+                <span style={{ color: '#0C1E35', fontWeight: 600 }}>Paket</span>
+                <ChevronRight style={{ width: 12, height: 12 }} />
+                <span style={{ color: '#0C1E35', fontWeight: 600 }}>Pembayaran</span>
+                <ChevronRight style={{ width: 12, height: 12 }} />
+                <span>Konfirmasi</span>
+              </div>
+
               <h1 style={{
-                fontSize: 24, fontWeight: 900, color: '#0C1E35',
+                fontSize: 22, fontWeight: 900, color: '#0C1E35',
                 fontFamily: 'Outfit, sans-serif', marginBottom: 4,
               }}>
-                Ringkasan Pembelian
+                Informasi Pembayaran
               </h1>
-              <p style={{ fontSize: 14, color: '#94A3B8' }}>
-                Periksa detail pesanan Anda sebelum melanjutkan
+              <p style={{ fontSize: 13, color: '#94A3B8' }}>
+                Lengkapi data di bawah untuk menyelesaikan pesanan
               </p>
             </motion.div>
 
             <motion.div
-              initial={{ y: 12, opacity: 0 }}
+              initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
-              style={sectionStyle}
             >
-              <div style={labelStyle}>Detail Paket</div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 700, color: '#0C1E35',
+                marginBottom: 12, fontFamily: 'Outfit, sans-serif',
+              }}>
+                Pelanggan
+              </div>
+              <div style={{
+                padding: 16, borderRadius: 12,
+                border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC',
+                display: 'flex', alignItems: 'center', gap: 14,
+              }}>
                 <div style={{
-                  width: 48, height: 48, borderRadius: 14,
+                  width: 40, height: 40, borderRadius: 10,
+                  background: 'linear-gradient(135deg, #0C1E35, #1e3a5f)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, fontSize: 16, fontWeight: 800, color: '#fff',
+                  fontFamily: 'Outfit, sans-serif',
+                }}>
+                  {(userName || userEmail).charAt(0).toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35', marginBottom: 1 }}>
+                    {userName}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {userEmail}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.15 }}
+            >
+              <div style={{
+                fontSize: 13, fontWeight: 700, color: '#0C1E35',
+                marginBottom: 12, fontFamily: 'Outfit, sans-serif',
+              }}>
+                Metode Pembayaran
+              </div>
+              <div style={{
+                padding: 16, borderRadius: 12,
+                border: '2px solid #0C1E35', backgroundColor: '#fff',
+                display: 'flex', alignItems: 'center', gap: 14,
+                position: 'relative',
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  backgroundColor: '#F1F5F9', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Receipt style={{ width: 18, height: 18, color: '#0C1E35' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>
+                    Transfer Bank (BCA)
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748B' }}>
+                    Konfirmasi manual via WhatsApp / Email
+                  </div>
+                </div>
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%',
+                  backgroundColor: '#0C1E35', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#fff' }} />
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div style={{
+                fontSize: 13, fontWeight: 700, color: '#0C1E35',
+                marginBottom: 12, fontFamily: 'Outfit, sans-serif',
+              }}>
+                Kode Promo
+              </div>
+
+              {appliedPromo ? (
+                <div style={{
+                  padding: '12px 16px', borderRadius: 12,
+                  border: '1px solid #BBF7D0', backgroundColor: '#F0FDF4',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10,
+                    backgroundColor: '#DCFCE7', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <Ticket style={{ width: 16, height: 16, color: '#16A34A' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>
+                      {appliedPromo.code}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#4ADE80' }}>
+                      {appliedPromo.label} — Hemat {formatRupiah(promoDiscount)}
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleRemovePromo}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      padding: 4, display: 'flex', borderRadius: 6,
+                    }}
+                  >
+                    <X style={{ width: 16, height: 16, color: '#94A3B8' }} />
+                  </button>
+                </div>
+              ) : !showPromoInput ? (
+                <button
+                  onClick={() => setShowPromoInput(true)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '12px 16px', borderRadius: 12,
+                    border: '1px dashed #CBD5E1', backgroundColor: '#FAFBFC',
+                    cursor: 'pointer', fontSize: 13, color: '#64748B',
+                    fontWeight: 600, width: '100%',
+                    transition: 'border-color 150ms, background-color 150ms',
+                    fontFamily: 'Plus Jakarta Sans, sans-serif',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#94A3B8'; e.currentTarget.style.backgroundColor = '#F1F5F9'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.backgroundColor = '#FAFBFC'; }}
+                >
+                  <Ticket style={{ width: 16, height: 16 }} />
+                  Punya kode promo?
+                </button>
+              ) : (
+                <AnimatePresence>
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ flex: 1, position: 'relative' }}>
+                        <input
+                          type="text"
+                          value={promoCode}
+                          onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError(''); }}
+                          placeholder="Masukkan kode promo"
+                          onKeyDown={e => { if (e.key === 'Enter') handleApplyPromo(); }}
+                          style={{
+                            width: '100%', padding: '12px 16px',
+                            border: promoError ? '1.5px solid #FCA5A5' : '1px solid #E2E8F0',
+                            borderRadius: 12, fontSize: 14, color: '#0C1E35',
+                            backgroundColor: '#fff', outline: 'none',
+                            fontFamily: 'Plus Jakarta Sans, sans-serif',
+                            fontWeight: 600, letterSpacing: '0.05em',
+                            transition: 'border-color 150ms',
+                          }}
+                          onFocus={e => { if (!promoError) e.currentTarget.style.borderColor = '#0C1E35'; }}
+                          onBlur={e => { if (!promoError) e.currentTarget.style.borderColor = '#E2E8F0'; }}
+                          autoFocus
+                        />
+                      </div>
+                      <button
+                        onClick={handleApplyPromo}
+                        disabled={promoLoading || !promoCode.trim()}
+                        style={{
+                          padding: '0 20px', borderRadius: 12, border: 'none',
+                          backgroundColor: promoCode.trim() ? '#0C1E35' : '#E2E8F0',
+                          color: promoCode.trim() ? '#fff' : '#94A3B8',
+                          fontSize: 13, fontWeight: 700, cursor: promoCode.trim() ? 'pointer' : 'default',
+                          fontFamily: 'Outfit, sans-serif', transition: 'all 150ms',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          flexShrink: 0,
+                        }}
+                        onMouseEnter={e => { if (promoCode.trim()) e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                        onMouseLeave={e => { if (promoCode.trim()) e.currentTarget.style.backgroundColor = '#0C1E35'; }}
+                      >
+                        {promoLoading ? (
+                          <Loader2 className="animate-spin" style={{ width: 14, height: 14 }} />
+                        ) : 'Terapkan'}
+                      </button>
+                    </div>
+                    {promoError && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        style={{ fontSize: 12, color: '#EF4444', marginTop: 8, fontWeight: 500 }}
+                      >
+                        {promoError}
+                      </motion.p>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              )}
+            </motion.div>
+
+            <motion.div
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.25 }}
+              style={{ borderTop: '1px solid #F1F5F9', paddingTop: 20 }}
+            >
+              <button
+                onClick={handlePlaceOrder}
+                disabled={processing}
+                style={{
+                  width: '100%', padding: '16px 0',
+                  backgroundColor: processing ? '#94A3B8' : '#0C1E35',
+                  color: 'white', border: 'none', borderRadius: 14,
+                  fontSize: 16, fontWeight: 800,
+                  cursor: processing ? 'not-allowed' : 'pointer',
+                  boxShadow: processing ? 'none' : '0 4px 20px rgba(12,30,53,0.25)',
+                  transition: 'all 150ms',
+                  fontFamily: 'Outfit, sans-serif',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+                onMouseEnter={e => { if (!processing) e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
+                onMouseLeave={e => { if (!processing) e.currentTarget.style.backgroundColor = '#0C1E35'; }}
+              >
+                {processing ? (
+                  <>
+                    <Loader2 className="animate-spin" style={{ width: 18, height: 18 }} />
+                    Memproses...
+                  </>
+                ) : (
+                  <>Buat Pesanan · {formatRupiah(totalPrice)}</>
+                )}
+              </button>
+
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 6, marginTop: 14, fontSize: 12, color: '#CBD5E1',
+              }}>
+                <ShieldCheck style={{ width: 13, height: 13 }} />
+                Data Anda dilindungi enkripsi SSL
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        <div style={{
+          width: 440, backgroundColor: '#F8FAFC',
+          padding: '40px 24px 60px 48px',
+          display: 'flex', justifyContent: 'flex-start',
+          flexShrink: 0,
+        }}>
+          <div style={{ maxWidth: 380, width: '100%', position: 'sticky', top: 80 }}>
+            <motion.div
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                paddingBottom: 20, borderBottom: '1px solid #E2E8F0', marginBottom: 20,
+              }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: 14,
                   background: 'linear-gradient(135deg, #0C1E35, #1e3a5f)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                 }}>
-                  <CreditCard style={{ width: 22, height: 22, color: '#fff' }} />
+                  <CreditCard style={{ width: 24, height: 24, color: '#fff' }} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0C1E35', marginBottom: 2 }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#0C1E35', marginBottom: 2 }}>
                     {plan.products?.name || 'Aexon'}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{
-                      fontSize: 11, fontWeight: 700, color: '#0C1E35',
-                      backgroundColor: '#F1F5F9', padding: '3px 10px',
-                      borderRadius: 999, fontFamily: 'Outfit, sans-serif',
+                      fontSize: 11, fontWeight: 700, color: '#64748B',
+                      backgroundColor: '#E2E8F0', padding: '2px 8px',
+                      borderRadius: 999,
                     }}>
                       {isAnnual ? 'Tahunan' : 'Bulanan'}
                     </span>
                     {hasDiscount && (
                       <span style={{
                         fontSize: 11, fontWeight: 700, color: '#10B981',
-                        backgroundColor: '#ECFDF5', padding: '3px 10px',
-                        borderRadius: 999, fontFamily: 'Outfit, sans-serif',
+                        backgroundColor: '#ECFDF5', padding: '2px 8px',
+                        borderRadius: 999,
                       }}>
-                        BETA PRICE
+                        BETA
                       </span>
                     )}
                   </div>
-                  {Array.isArray(plan.features) && plan.features.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {plan.features.map((f: string, i: number) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748B' }}>
-                          <div style={{
-                            width: 16, height: 16, borderRadius: '50%',
-                            backgroundColor: '#ECFDF5', display: 'flex',
-                            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                          }}>
-                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                              <path d="M2 5l2 2 4-4" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </div>
-                          {f}
-                        </div>
-                      ))}
+                </div>
+              </div>
+
+              {Array.isArray(plan.features) && plan.features.length > 0 && (
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                  paddingBottom: 20, borderBottom: '1px solid #E2E8F0', marginBottom: 20,
+                }}>
+                  {plan.features.map((f: string, i: number) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748B' }}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                        <circle cx="7" cy="7" r="7" fill="#ECFDF5"/>
+                        <path d="M4 7l2 2 4-4" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      {f}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#475569' }}>
+                  <span>Subtotal</span>
+                  <span style={{ fontWeight: 600, color: '#0C1E35' }}>
+                    {formatRupiah(subtotal)}
+                  </span>
+                </div>
+                {isAnnual && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#94A3B8' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Calendar style={{ width: 11, height: 11 }} /> {formatRupiah(pricePerMonth)} × 12 bulan
+                    </span>
+                  </div>
+                )}
+                {hasDiscount && betaSavings > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#94A3B8' }}>
+                    <span>Harga normal</span>
+                    <span style={{ textDecoration: 'line-through' }}>{formatRupiah(originalTotal)}</span>
+                  </div>
+                )}
+                {betaSavings > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#10B981' }}>
+                      <Tag style={{ width: 12, height: 12 }} /> Diskon Beta
+                    </span>
+                    <span style={{ color: '#10B981', fontWeight: 600 }}>-{formatRupiah(betaSavings)}</span>
+                  </div>
+                )}
+                {appliedPromo && promoDiscount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#10B981' }}>
+                      <Ticket style={{ width: 12, height: 12 }} /> Promo ({appliedPromo.code})
+                    </span>
+                    <span style={{ color: '#10B981', fontWeight: 600 }}>-{formatRupiah(promoDiscount)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{
+                borderTop: '1px solid #E2E8F0', paddingTop: 16,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+              }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#475569' }}>Total</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: '#0C1E35', fontFamily: 'Outfit, sans-serif' }}>
+                    {formatRupiah(totalPrice)}
+                  </div>
+                  {isAnnual && (
+                    <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>
+                      ≈ {formatRupiah(Math.round(totalPrice / 12))}/bulan
                     </div>
                   )}
                 </div>
               </div>
             </motion.div>
-
-            <motion.div
-              initial={{ y: 12, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.15 }}
-              style={sectionStyle}
-            >
-              <div style={labelStyle}>Informasi Pelanggan</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 10,
-                    backgroundColor: '#F1F5F9', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <Building2 style={{ width: 16, height: 16, color: '#64748B' }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0C1E35' }}>{userName}</div>
-                    <div style={{ fontSize: 12, color: '#94A3B8' }}>{userEmail}</div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ y: 12, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              style={sectionStyle}
-            >
-              <div style={labelStyle}>Metode Pembayaran</div>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                padding: 16, backgroundColor: '#F0F9FF',
-                borderRadius: 12, border: '1px solid #BAE6FD',
-              }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  backgroundColor: '#fff', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  border: '1px solid #E2E8F0',
-                }}>
-                  <Receipt style={{ width: 18, height: 18, color: '#0C1E35' }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>
-                    Transfer Bank
-                  </div>
-                  <div style={{ fontSize: 12, color: '#64748B' }}>
-                    BCA · Konfirmasi manual via WhatsApp / Email
-                  </div>
-                </div>
-              </div>
-            </motion.div>
           </div>
-
-          <motion.div
-            initial={{ y: 12, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            style={{
-              ...sectionStyle,
-              position: 'sticky', top: 80,
-              boxShadow: '0 8px 40px rgba(12,30,53,0.06)',
-            }}
-          >
-            <div style={labelStyle}>Ringkasan Harga</div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#475569' }}>
-                <span>{plan.products?.name} — {isAnnual ? 'Tahunan' : 'Bulanan'}</span>
-                <span style={{ fontWeight: 600 }}>
-                  {formatRupiah(pricePerMonth)}/bln
-                </span>
-              </div>
-              {isAnnual && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#94A3B8' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Calendar style={{ width: 12, height: 12 }} /> 12 bulan
-                  </span>
-                  <span>{formatRupiah(pricePerMonth)} × 12</span>
-                </div>
-              )}
-              {hasDiscount && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#94A3B8' }}>
-                  <span>Harga normal</span>
-                  <span style={{ textDecoration: 'line-through' }}>{formatRupiah(originalTotal)}</span>
-                </div>
-              )}
-              {savings > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#10B981' }}>
-                    <Tag style={{ width: 12, height: 12 }} /> Hemat
-                  </span>
-                  <span style={{ color: '#10B981', fontWeight: 600 }}>-{formatRupiah(savings)}</span>
-                </div>
-              )}
-            </div>
-
-            <div style={{
-              borderTop: '1px solid #E2E8F0',
-              paddingTop: 16, marginBottom: 20,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>Total</span>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: '#0C1E35', fontFamily: 'Outfit, sans-serif' }}>
-                  {formatRupiah(totalPrice)}
-                </div>
-                {isAnnual && (
-                  <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>
-                    ≈ {formatRupiah(pricePerMonth)}/bulan
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={handlePlaceOrder}
-              disabled={processing}
-              style={{
-                width: '100%', padding: '16px 0',
-                backgroundColor: processing ? '#94A3B8' : '#0C1E35',
-                color: 'white', border: 'none', borderRadius: 14,
-                fontSize: 16, fontWeight: 800, cursor: processing ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 20px rgba(12,30,53,0.25)',
-                transition: 'background-color 150ms',
-                fontFamily: 'Outfit, sans-serif',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-              onMouseEnter={e => { if (!processing) e.currentTarget.style.backgroundColor = '#1a3a5c'; }}
-              onMouseLeave={e => { if (!processing) e.currentTarget.style.backgroundColor = '#0C1E35'; }}
-            >
-              {processing ? (
-                <>
-                  <Loader2 className="animate-spin" style={{ width: 18, height: 18 }} />
-                  Memproses...
-                </>
-              ) : (
-                'Buat Pesanan'
-              )}
-            </button>
-
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 6, marginTop: 14, fontSize: 12, color: '#94A3B8',
-            }}>
-              <ShieldCheck style={{ width: 13, height: 13 }} />
-              Data Anda dilindungi enkripsi SSL
-            </div>
-          </motion.div>
         </div>
       </div>
     </div>
