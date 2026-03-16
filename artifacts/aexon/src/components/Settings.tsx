@@ -94,6 +94,7 @@ interface SettingsProps {
   onUpdateHospitalList: (settings: HospitalSettings[]) => void;
   onUpdateSessions: (sessions: Session[]) => void;
   onCancelSubscription: () => void;
+  onCheckout: (plan: ProductPlan) => void;
   plan: 'subscription' | 'enterprise' | null;
   sessions: Session[];
 }
@@ -105,7 +106,7 @@ interface RestoreConflict {
 
 type ConflictAction = 'skip' | 'overwrite';
 
-export default function Settings({ userProfile, hospitalSettingsList, onUpdateUser, onUpdateHospitalList, onUpdateSessions, onCancelSubscription, plan, sessions }: SettingsProps) {
+export default function Settings({ userProfile, hospitalSettingsList, onUpdateUser, onUpdateHospitalList, onUpdateSessions, onCancelSubscription, onCheckout, plan, sessions }: SettingsProps) {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'profil' | 'keamanan' | 'kop-surat' | 'langganan' | 'backup'>('profil');
 
@@ -149,7 +150,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const logoInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [showPaymentInfoModal, setShowPaymentInfoModal] = useState(false);
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
   const [billingLoading, setBillingLoading] = useState(false);
   const [plans, setPlans] = useState<ProductPlan[]>([]);
@@ -2341,7 +2341,13 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 {selectedPlanId && (
                   <div style={{ marginTop: 20 }}>
                     <button
-                      onClick={() => { setShowPlanModal(false); setShowPaymentInfoModal(true); }}
+                      onClick={() => {
+                        const selected = plans.find(p => p.id === selectedPlanId);
+                        if (selected) {
+                          setShowPlanModal(false);
+                          onCheckout(selected);
+                        }
+                      }}
                       style={{
                         width: '100%', padding: '14px 0',
                         backgroundColor: '#0C1E35', color: 'white',
@@ -2367,59 +2373,6 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showPaymentInfoModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
-            onClick={() => setShowPaymentInfoModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              style={{ backgroundColor: '#fff', borderRadius: 16, maxWidth: 448, width: '100%', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', padding: 32, textAlign: 'center' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div style={{ width: 64, height: 64, backgroundColor: '#EFF6FF', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                <Clock style={{ width: 32, height: 32, color: '#0C1E35' }} />
-              </div>
-              <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0C1E35', marginBottom: 8, fontFamily: 'Outfit, sans-serif' }}>Pembayaran Segera Hadir</h3>
-              <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24, lineHeight: 1.6 }}>
-                Sistem pembayaran otomatis sedang dikembangkan. Untuk berlangganan, silakan hubungi tim Aexon:
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-                <a
-                  href="https://wa.me/6281234567890"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', padding: '12px 0', backgroundColor: '#10B981', color: '#fff', fontWeight: 700, borderRadius: 12, fontSize: 14, textDecoration: 'none', transition: 'background-color 0.15s' }}
-                >
-                  <MessageCircle style={{ width: 16, height: 16 }} />
-                  WhatsApp
-                  <ExternalLink style={{ width: 14, height: 14, opacity: 0.6 }} />
-                </a>
-                <a
-                  href="mailto:cs@aexon.id"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', padding: '12px 0', border: '1px solid #E2E8F0', color: '#475569', fontWeight: 700, borderRadius: 12, fontSize: 14, textDecoration: 'none', backgroundColor: '#fff', transition: 'background-color 0.15s' }}
-                >
-                  <MailIcon style={{ width: 16, height: 16 }} />
-                  cs@aexon.id
-                  <ExternalLink style={{ width: 14, height: 14, opacity: 0.4 }} />
-                </a>
-              </div>
-              <button
-                onClick={() => setShowPaymentInfoModal(false)}
-                style={{ fontSize: 14, color: '#94A3B8', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.15s', fontFamily: 'Outfit, sans-serif' }}
-              >
-                Tutup
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import Settings from './components/Settings';
 import Gallery from './components/Gallery';
 import AddDoctor from './components/AddDoctor';
 import ManageSubscription from './components/ManageSubscription';
+import Checkout from './components/Checkout';
 import AdminKopSurat from './components/AdminKopSurat';
 import EulaModal from './components/EulaModal';
 import ConfirmModal from './components/ConfirmModal';
@@ -22,7 +23,8 @@ import { AlertTriangle } from 'lucide-react';
 function AppContent() {
   const { showToast } = useToast();
 
-  const [currentView, setCurrentView] = useState<'launcher' | 'pricing' | 'dashboard' | 'admin-dashboard' | 'admin-kop-surat' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'add-doctor' | 'manage-subscription'>('launcher');
+  const [currentView, setCurrentView] = useState<'launcher' | 'pricing' | 'dashboard' | 'admin-dashboard' | 'admin-kop-surat' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'add-doctor' | 'manage-subscription' | 'checkout'>('launcher');
+  const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
   const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | null>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   
@@ -500,8 +502,21 @@ function AppContent() {
           onUpdateHospitalList={handleUpdateHospitalList}
           onUpdateSessions={setSessions}
           onCancelSubscription={handleCancelSubscription}
+          onCheckout={(plan) => {
+            setCheckoutPlan(plan);
+            setCurrentView('checkout');
+          }}
           plan={selectedPlan}
           sessions={sessions}
+        />
+      )}
+
+      {currentView === 'checkout' && checkoutPlan && (
+        <Checkout
+          plan={checkoutPlan}
+          userEmail={userProfile.email}
+          userName={userProfile.full_name || userProfile.email}
+          onBack={() => setCurrentView('settings')}
         />
       )}
     </MainLayout>
