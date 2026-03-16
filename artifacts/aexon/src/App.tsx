@@ -11,6 +11,7 @@ import Settings from './components/Settings';
 import Gallery from './components/Gallery';
 import AddDoctor from './components/AddDoctor';
 import ManageSubscription from './components/ManageSubscription';
+import PlanSelection from './components/PlanSelection';
 import Checkout from './components/Checkout';
 import AdminKopSurat from './components/AdminKopSurat';
 import EulaModal from './components/EulaModal';
@@ -23,7 +24,7 @@ import { AlertTriangle } from 'lucide-react';
 function AppContent() {
   const { showToast } = useToast();
 
-  const [currentView, setCurrentView] = useState<'launcher' | 'pricing' | 'dashboard' | 'admin-dashboard' | 'admin-kop-surat' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'add-doctor' | 'manage-subscription' | 'checkout'>('launcher');
+  const [currentView, setCurrentView] = useState<'launcher' | 'pricing' | 'dashboard' | 'admin-dashboard' | 'admin-kop-surat' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'add-doctor' | 'manage-subscription' | 'plan-selection' | 'checkout'>('launcher');
   const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
   const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | null>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
@@ -382,7 +383,7 @@ function AppContent() {
           sessions={sessions} 
           onNewSession={() => {
             if (!hasActiveAccess) {
-              setCurrentView('pricing');
+              setCurrentView('plan-selection');
             } else {
               setCurrentView('session-form');
             }
@@ -390,6 +391,7 @@ function AppContent() {
           onViewSession={handleViewSession}
           onViewGallery={handleViewGallery}
           onDeleteSession={handleDeleteSession}
+          onSubscribe={() => setCurrentView('plan-selection')}
           userProfile={userProfile}
           hasActiveAccess={hasActiveAccess}
           selectedPlan={selectedPlan}
@@ -494,6 +496,16 @@ function AppContent() {
         />
       )}
 
+      {currentView === 'plan-selection' && (
+        <PlanSelection
+          onSelectPlan={(plan) => {
+            setCheckoutPlan(plan);
+            setCurrentView('checkout');
+          }}
+          onBack={() => setCurrentView('dashboard')}
+        />
+      )}
+
       {currentView === 'settings' && (
         <Settings 
           userProfile={userProfile}
@@ -516,7 +528,7 @@ function AppContent() {
           plan={checkoutPlan}
           userEmail={userProfile.email}
           userName={userProfile.full_name || userProfile.email}
-          onBack={() => setCurrentView('settings')}
+          onBack={() => setCurrentView('plan-selection')}
         />
       )}
     </MainLayout>

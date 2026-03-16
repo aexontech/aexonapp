@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, FileText, Activity, TrendingUp, Camera, ChevronRight, ArrowRight, Trash2, X, Lock, AlertTriangle, ExternalLink, Stethoscope } from 'lucide-react';
+import { Plus, Search, FileText, Activity, TrendingUp, Camera, ChevronRight, ArrowRight, Trash2, X, Lock, AlertTriangle, Stethoscope } from 'lucide-react';
 import { Session, UserProfile } from '../types';
 
 interface DashboardProps {
@@ -9,6 +9,7 @@ interface DashboardProps {
   onViewSession: (session: Session) => void;
   onViewGallery: (session: Session) => void;
   onDeleteSession: (sessionId: string) => void;
+  onSubscribe: () => void;
   userProfile: UserProfile;
   hasActiveAccess?: boolean;
   selectedPlan?: 'subscription' | 'enterprise' | null;
@@ -34,7 +35,7 @@ function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: n
   return <>{display}</>;
 }
 
-export default function Dashboard({ sessions, onNewSession, onViewSession, onViewGallery, onDeleteSession, userProfile, hasActiveAccess = true, selectedPlan = null, trialDaysLeft = null }: DashboardProps) {
+export default function Dashboard({ sessions, onNewSession, onViewSession, onViewGallery, onDeleteSession, onSubscribe, userProfile, hasActiveAccess = true, selectedPlan = null, trialDaysLeft = null }: DashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [sessionToDelete, setSessionToDelete] = useState<{ id: string, name: string } | null>(null);
@@ -117,10 +118,8 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
               Langganan Anda belum aktif. Untuk memulai sesi baru, silakan berlangganan di aexon.id
             </p>
           </div>
-          <a
-            href="https://aexon.id/harga"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={onSubscribe}
             style={{
               flexShrink: 0,
               display: 'flex',
@@ -134,13 +133,15 @@ export default function Dashboard({ sessions, onNewSession, onViewSession, onVie
               fontWeight: 700,
               border: 'none',
               cursor: 'pointer',
-              textDecoration: 'none',
               whiteSpace: 'nowrap',
+              fontFamily: 'Outfit, sans-serif',
+              transition: 'background-color 150ms',
             }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#D97706'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F59E0B'}
           >
             Berlangganan Sekarang
-            <ExternalLink style={{ width: 14, height: 14 }} />
-          </a>
+          </button>
         </motion.div>
       )}
 

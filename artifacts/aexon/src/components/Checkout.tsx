@@ -9,7 +9,6 @@ import {
   MessageCircle,
   ExternalLink,
   Mail as MailIcon,
-  Receipt,
   Tag,
   Calendar,
   Building2,
@@ -49,6 +48,7 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
   const [processing, setProcessing] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [xenditInvoiceUrl, setXenditInvoiceUrl] = useState<string | null>(null);
 
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
@@ -146,19 +146,62 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Sesi login tidak ditemukan. Silakan login ulang.');
 
-      const { error: insertError } = await supabase.from('payment_logs').insert({
+      const insertPayload: Record<string, any> = {
         user_id: user.id,
         plan_id: plan.id,
         amount: totalPrice,
         status: 'pending',
-        order_id: newOrderId,
-        billing_cycle: plan.billing_cycle,
-        ...(appliedPromo ? { promo_code: appliedPromo.code, promo_discount: promoDiscount } : {}),
-      });
+      };
+
+      const { error: insertError } = await supabase.from('payment_logs').insert(insertPayload);
 
       if (insertError) {
         console.error('Insert error:', insertError);
         throw new Error('Gagal menyimpan pesanan ke database.');
+      }
+
+      const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+      const apiBase = `${window.location.origin}${baseUrl}`;
+
+      try {
+        const xenditRes = await fetch(`${apiBase}/api/xendit/create-invoice`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: newOrderId,
+            amount: totalPrice,
+            payerEmail: userEmail,
+            description: `Langganan Aexon - ${plan.products?.name} (${isAnnual ? 'Tahunan' : 'Bulanan'})`,
+            planName: plan.products?.name || 'Aexon',
+            billingCycle: plan.billing_cycle,
+            userName,
+            promoCode: appliedPromo?.code || null,
+            promoDiscount: promoDiscount || 0,
+            successRedirectUrl: window.location.origin + baseUrl,
+            failureRedirectUrl: window.location.origin + baseUrl,
+          }),
+        });
+
+        const xenditData = await xenditRes.json();
+
+        if (xenditRes.ok && xenditData.invoiceUrl) {
+          try {
+            await supabase.from('payment_logs').update({
+              xendit_invoice_id: xenditData.invoiceId,
+              xendit_invoice_url: xenditData.invoiceUrl,
+            }).eq('order_id', newOrderId);
+          } catch (_) {
+          }
+
+          window.open(xenditData.invoiceUrl, '_blank');
+          setOrderId(newOrderId);
+          setXenditInvoiceUrl(xenditData.invoiceUrl);
+          setOrderPlaced(true);
+          showToast('Invoice Xendit berhasil dibuat!', 'success');
+          return;
+        }
+      } catch (xenditErr) {
+        console.warn('Xendit not available, falling back to manual:', xenditErr);
       }
 
       setOrderId(newOrderId);
@@ -204,7 +247,10 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
             Pesanan Dibuat
           </h2>
           <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 8 }}>
-            Pesanan Anda telah berhasil dibuat. Silakan lakukan pembayaran untuk mengaktifkan langganan.
+            {xenditInvoiceUrl
+              ? 'Invoice pembayaran Anda sudah siap. Klik tombol di bawah untuk menyelesaikan pembayaran.'
+              : 'Pesanan Anda telah berhasil dibuat. Silakan lakukan pembayaran untuk mengaktifkan langganan.'
+            }
           </p>
 
           <div style={{
@@ -218,56 +264,83 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
             </div>
           </div>
 
-          <div style={{
-            backgroundColor: '#F0F9FF', borderRadius: 12,
-            padding: 16, marginBottom: 24, textAlign: 'left',
-            border: '1px solid #BAE6FD',
-          }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35', marginBottom: 8 }}>
-              Transfer ke:
+          {xenditInvoiceUrl ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+              <a
+                href={xenditInvoiceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  width: '100%', padding: '16px 0', backgroundColor: '#0C1E35', color: '#fff',
+                  fontWeight: 800, borderRadius: 14, fontSize: 16, textDecoration: 'none',
+                  transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif',
+                  boxShadow: '0 4px 20px rgba(12,30,53,0.25)',
+                }}
+              >
+                <CreditCard style={{ width: 18, height: 18 }} />
+                Bayar Sekarang — {formatRupiah(totalPrice)}
+                <ExternalLink style={{ width: 14, height: 14, opacity: 0.6 }} />
+              </a>
+              <p style={{ textAlign: 'center', fontSize: 12, color: '#94A3B8', lineHeight: 1.5 }}>
+                Anda akan diarahkan ke halaman pembayaran Xendit yang aman.
+                <br />Tersedia: Virtual Account, E-Wallet, Kartu Kredit, QRIS, dll.
+              </p>
             </div>
-            <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.8 }}>
-              Bank BCA — <strong>8730 4567 890</strong><br />
-              a.n. <strong>PT Aexon Digital Indonesia</strong><br />
-              Jumlah: <strong>{formatRupiah(totalPrice)}</strong>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div style={{
+                backgroundColor: '#F0F9FF', borderRadius: 12,
+                padding: 16, marginBottom: 24, textAlign: 'left',
+                border: '1px solid #BAE6FD',
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35', marginBottom: 8 }}>
+                  Transfer ke:
+                </div>
+                <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.8 }}>
+                  Bank BCA — <strong>8730 4567 890</strong><br />
+                  a.n. <strong>PT Aexon Digital Indonesia</strong><br />
+                  Jumlah: <strong>{formatRupiah(totalPrice)}</strong>
+                </div>
+              </div>
 
-          <p style={{ fontSize: 12, color: '#94A3B8', marginBottom: 20, lineHeight: 1.6 }}>
-            Setelah transfer, kirim bukti pembayaran ke tim Aexon untuk verifikasi:
-          </p>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginBottom: 20, lineHeight: 1.6 }}>
+                Setelah transfer, kirim bukti pembayaran ke tim Aexon untuk verifikasi:
+              </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-            <a
-              href={`https://wa.me/6281234567890?text=${encodeURIComponent(`Halo Aexon, saya ingin konfirmasi pembayaran.\nOrder ID: ${orderId}\nNama: ${userName}\nEmail: ${userEmail}\nPaket: ${plan.products?.name} (${isAnnual ? 'Tahunan' : 'Bulanan'})\nTotal: ${formatRupiah(totalPrice)}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                width: '100%', padding: '14px 0', backgroundColor: '#10B981', color: '#fff',
-                fontWeight: 700, borderRadius: 12, fontSize: 14, textDecoration: 'none',
-                transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif',
-              }}
-            >
-              <MessageCircle style={{ width: 16, height: 16 }} />
-              Konfirmasi via WhatsApp
-              <ExternalLink style={{ width: 14, height: 14, opacity: 0.6 }} />
-            </a>
-            <a
-              href={`mailto:cs@aexon.id?subject=Konfirmasi Pembayaran ${orderId}&body=${encodeURIComponent(`Order ID: ${orderId}\nNama: ${userName}\nEmail: ${userEmail}\nPaket: ${plan.products?.name} (${isAnnual ? 'Tahunan' : 'Bulanan'})\nTotal: ${formatRupiah(totalPrice)}\n\n(Lampirkan bukti transfer)`)}`}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                width: '100%', padding: '14px 0', border: '1px solid #E2E8F0',
-                color: '#475569', fontWeight: 700, borderRadius: 12, fontSize: 14,
-                textDecoration: 'none', backgroundColor: '#fff', transition: 'background-color 0.15s',
-                fontFamily: 'Outfit, sans-serif',
-              }}
-            >
-              <MailIcon style={{ width: 16, height: 16 }} />
-              Kirim Email Konfirmasi
-              <ExternalLink style={{ width: 14, height: 14, opacity: 0.4 }} />
-            </a>
-          </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                <a
+                  href={`https://wa.me/6281234567890?text=${encodeURIComponent(`Halo Aexon, saya ingin konfirmasi pembayaran.\nOrder ID: ${orderId}\nNama: ${userName}\nEmail: ${userEmail}\nPaket: ${plan.products?.name} (${isAnnual ? 'Tahunan' : 'Bulanan'})\nTotal: ${formatRupiah(totalPrice)}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    width: '100%', padding: '14px 0', backgroundColor: '#10B981', color: '#fff',
+                    fontWeight: 700, borderRadius: 12, fontSize: 14, textDecoration: 'none',
+                    transition: 'background-color 0.15s', fontFamily: 'Outfit, sans-serif',
+                  }}
+                >
+                  <MessageCircle style={{ width: 16, height: 16 }} />
+                  Konfirmasi via WhatsApp
+                  <ExternalLink style={{ width: 14, height: 14, opacity: 0.6 }} />
+                </a>
+                <a
+                  href={`mailto:cs@aexon.id?subject=Konfirmasi Pembayaran ${orderId}&body=${encodeURIComponent(`Order ID: ${orderId}\nNama: ${userName}\nEmail: ${userEmail}\nPaket: ${plan.products?.name} (${isAnnual ? 'Tahunan' : 'Bulanan'})\nTotal: ${formatRupiah(totalPrice)}\n\n(Lampirkan bukti transfer)`)}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    width: '100%', padding: '14px 0', border: '1px solid #E2E8F0',
+                    color: '#475569', fontWeight: 700, borderRadius: 12, fontSize: 14,
+                    textDecoration: 'none', backgroundColor: '#fff', transition: 'background-color 0.15s',
+                    fontFamily: 'Outfit, sans-serif',
+                  }}
+                >
+                  <MailIcon style={{ width: 16, height: 16 }} />
+                  Kirim Email Konfirmasi
+                  <ExternalLink style={{ width: 14, height: 14, opacity: 0.4 }} />
+                </a>
+              </div>
+            </>
+          )}
 
           <button
             onClick={onBack}
@@ -419,18 +492,18 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
               }}>
                 <div style={{
                   width: 40, height: 40, borderRadius: 10,
-                  backgroundColor: '#F1F5F9', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
+                  background: 'linear-gradient(135deg, #0038A8, #00D4FF)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                 }}>
-                  <Receipt style={{ width: 18, height: 18, color: '#0C1E35' }} />
+                  <CreditCard style={{ width: 18, height: 18, color: '#fff' }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>
-                    Transfer Bank (BCA)
+                    Xendit Payment Gateway
                   </div>
                   <div style={{ fontSize: 12, color: '#64748B' }}>
-                    Konfirmasi manual via WhatsApp / Email
+                    VA, E-Wallet, Kartu Kredit, QRIS, Retail Outlet
                   </div>
                 </div>
                 <div style={{
@@ -440,6 +513,20 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
                 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#fff' }} />
                 </div>
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                marginTop: 10, flexWrap: 'wrap',
+              }}>
+                {['BCA', 'BNI', 'Mandiri', 'GoPay', 'OVO', 'DANA', 'QRIS'].map(method => (
+                  <span key={method} style={{
+                    fontSize: 10, fontWeight: 600, color: '#94A3B8',
+                    backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0',
+                    padding: '3px 8px', borderRadius: 6,
+                  }}>
+                    {method}
+                  </span>
+                ))}
               </div>
             </motion.div>
 
