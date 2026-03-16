@@ -445,7 +445,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
       <div className="print:hidden" style={{
         backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
         padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8,
-        flexShrink: 0,
+        flexShrink: 0, overflowX: 'auto',
       }}>
         {pages.map((page, index) => (
           <button
@@ -458,6 +458,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
               color: activePageId === page.id ? '#ffffff' : '#64748B',
               fontFamily: 'Plus Jakarta Sans, sans-serif',
               display: 'flex', alignItems: 'center', gap: 6,
+              whiteSpace: 'nowrap', flexShrink: 0,
             }}
           >
             {page.name}
@@ -477,6 +478,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             border: '1px dashed #CBD5E1', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 4,
             transition: 'all 150ms', fontFamily: 'Plus Jakarta Sans, sans-serif',
+            whiteSpace: 'nowrap', flexShrink: 0,
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#0C1E35'; e.currentTarget.style.color = '#0C1E35'; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#CBD5E1'; e.currentTarget.style.color = '#94A3B8'; }}
@@ -497,13 +499,13 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
           {/* Page Name */}
           <div>
             <div style={sectionLabelStyle}>Nama Halaman</div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
               <input
                 type="text"
                 value={activePage.name}
                 onChange={(e) => updateActivePage({ name: e.target.value })}
                 style={{
-                  flex: 1, padding: '10px 14px', backgroundColor: '#F8FAFC',
+                  flex: 1, minWidth: 0, padding: '10px 14px', backgroundColor: '#F8FAFC',
                   border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13,
                   color: '#0C1E35', outline: 'none',
                   fontFamily: 'Plus Jakarta Sans, sans-serif',
@@ -516,15 +518,17 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                 <button
                   onClick={() => handleDeletePage(activePageId)}
                   style={{
-                    padding: '0 14px', backgroundColor: '#FEF2F2', color: '#DC2626',
+                    padding: '0 12px', backgroundColor: '#FEF2F2', color: '#DC2626',
                     border: '1px solid #FECACA', borderRadius: 12, fontSize: 11,
                     fontWeight: 700, cursor: 'pointer', transition: 'all 150ms',
                     fontFamily: 'Outfit, sans-serif',
+                    flexShrink: 0, whiteSpace: 'nowrap',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#EF4444'; e.currentTarget.style.color = '#fff'; }}
                   onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; }}
                 >
-                  Hapus
+                  <Trash2 style={{ width: 14, height: 14 }} />
                 </button>
               )}
             </div>
@@ -845,275 +849,366 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
           ref={printAreaRef}
           className="print:p-0 print:bg-white print:block print:overflow-visible custom-scrollbar"
           style={{
-            flex: 1, backgroundColor: '#F1F5F9', overflowY: 'auto',
-            padding: 32, display: 'flex', flexDirection: 'column',
+            flex: 1, backgroundColor: '#E8ECF1', overflowY: 'auto',
+            padding: 40, display: 'flex', flexDirection: 'column',
             alignItems: 'center', gap: 48,
           }}
         >
-          {pages.map((page) => (
-            <div 
+          {pages.map((page) => {
+            const isActive = activePageId === page.id;
+            const pageIdx = pages.indexOf(page);
+            return (
+            <div
               key={page.id}
-              className={`print-container print:opacity-100 print:grayscale-0 print:scale-100 print:ring-0 print:shadow-none`}
-              style={{ 
-                backgroundColor: '#ffffff',
-                borderRadius: 8,
-                boxShadow: activePageId === page.id
-                  ? '0 8px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)'
-                  : '0 4px 20px rgba(0,0,0,0.06)',
-                padding: 60,
+              style={{
                 position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                transition: 'all 500ms',
-                opacity: activePageId === page.id ? 1 : 0.3,
-                filter: activePageId === page.id ? 'none' : 'grayscale(1)',
-                transform: activePageId === page.id ? 'scale(1)' : 'scale(0.95)',
-                width: getPageDimensions(page).width, 
-                minHeight: getPageDimensions(page).minHeight,
-                cursor: activePageId !== page.id ? 'pointer' : 'default',
+                transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+                opacity: isActive ? 1 : 0.25,
+                filter: isActive ? 'none' : 'grayscale(1)',
+                transform: isActive ? 'scale(1)' : 'scale(0.93)',
+                cursor: isActive ? 'default' : 'pointer',
               }}
-              onClick={() => { if (activePageId !== page.id) setActivePageId(page.id); }}
+              onClick={() => { if (!isActive) setActivePageId(page.id); }}
             >
-              
-              {/* Navy Top Accent Bar */}
-              <div className="absolute top-0 left-0 right-0 h-2 bg-[#0C1E35]" />
+              <div
+                className={`print-container print:opacity-100 print:grayscale-0 print:scale-100 print:ring-0 print:shadow-none`}
+                style={{
+                  backgroundColor: '#ffffff',
+                  borderRadius: 4,
+                  boxShadow: isActive
+                    ? '0 25px 60px rgba(12,30,53,0.18), 0 8px 20px rgba(12,30,53,0.08), 0 0 0 1px rgba(12,30,53,0.04)'
+                    : '0 4px 16px rgba(0,0,0,0.06)',
+                  padding: '48px 52px 40px',
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  width: getPageDimensions(page).width,
+                  minHeight: getPageDimensions(page).minHeight,
+                }}
+              >
+                {/* Top accent bar */}
+                <div style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, height: 5,
+                  background: 'linear-gradient(90deg, #0C1E35 0%, #1a3a5c 40%, #0C1E35 100%)',
+                }} />
 
-              {/* Report Header */}
-              <div className="border-b-2 border-[#0C1E35] pb-4 mb-4 flex justify-between items-start print-header mt-2">
-                <div className="flex items-center">
-                  {page.reportType === 'clinical' && selectedHospital?.logoUrl && (
-                    <img src={selectedHospital.logoUrl} alt="Hospital Logo" className="h-20 w-auto mr-6 object-contain" />
-                  )}
-                  <div>
-                    <h1 className="text-2xl font-black text-[#0C1E35] tracking-tight mb-1 uppercase">
-                      {page.reportType === 'clinical' ? 'Laporan Endoskopi' : 'Academic Case Report'}
-                    </h1>
-                    {page.reportType === 'clinical' && selectedHospital ? (
-                      <div>
-                        <p className="text-[#0C1E35] font-black text-base leading-tight">{selectedHospital.name}</p>
-                        <p className="text-slate-600 text-xs mt-1 max-w-md leading-relaxed">{selectedHospital.address}</p>
-                        <div className="flex flex-wrap gap-x-4 text-[#0C1E35]/60 text-[10px] mt-2 font-bold uppercase tracking-wider">
-                          {selectedHospital.phone && <span>Telp: {selectedHospital.phone}</span>}
-                          {selectedHospital.fax && <span>Fax: {selectedHospital.fax}</span>}
-                          {selectedHospital.website && <span>Web: {selectedHospital.website}</span>}
-                          {selectedHospital.email && <span>Email: {selectedHospital.email}</span>}
-                        </div>
-                      </div>
-                    ) : page.reportType === 'clinical' ? (
-                      <p className="text-slate-400 text-xs mt-1 italic">Kop surat belum dikonfigurasi.</p>
-                    ) : (
-                      <p className="text-[#0C1E35]/60 font-bold text-sm uppercase tracking-widest">Aexon Medical Documentation</p>
+                {/* Report Header */}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                  paddingBottom: 16, marginBottom: 16, marginTop: 4,
+                  borderBottom: '2.5px solid #0C1E35',
+                }} className="print-header">
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {page.reportType === 'clinical' && selectedHospital?.logoUrl && (
+                      <img src={selectedHospital.logoUrl} alt="Hospital Logo" style={{
+                        height: 72, width: 'auto', marginRight: 20, objectFit: 'contain',
+                      }} />
                     )}
+                    <div>
+                      <div style={{
+                        fontSize: 9, fontWeight: 800, color: 'rgba(12,30,53,0.4)',
+                        textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: 4,
+                      }}>
+                        {page.reportType === 'clinical' ? 'Laporan Medis' : 'Academic Report'}
+                      </div>
+                      <h1 style={{
+                        fontSize: 20, fontWeight: 900, color: '#0C1E35',
+                        letterSpacing: '-0.02em', marginBottom: 6, lineHeight: 1.1,
+                        textTransform: 'uppercase',
+                      }}>
+                        {page.reportType === 'clinical' ? 'Laporan Endoskopi' : 'Academic Case Report'}
+                      </h1>
+                      {page.reportType === 'clinical' && selectedHospital ? (
+                        <div>
+                          <p style={{ color: '#0C1E35', fontWeight: 800, fontSize: 13, lineHeight: 1.2 }}>{selectedHospital.name}</p>
+                          <p style={{ color: '#475569', fontSize: 10, marginTop: 3, maxWidth: 340, lineHeight: 1.5 }}>{selectedHospital.address}</p>
+                          <div style={{
+                            display: 'flex', flexWrap: 'wrap', gap: '0 14px',
+                            color: 'rgba(12,30,53,0.5)', fontSize: 8.5, marginTop: 6,
+                            fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
+                          }}>
+                            {selectedHospital.phone && <span>Telp: {selectedHospital.phone}</span>}
+                            {selectedHospital.fax && <span>Fax: {selectedHospital.fax}</span>}
+                            {selectedHospital.website && <span>Web: {selectedHospital.website}</span>}
+                            {selectedHospital.email && <span>Email: {selectedHospital.email}</span>}
+                          </div>
+                        </div>
+                      ) : page.reportType === 'clinical' ? (
+                        <p style={{ color: '#94A3B8', fontSize: 10, marginTop: 2, fontStyle: 'italic' }}>Kop surat belum dikonfigurasi.</p>
+                      ) : (
+                        <p style={{ color: 'rgba(12,30,53,0.5)', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.15em' }}>Aexon Medical Documentation</p>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0, paddingTop: 2 }}>
+                    <div style={{
+                      backgroundColor: 'rgba(12,30,53,0.04)', borderRadius: 8,
+                      padding: '10px 14px', border: '1px solid rgba(12,30,53,0.06)',
+                    }}>
+                      <p style={{ fontSize: 8, fontWeight: 800, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 4 }}>Waktu Tindakan</p>
+                      <p style={{ fontSize: 12, fontWeight: 800, color: '#0C1E35' }}>
+                        {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                      {page.reportType === 'clinical' && (
+                        <p style={{ fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.6)', marginTop: 2 }}>
+                          Pukul {session.date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-[#0C1E35]/50 uppercase tracking-widest mb-1">Waktu Tindakan</p>
-                  <p className="text-xs font-black text-[#0C1E35]">
-                    {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </p>
-                  {page.reportType === 'clinical' && (
-                    <p className="text-[10px] font-bold text-[#0C1E35]/70 mt-0.5">
-                      Pukul {session.date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
-                    </p>
-                  )}
-                </div>
-              </div>
 
-              {/* Patient Data / Redacted Data */}
-              <div className="bg-[#0C1E35]/[0.03] border border-[#0C1E35]/10 rounded-lg p-3 mb-4 print-patient-info">
-                {page.reportType === 'clinical' ? (
-                  <div className="grid grid-cols-3 gap-y-1.5 gap-x-6 text-[10px]">
-                    <div>
-                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Nama Pasien</span>
-                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.name}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">No. Rekam Medis</span>
-                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.rmNumber}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Jenis Kelamin</span>
-                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.gender}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Tanggal Lahir</span>
-                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.dob}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Usia Pasien</span>
-                      <span className="font-bold text-[#0C1E35] text-xs">{calculateAge(session.patient.dob)}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Kategori / Lokasi</span>
-                      <span className="font-bold text-[#0C1E35] text-xs">{session.patient.category}</span>
-                    </div>
-                    <div className="col-span-3 pt-1.5 border-t border-[#0C1E35]/10 mt-1 grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Dokter Operator</span>
-                        <span className="font-bold text-[#0C1E35] text-xs">{session.patient.operator}</span>
-                      </div>
-                      <div>
-                        <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Tindakan</span>
-                        <ul className="list-disc list-inside font-bold text-[#0C1E35] text-[10px]">
-                          {session.patient.procedures.filter(p => p).map((p, i) => (
-                            <li key={i}>{p}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="col-span-2 pt-1.5 border-t border-[#0C1E35]/10">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Diagnosis Utama</span>
-                            <span className="font-bold text-[#0C1E35] text-[10px]">{session.patient.diagnosis || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="text-[#0C1E35]/50 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Diagnosis Banding</span>
-                            <span className="font-bold text-[#0C1E35] text-[10px]">{session.patient.differentialDiagnosis || '-'}</span>
+                {/* Patient Data / Redacted Data */}
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(12,30,53,0.025) 0%, rgba(12,30,53,0.04) 100%)',
+                  border: '1px solid rgba(12,30,53,0.08)',
+                  borderRadius: 8, padding: 14, marginBottom: 18,
+                }} className="print-patient-info">
+                  {page.reportType === 'clinical' ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 20px', fontSize: 10 }}>
+                      {[
+                        { label: 'Nama Pasien', value: session.patient.name },
+                        { label: 'No. Rekam Medis', value: session.patient.rmNumber },
+                        { label: 'Jenis Kelamin', value: session.patient.gender },
+                        { label: 'Tanggal Lahir', value: session.patient.dob },
+                        { label: 'Usia Pasien', value: calculateAge(session.patient.dob) },
+                        { label: 'Kategori / Lokasi', value: session.patient.category },
+                      ].map((item, i) => (
+                        <div key={i}>
+                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>{item.label}</span>
+                          <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 11 }}>{item.value}</span>
+                        </div>
+                      ))}
+                      <div style={{ gridColumn: 'span 3', borderTop: '1px solid rgba(12,30,53,0.08)', marginTop: 4, paddingTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <div>
+                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Dokter Operator</span>
+                          <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 11 }}>{session.patient.operator}</span>
+                        </div>
+                        <div>
+                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Tindakan</span>
+                          <ul style={{ listStyleType: 'disc', paddingLeft: 14, margin: 0, fontWeight: 700, color: '#0C1E35', fontSize: 10 }}>
+                            {session.patient.procedures.filter(p => p).map((p, i) => (
+                              <li key={i}>{p}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(12,30,53,0.06)', paddingTop: 8 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                            <div>
+                              <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Diagnosis Utama</span>
+                              <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 10 }}>{session.patient.diagnosis || '-'}</span>
+                            </div>
+                            <div>
+                              <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Diagnosis Banding</span>
+                              <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 10 }}>{session.patient.differentialDiagnosis || '-'}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center text-amber-600 bg-amber-50 p-1.5 rounded border border-amber-200 mb-1">
-                      <ShieldAlert className="w-3.5 h-3.5 mr-2" />
-                      <span className="text-[10px] font-medium">PII Redacted for Academic Use (Gender Preserved)</span>
+                  ) : (
+                    <div>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', color: '#92400E',
+                        backgroundColor: '#FFFBEB', padding: '6px 10px', borderRadius: 6,
+                        border: '1px solid #FDE68A', marginBottom: 10,
+                      }}>
+                        <ShieldAlert style={{ width: 13, height: 13, marginRight: 8, flexShrink: 0 }} />
+                        <span style={{ fontSize: 9, fontWeight: 600 }}>PII Redacted for Academic Use (Gender Preserved)</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 20px', fontSize: 10 }}>
+                        <div>
+                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Case ID</span>
+                          <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 11, fontFamily: 'monospace' }}>{caseId}</span>
+                        </div>
+                        <div>
+                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Jenis Kelamin</span>
+                          <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 11 }}>{session.patient.gender === 'Laki-laki' ? 'M' : 'F'}</span>
+                        </div>
+                        <div style={{ gridColumn: 'span 3', borderTop: '1px solid #E2E8F0', marginTop: 4, paddingTop: 8 }}>
+                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Prosedur Utama</span>
+                          <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 11 }}>{session.patient.procedures[0] || '-'}</span>
+                        </div>
+                        <div style={{ gridColumn: 'span 3', borderTop: '1px solid #F1F5F9', paddingTop: 8 }}>
+                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Diagnosis Akademik</span>
+                          <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 11 }}>{session.patient.diagnosis || '-'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-y-1.5 gap-x-6 text-[10px]">
-                      <div>
-                        <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Case ID</span>
-                        <span className="font-bold text-slate-900 font-mono text-xs">{caseId}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Jenis Kelamin</span>
-                        <span className="font-bold text-slate-900 text-xs">{session.patient.gender === 'Laki-laki' ? 'M' : 'F'}</span>
-                      </div>
-                      <div className="col-span-3 pt-1.5 border-t border-slate-200 mt-1">
-                        <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Prosedur Utama</span>
-                        <span className="font-bold text-slate-900 text-xs">{session.patient.procedures[0] || '-'}</span>
-                      </div>
-                      <div className="col-span-3 pt-1.5 border-t border-slate-100">
-                        <span className="text-slate-500 font-medium block mb-0.5 uppercase tracking-wider text-[8px]">Diagnosis Akademik</span>
-                        <span className="font-bold text-slate-900 text-xs">{session.patient.diagnosis || '-'}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              {/* Photo Grid */}
-              <div className="mb-4 print-section">
-                <h3 className="text-sm font-bold text-[#0C1E35] border-b-2 border-[#0C1E35]/20 pb-1 mb-2 print-section-title flex items-center">
-                  <span className="w-1 h-4 bg-[#0C1E35] rounded-full mr-2 inline-block" />
-                  {page.reportLayout === 'beforeAfter' ? 'Dokumentasi Before / After Surgery' : 
-                   page.reportLayout === 'rightLeft' ? 'Dokumentasi Perbandingan Kanan / Kiri' : 
-                   'Dokumentasi Visual'}
-                </h3>
-                {page.selectedPhotos.length > 0 ? (
-                  <div className={`grid gap-3 print-grid ${page.reportLayout === 'standard' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                    {page.selectedPhotos.map((photo, index) => (
-                      <div key={photo.id} className="space-y-1.5 print-photo-card">
-                        <div className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-[#0C1E35]/15">
-                          <img src={photo.url} alt={`Capture ${index + 1}`} className="w-full h-full object-cover" />
-                          {page.reportLayout !== 'standard' && (
-                            <div className="absolute top-2 left-2 px-2 py-1 bg-[#0C1E35]/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-widest">
-                              {page.reportLayout === 'beforeAfter' 
-                                ? (index % 2 === 0 ? 'Before' : 'After')
-                                : (index % 2 === 0 ? 'Kanan' : 'Kiri')}
+                {/* Photo Grid */}
+                <div style={{ marginBottom: 18 }} className="print-section">
+                  <h3 style={{
+                    fontSize: 12, fontWeight: 800, color: '#0C1E35',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    paddingBottom: 6, marginBottom: 10,
+                    borderBottom: '2px solid rgba(12,30,53,0.12)',
+                  }} className="print-section-title">
+                    <span style={{ width: 3, height: 16, backgroundColor: '#0C1E35', borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
+                    {page.reportLayout === 'beforeAfter' ? 'Dokumentasi Before / After Surgery' :
+                     page.reportLayout === 'rightLeft' ? 'Dokumentasi Perbandingan Kanan / Kiri' :
+                     'Dokumentasi Visual'}
+                  </h3>
+                  {page.selectedPhotos.length > 0 ? (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: page.reportLayout === 'standard' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                      gap: 10,
+                    }} className="print-grid">
+                      {page.selectedPhotos.map((photo, index) => (
+                        <div key={photo.id} className="print-photo-card">
+                          <div style={{
+                            position: 'relative', aspectRatio: '16/9',
+                            backgroundColor: '#F1F5F9', borderRadius: 6,
+                            overflow: 'hidden', border: '1px solid rgba(12,30,53,0.1)',
+                          }}>
+                            <img src={photo.url} alt={`Capture ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            {page.reportLayout !== 'standard' && (
+                              <div style={{
+                                position: 'absolute', top: 6, left: 6,
+                                padding: '3px 8px', backgroundColor: 'rgba(12,30,53,0.85)',
+                                backdropFilter: 'blur(4px)', borderRadius: 4,
+                                fontSize: 7, fontWeight: 900, color: '#ffffff',
+                                textTransform: 'uppercase', letterSpacing: '0.15em',
+                              }}>
+                                {page.reportLayout === 'beforeAfter'
+                                  ? (index % 2 === 0 ? 'Before' : 'After')
+                                  : (index % 2 === 0 ? 'Kanan' : 'Kiri')}
+                              </div>
+                            )}
+                            <div style={{
+                              position: 'absolute', bottom: 4, right: 6,
+                              fontSize: 7, fontWeight: 800, color: 'rgba(255,255,255,0.7)',
+                              textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                            }}>
+                              {index + 1}/{page.selectedPhotos.length}
+                            </div>
+                          </div>
+                          {page.photoCaptions[photo.id] && (
+                            <div style={{
+                              backgroundColor: 'rgba(12,30,53,0.025)',
+                              border: '1px solid rgba(12,30,53,0.06)',
+                              borderRadius: 4, padding: '5px 8px', marginTop: 5,
+                            }}>
+                              <p style={{ fontSize: 8, lineHeight: 1.4, fontWeight: 500, color: '#475569', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
+                                {page.photoCaptions[photo.id]}
+                              </p>
                             </div>
                           )}
                         </div>
-                        {page.photoCaptions[photo.id] && (
-                          <div className="bg-[#0C1E35]/[0.03] border border-[#0C1E35]/10 rounded-md p-1.5 min-h-[30px]">
-                            <p className="text-[8px] leading-tight font-medium text-slate-700 whitespace-pre-wrap break-words">
-                              {page.photoCaptions[photo.id]}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{
-                    height: 96, backgroundColor: '#F8FAFC', border: '1px dashed #CBD5E1',
-                    borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <p style={{ fontSize: 12, color: '#94A3B8' }}>Tidak ada foto yang dipilih</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Video Documentation Section */}
-              {activePage.selectedVideos.length > 0 && (
-                <div className="mb-4 print-section">
-                  <h3 className="text-sm font-bold text-[#0C1E35] border-b-2 border-[#0C1E35]/20 pb-1 mb-2 print-section-title flex items-center">
-                    <span className="w-1 h-4 bg-[#0C1E35] rounded-full mr-2 inline-block" />
-                    Dokumentasi Video
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3 print-grid">
-                    {activePage.selectedVideos.map((video, index) => (
-                      <div key={video.id} className="space-y-1.5 print-photo-card">
-                        <div className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center">
-                          <Video className="w-8 h-8 text-slate-300" />
-                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/5">
-                            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Video {index + 1}</span>
-                            <span className="text-[8px] text-slate-400 mt-1">{video.timestamp.toLocaleTimeString()}</span>
-                          </div>
-                        </div>
-                        <div className="bg-slate-50 border border-slate-100 rounded-md p-1.5 text-center">
-                          <p className="text-[8px] leading-tight font-bold text-slate-500 uppercase tracking-tighter">
-                            Tersedia dalam format digital (H.265 HEVC)
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Clinical Notes */}
-              <div className="mb-4 flex-1 print-section">
-                <h3 className="text-sm font-bold text-[#0C1E35] border-b-2 border-[#0C1E35]/20 pb-1 mb-2 print-section-title flex items-center">
-                  <span className="w-1 h-4 bg-[#0C1E35] rounded-full mr-2 inline-block" />
-                  Catatan Klinis
-                </h3>
-                <div className="prose prose-sm prose-slate max-w-none text-[10px]">
-                  {page.clinicalNotes ? (
-                    <p className="whitespace-pre-wrap text-slate-700 leading-tight">{page.clinicalNotes}</p>
+                      ))}
+                    </div>
                   ) : (
-                    <p className="text-slate-400 italic">Tidak ada catatan klinis.</p>
+                    <div style={{
+                      height: 80, backgroundColor: '#FAFBFC', border: '1.5px dashed #CBD5E1',
+                      borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>Tidak ada foto yang dipilih</p>
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {/* Signature Area */}
-              {page.reportType === 'clinical' && (
-                <div className="mt-auto pt-4 flex justify-end">
-                  <div className="text-center w-48">
-                    <p className="text-[10px] text-[#0C1E35]/60 mb-8">Dokter Pemeriksa,</p>
-                    <div className="border-b-2 border-[#0C1E35]/30 mb-1" />
-                    <p className="font-bold text-[#0C1E35] text-xs">{session.patient.operator}</p>
+                {/* Video Documentation Section */}
+                {page.selectedVideos.length > 0 && (
+                  <div style={{ marginBottom: 18 }} className="print-section">
+                    <h3 style={{
+                      fontSize: 12, fontWeight: 800, color: '#0C1E35',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      paddingBottom: 6, marginBottom: 10,
+                      borderBottom: '2px solid rgba(12,30,53,0.12)',
+                    }} className="print-section-title">
+                      <span style={{ width: 3, height: 16, backgroundColor: '#0C1E35', borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
+                      Dokumentasi Video
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }} className="print-grid">
+                      {page.selectedVideos.map((video, index) => (
+                        <div key={video.id} className="print-photo-card">
+                          <div style={{
+                            position: 'relative', aspectRatio: '16/9',
+                            backgroundColor: '#F1F5F9', borderRadius: 6,
+                            overflow: 'hidden', border: '1px solid #E2E8F0',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <Video style={{ width: 28, height: 28, color: '#CBD5E1' }} />
+                            <div style={{
+                              position: 'absolute', inset: 0, display: 'flex',
+                              flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                              backgroundColor: 'rgba(15,23,42,0.03)',
+                            }}>
+                              <span style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Video {index + 1}</span>
+                              <span style={{ fontSize: 7.5, color: '#94A3B8', marginTop: 3 }}>{video.timestamp.toLocaleTimeString()}</span>
+                            </div>
+                          </div>
+                          <div style={{
+                            backgroundColor: '#F8FAFC', border: '1px solid #F1F5F9',
+                            borderRadius: 4, padding: '4px 8px', textAlign: 'center', marginTop: 5,
+                          }}>
+                            <p style={{ fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                              Tersedia dalam format digital (H.265 HEVC)
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Clinical Notes */}
+                <div style={{ marginBottom: 18, flex: 1 }} className="print-section">
+                  <h3 style={{
+                    fontSize: 12, fontWeight: 800, color: '#0C1E35',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    paddingBottom: 6, marginBottom: 10,
+                    borderBottom: '2px solid rgba(12,30,53,0.12)',
+                  }} className="print-section-title">
+                    <span style={{ width: 3, height: 16, backgroundColor: '#0C1E35', borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
+                    Catatan Klinis
+                  </h3>
+                  <div style={{ fontSize: 10 }}>
+                    {page.clinicalNotes ? (
+                      <p style={{ whiteSpace: 'pre-wrap', color: '#475569', lineHeight: 1.6, margin: 0 }}>{page.clinicalNotes}</p>
+                    ) : (
+                      <p style={{ color: '#94A3B8', fontStyle: 'italic', margin: 0 }}>Tidak ada catatan klinis.</p>
+                    )}
                   </div>
                 </div>
-              )}
 
-              {/* Footer */}
-              <div className="mt-8 pt-3 border-t-2 border-[#0C1E35]/15 text-center text-[10px] text-[#0C1E35]/40 flex items-center justify-center gap-2">
-                <span className="w-6 h-[2px] bg-[#0C1E35]/20 inline-block" />
-                <p>Dihasilkan oleh <span className="font-aexon text-[#0C1E35]/60">Aexon</span> • {new Date().toLocaleString('id-ID')} • Halaman {pages.indexOf(page) + 1} dari {pages.length}</p>
-                <span className="w-6 h-[2px] bg-[#0C1E35]/20 inline-block" />
+                {/* Signature Area */}
+                {page.reportType === 'clinical' && (
+                  <div style={{ marginTop: 'auto', paddingTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ textAlign: 'center', width: 180 }}>
+                      <p style={{ fontSize: 9, color: 'rgba(12,30,53,0.5)', marginBottom: 48 }}>Dokter Pemeriksa,</p>
+                      <div style={{ borderBottom: '2px solid rgba(12,30,53,0.25)', marginBottom: 6 }} />
+                      <p style={{ fontWeight: 800, color: '#0C1E35', fontSize: 11, margin: 0 }}>{session.patient.operator}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div style={{
+                  marginTop: 24, paddingTop: 12,
+                  borderTop: '1.5px solid rgba(12,30,53,0.1)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}>
+                  <span style={{ width: 20, height: 1.5, backgroundColor: 'rgba(12,30,53,0.15)', display: 'inline-block' }} />
+                  <p style={{ fontSize: 8, color: 'rgba(12,30,53,0.35)', fontWeight: 600, margin: 0 }}>
+                    Dihasilkan oleh <span className="font-aexon" style={{ color: 'rgba(12,30,53,0.55)' }}>Aexon</span> &bull; {new Date().toLocaleString('id-ID')} &bull; Halaman {pageIdx + 1} dari {pages.length}
+                  </p>
+                  <span style={{ width: 20, height: 1.5, backgroundColor: 'rgba(12,30,53,0.15)', display: 'inline-block' }} />
+                </div>
+
+                {/* Bottom accent */}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(12,30,53,0.2) 20%, rgba(12,30,53,0.2) 80%, transparent 100%)',
+                }} />
               </div>
-
-              {/* Navy Bottom Accent */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#0C1E35]/30" />
             </div>
-          ))}
-
-          {/* Page indicator */}
-          <p style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginTop: -32 }}>
-            Halaman {pages.findIndex(p => p.id === activePageId) + 1} dari {pages.length}
-          </p>
+            );
+          })}
         </div>
       </div>
 
