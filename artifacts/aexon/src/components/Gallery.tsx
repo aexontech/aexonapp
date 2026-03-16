@@ -137,7 +137,11 @@ export default function Gallery({ session, userId, onBack, onUpdateSession, onVi
       const a = document.createElement('a');
       a.href = url;
       const dateStr = new Date().toISOString().slice(0, 10);
-      a.download = `Aexon_Case_${session.patient.rmNumber}_${dateStr}.zip`;
+      let fnHash = 0;
+      const fnSrc = `${session.id}_${userId}_${dateStr}`;
+      for (let c = 0; c < fnSrc.length; c++) { fnHash = ((fnHash << 5) - fnHash) + fnSrc.charCodeAt(c); fnHash |= 0; }
+      const fileId = Math.abs(fnHash).toString(36).toUpperCase().slice(0, 6);
+      a.download = `Aexon_Case_${fileId}_${dateStr}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
