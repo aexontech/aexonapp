@@ -41,9 +41,10 @@ interface CheckoutProps {
   userEmail: string;
   userName: string;
   onBack: () => void;
+  onSuccess?: () => void;
 }
 
-export default function Checkout({ plan, userEmail, userName, onBack }: CheckoutProps) {
+export default function Checkout({ plan, userEmail, userName, onBack, onSuccess }: CheckoutProps) {
   const { showToast } = useToast();
   const [processing, setProcessing] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -198,6 +199,7 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
           setXenditInvoiceUrl(xenditData.invoiceUrl);
           setOrderPlaced(true);
           showToast('Invoice Xendit berhasil dibuat!', 'success');
+          onSuccess?.();
           return;
         }
       } catch (xenditErr) {
@@ -207,6 +209,7 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
       setOrderId(newOrderId);
       setOrderPlaced(true);
       showToast('Pesanan berhasil dibuat!', 'success');
+      onSuccess?.();
     } catch (err: any) {
       console.error('Failed to place order:', err);
       showToast(err?.message || 'Gagal membuat pesanan. Silakan coba lagi.', 'error');

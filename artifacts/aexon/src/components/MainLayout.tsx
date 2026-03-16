@@ -39,6 +39,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
   const menuItems = isAdmin ? [
     { id: 'admin-dashboard', label: 'Admin Console', icon: <LayoutDashboard style={{ width: 20, height: 20 }} /> },
     { id: 'admin-kop-surat', label: 'Kop Surat Institusi', icon: <FileText style={{ width: 20, height: 20 }} /> },
+    { id: 'plan-selection', label: 'Langganan', icon: <CreditCard style={{ width: 20, height: 20 }} /> },
   ] : [
     { id: 'dashboard', label: 'Beranda', icon: <LayoutDashboard style={{ width: 20, height: 20 }} /> },
     { id: 'session-form', label: 'Mulai Sesi Baru', icon: <Plus style={{ width: 20, height: 20 }} /> },

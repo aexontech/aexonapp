@@ -80,6 +80,58 @@ function AppContent() {
 
   const hasActiveAccess = selectedPlan === 'subscription' || selectedPlan === 'enterprise' || (trialDaysLeft !== null && trialDaysLeft > 0);
 
+  const refreshSubscriptionStatus = async () => {
+    if (!userProfile) return;
+    try {
+      const { supabase } = await import('./lib/supabase');
+      if (!supabase) return;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('enterprise_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.enterprise_id) {
+        setSelectedPlan('enterprise');
+        setTrialDaysLeft(null);
+        return;
+      }
+
+      const { data: subscriptions } = await supabase
+        .from('subscriptions')
+        .select('*, product_plans(*), products(*)')
+        .eq('doctor_id', user.id)
+        .in('status', ['active', 'trial'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const subscription = subscriptions && subscriptions.length > 0 ? subscriptions[0] : null;
+
+      if (subscription) {
+        setSelectedPlan('subscription');
+        if (subscription.status === 'trial' && subscription.current_period_end) {
+          const end = new Date(subscription.current_period_end);
+          const now = new Date();
+          setTrialDaysLeft(Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))));
+        } else {
+          setTrialDaysLeft(null);
+        }
+      } else {
+        setSelectedPlan(null);
+      }
+    } catch (err) {
+      console.error('Failed to refresh subscription status:', err);
+    }
+  };
+
+  const handleCheckoutSuccess = () => {
+    refreshSubscriptionStatus();
+  };
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isRecordingActive) {
@@ -414,6 +466,7 @@ function AppContent() {
           onDeleteDoctor={handleDeleteDoctor}
           onToggleDoctorStatus={handleToggleDoctorStatus}
           onManageSubscription={() => setCurrentView('manage-subscription')}
+          onSubscribe={() => setCurrentView('plan-selection')}
         />
       )}
 
@@ -444,7 +497,10 @@ function AppContent() {
       )}
 
       {currentView === 'manage-subscription' && (
-        <ManageSubscription onBack={() => setCurrentView('admin-dashboard')} />
+        <ManageSubscription
+          onBack={() => setCurrentView('admin-dashboard')}
+          onSubscribe={() => setCurrentView('plan-selection')}
+        />
       )}
       
       {currentView === 'session-form' && (
@@ -502,7 +558,7 @@ function AppContent() {
             setCheckoutPlan(plan);
             setCurrentView('checkout');
           }}
-          onBack={() => setCurrentView('dashboard')}
+          onBack={() => setCurrentView(userProfile?.role === 'admin' ? 'admin-dashboard' : 'dashboard')}
         />
       )}
 
@@ -527,8 +583,9 @@ function AppContent() {
         <Checkout
           plan={checkoutPlan}
           userEmail={userProfile.email}
-          userName={userProfile.full_name || userProfile.email}
+          userName={userProfile.full_name ?? userProfile.name ?? userProfile.email}
           onBack={() => setCurrentView('plan-selection')}
+          onSuccess={handleCheckoutSuccess}
         />
       )}
     </MainLayout>

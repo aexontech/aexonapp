@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, CreditCard, Users, Zap, ShieldCheck, Calendar, ArrowRight, CheckCircle2, Building2, BarChart3, X, Plus, AlertCircle, TrendingUp, Clock, Download } from 'lucide-react';
+import { ChevronLeft, CreditCard, Users, Zap, ShieldCheck, Calendar, ArrowRight, CheckCircle2, Building2, BarChart3, X, Plus, AlertCircle, TrendingUp, Clock, Download, Sparkles, Crown } from 'lucide-react';
 
 interface ManageSubscriptionProps {
   onBack: () => void;
+  onSubscribe?: () => void;
 }
 
-export default function ManageSubscription({ onBack }: ManageSubscriptionProps) {
+export default function ManageSubscription({ onBack, onSubscribe }: ManageSubscriptionProps) {
   const [activeModal, setActiveModal] = useState<'seats' | 'payment' | 'billing' | null>(null);
 
   const subscriptionInfo = {
@@ -160,6 +161,54 @@ export default function ManageSubscription({ onBack }: ManageSubscriptionProps) 
               </button>
             </div>
           </div>
+
+          {onSubscribe && (
+            <div style={{
+              background: 'linear-gradient(135deg, #0C1E35 0%, #1a3a5f 100%)',
+              borderRadius: 24, padding: 28, position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{
+                position: 'absolute', top: -30, right: -30, width: 120, height: 120,
+                borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%)',
+              }} />
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10,
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(245,158,11,0.3)',
+                  }}>
+                    <Crown style={{ width: 18, height: 18, color: '#fff' }} />
+                  </div>
+                  <h4 style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', fontFamily: 'Outfit, sans-serif' }}>
+                    Perpanjang Langganan
+                  </h4>
+                </div>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: 16 }}>
+                  Pastikan layanan institusi Anda tetap berjalan tanpa gangguan.
+                </p>
+                <button
+                  onClick={onSubscribe}
+                  style={{
+                    width: '100%', padding: '14px 0',
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    color: '#0C1E35', borderRadius: 14, fontSize: 14, fontWeight: 800,
+                    border: 'none', cursor: 'pointer', fontFamily: 'Outfit, sans-serif',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    boxShadow: '0 4px 16px rgba(245,158,11,0.3)',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(245,158,11,0.4)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(245,158,11,0.3)'; }}
+                >
+                  <Sparkles style={{ width: 16, height: 16 }} />
+                  Perpanjang Sekarang
+                  <ArrowRight style={{ width: 14, height: 14 }} />
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#0C1E35] rounded-full blur-3xl -mr-16 -mt-16 opacity-20 group-hover:opacity-40 transition-opacity" />

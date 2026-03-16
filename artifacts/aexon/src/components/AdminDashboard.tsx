@@ -11,7 +11,11 @@ import {
   Mail,
   CheckCircle2,
   XCircle,
-  Building2
+  Building2,
+  Crown,
+  Sparkles,
+  ArrowRight,
+  CreditCard
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -23,6 +27,7 @@ interface AdminDashboardProps {
   onDeleteDoctor: (id: string) => void;
   onToggleDoctorStatus: (id: string) => void;
   onManageSubscription: () => void;
+  onSubscribe: () => void;
 }
 
 export default function AdminDashboard({ 
@@ -32,7 +37,8 @@ export default function AdminDashboard({
   onEditDoctor, 
   onDeleteDoctor, 
   onToggleDoctorStatus, 
-  onManageSubscription 
+  onManageSubscription,
+  onSubscribe
 }: AdminDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
@@ -142,6 +148,78 @@ export default function AdminDashboard({
             </motion.div>
           ))}
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          style={{
+            marginBottom: 32, borderRadius: 20, overflow: 'hidden',
+            background: 'linear-gradient(135deg, #0C1E35 0%, #1a3a5c 50%, #0C1E35 100%)',
+            padding: '20px 28px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20,
+            position: 'relative',
+          }}
+        >
+          <div style={{
+            position: 'absolute', top: -40, right: -40, width: 140, height: 140,
+            borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)',
+          }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(245,158,11,0.3)',
+              flexShrink: 0,
+            }}>
+              <Crown style={{ width: 20, height: 20, color: '#fff' }} />
+            </div>
+            <div>
+              <h4 style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', fontFamily: 'Outfit, sans-serif', marginBottom: 2 }}>
+                Kelola Langganan Enterprise
+              </h4>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                Perpanjang paket, tambah kuota seat, atau upgrade layanan institusi Anda.
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 1, flexShrink: 0 }}>
+            <button
+              onClick={onManageSubscription}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '10px 20px', backgroundColor: 'rgba(255,255,255,0.1)',
+                color: '#ffffff', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer',
+                fontFamily: 'Outfit, sans-serif', transition: 'all 150ms',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+            >
+              <CreditCard style={{ width: 14, height: 14 }} />
+              Kelola
+            </button>
+            <button
+              onClick={onSubscribe}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '10px 20px',
+                background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                color: '#0C1E35', borderRadius: 12, fontSize: 13, fontWeight: 800,
+                border: 'none', cursor: 'pointer',
+                fontFamily: 'Outfit, sans-serif', transition: 'all 150ms',
+                boxShadow: '0 2px 12px rgba(245,158,11,0.3)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(245,158,11,0.4)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(245,158,11,0.3)'; }}
+            >
+              <Sparkles style={{ width: 14, height: 14 }} />
+              Perpanjang
+              <ArrowRight style={{ width: 14, height: 14 }} />
+            </button>
+          </div>
+        </motion.div>
       </div>
 
       <div style={{
