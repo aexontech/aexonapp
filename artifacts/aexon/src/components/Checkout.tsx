@@ -640,19 +640,21 @@ export default function Checkout({ plan, userEmail, userName, onBack }: Checkout
                   <div style={{ fontSize: 16, fontWeight: 800, color: '#0C1E35', marginBottom: 2 }}>
                     {plan.products?.name || 'Aexon'}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                     <span style={{
-                      fontSize: 11, fontWeight: 700, color: '#64748B',
-                      backgroundColor: '#E2E8F0', padding: '2px 8px',
-                      borderRadius: 999,
+                      fontSize: 13, fontWeight: 800, color: '#0C1E35',
+                      backgroundColor: '#E2E8F0', padding: '5px 14px',
+                      borderRadius: 999, letterSpacing: '0.02em',
+                      fontFamily: 'Outfit, sans-serif',
                     }}>
-                      {isAnnual ? 'Tahunan' : 'Bulanan'}
+                      {isAnnual ? '📅 Tahunan' : '📆 Bulanan'}
                     </span>
                     {hasDiscount && (
                       <span style={{
-                        fontSize: 11, fontWeight: 700, color: '#10B981',
-                        backgroundColor: '#ECFDF5', padding: '2px 8px',
-                        borderRadius: 999,
+                        fontSize: 12, fontWeight: 800, color: '#fff',
+                        backgroundColor: '#10B981', padding: '5px 12px',
+                        borderRadius: 999, letterSpacing: '0.03em',
+                        fontFamily: 'Outfit, sans-serif',
                       }}>
                         BETA
                       </span>
