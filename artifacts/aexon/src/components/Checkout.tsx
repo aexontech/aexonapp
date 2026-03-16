@@ -15,6 +15,7 @@ import {
   Ticket,
   X,
   ChevronRight,
+  ChevronDown,
   Lock,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -56,6 +57,7 @@ export default function Checkout({ plan, userEmail, userName, onBack, onSuccess 
   const [appliedPromo, setAppliedPromo] = useState<PromoResult | null>(null);
   const [promoError, setPromoError] = useState('');
   const [showPromoInput, setShowPromoInput] = useState(false);
+  const [featuresExpanded, setFeaturesExpanded] = useState(false);
 
   const isAnnual = plan.billing_cycle === 'annual';
   const pricePerMonth = plan.price;
@@ -738,7 +740,7 @@ export default function Checkout({ plan, userEmail, userName, onBack, onSuccess 
                       borderRadius: 999, letterSpacing: '0.02em',
                       fontFamily: 'Outfit, sans-serif',
                     }}>
-                      {isAnnual ? '📅 Tahunan' : '📆 Bulanan'}
+                      {isAnnual ? 'Tahunan' : 'Bulanan'}
                     </span>
                     {hasDiscount && (
                       <span style={{
@@ -755,19 +757,38 @@ export default function Checkout({ plan, userEmail, userName, onBack, onSuccess 
               </div>
 
               {Array.isArray(plan.features) && plan.features.length > 0 && (
-                <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 8,
-                  paddingBottom: 20, borderBottom: '1px solid #E2E8F0', marginBottom: 20,
-                }}>
-                  {plan.features.map((f: string, i: number) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748B' }}>
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-                        <circle cx="7" cy="7" r="7" fill="#ECFDF5"/>
-                        <path d="M4 7l2 2 4-4" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      {f}
+                <div style={{ paddingBottom: 20, borderBottom: '1px solid #E2E8F0', marginBottom: 20 }}>
+                  <button
+                    onClick={() => setFeaturesExpanded(!featuresExpanded)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                      fontSize: 13, fontWeight: 600, color: '#64748B',
+                      fontFamily: 'Outfit, sans-serif',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#0C1E35'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = '#64748B'; }}
+                  >
+                    <ChevronDown style={{
+                      width: 14, height: 14, flexShrink: 0,
+                      transform: featuresExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                      transition: 'transform 200ms',
+                    }} />
+                    Fitur ({plan.features.length})
+                  </button>
+                  {featuresExpanded && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                      {plan.features.map((f: string, i: number) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748B' }}>
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                            <circle cx="7" cy="7" r="7" fill="#ECFDF5"/>
+                            <path d="M4 7l2 2 4-4" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          {f}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
 
