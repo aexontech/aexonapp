@@ -187,57 +187,85 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
     if (!printAreaRef.current || isSaving) return;
     setIsSaving(true);
     try {
-      const pageElements = printAreaRef.current.querySelectorAll('.print-container') as NodeListOf<HTMLElement>;
-      if (pageElements.length === 0) return;
+      const wrapperEls = printAreaRef.current.querySelectorAll('.print-page-wrapper') as NodeListOf<HTMLElement>;
+      const containerEls = printAreaRef.current.querySelectorAll('.print-container') as NodeListOf<HTMLElement>;
+      if (containerEls.length === 0) return;
 
-      const savedStyles: string[] = [];
-      pageElements.forEach((el) => {
-        savedStyles.push(el.style.cssText);
+      const savedWrapperStyles: string[] = [];
+      wrapperEls.forEach((el) => {
+        savedWrapperStyles.push(el.style.cssText);
         el.style.opacity = '1';
         el.style.filter = 'none';
         el.style.transform = 'none';
+      });
+
+      const savedContainerStyles: string[] = [];
+      containerEls.forEach((el) => {
+        savedContainerStyles.push(el.style.cssText);
         el.style.boxShadow = 'none';
+        el.style.borderRadius = '0';
         (el as any).style.outline = 'none';
       });
 
       let pdf: jsPDF | null = null;
 
-      for (let i = 0; i < pageElements.length; i++) {
-        const el = pageElements[i];
-        const page = pages[i];
-        const isLandscape = page.orientation === 'landscape';
-        const format = page.pageSize === 'F4' ? [215, 330] as [number, number] : page.pageSize === 'Letter' ? 'letter' as const : 'a4' as const;
+      try {
+        for (let i = 0; i < containerEls.length; i++) {
+          const el = containerEls[i];
+          const page = pages[i];
+          const isLandscape = page.orientation === 'landscape';
+          const format = page.pageSize === 'F4' ? [215, 330] as [number, number] : page.pageSize === 'Letter' ? 'letter' as const : 'a4' as const;
 
-        const canvas = await html2canvas(el, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-        if (i === 0) {
-          pdf = new jsPDF({
-            orientation: isLandscape ? 'landscape' : 'portrait',
-            unit: 'mm',
-            format: format,
+          const canvas = await html2canvas(el, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
           });
-        } else {
-          pdf!.addPage(format, isLandscape ? 'landscape' : 'portrait');
+
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+          if (i === 0) {
+            pdf = new jsPDF({
+              orientation: isLandscape ? 'landscape' : 'portrait',
+              unit: 'mm',
+              format: format,
+            });
+          } else {
+            pdf!.addPage(format, isLandscape ? 'landscape' : 'portrait');
+          }
+
+          const pdfWidth = pdf!.internal.pageSize.getWidth();
+          const pdfHeight = pdf!.internal.pageSize.getHeight();
+
+          const canvasAspect = canvas.width / canvas.height;
+          const pageAspect = pdfWidth / pdfHeight;
+          let imgW = pdfWidth;
+          let imgH = pdfHeight;
+          let imgX = 0;
+          let imgY = 0;
+
+          if (canvasAspect > pageAspect) {
+            imgH = pdfWidth / canvasAspect;
+            imgY = 0;
+          } else {
+            imgW = pdfHeight * canvasAspect;
+            imgX = (pdfWidth - imgW) / 2;
+          }
+
+          pdf!.addImage(imgData, 'JPEG', imgX, imgY, imgW, imgH);
         }
 
-        const pdfWidth = pdf!.internal.pageSize.getWidth();
-        const pdfHeight = pdf!.internal.pageSize.getHeight();
-        pdf!.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        const fileName = `Laporan_Endoskopi_${session.patient.name.replace(/\s+/g, '_')}_${session.date.toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`;
+        pdf!.save(fileName);
+      } finally {
+        wrapperEls.forEach((el, i) => {
+          el.style.cssText = savedWrapperStyles[i];
+        });
+        containerEls.forEach((el, i) => {
+          el.style.cssText = savedContainerStyles[i];
+        });
       }
-
-      pageElements.forEach((el, i) => {
-        el.style.cssText = savedStyles[i];
-      });
-
-      const fileName = `Laporan_Endoskopi_${session.patient.name.replace(/\s+/g, '_')}_${session.date.toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`;
-      pdf!.save(fileName);
     } catch (err) {
       console.error('PDF save error:', err);
     } finally {
@@ -334,28 +362,64 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             background: white !important;
             overflow: visible !important;
             height: auto !important;
+            width: 100% !important;
           }
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          #root > div > div {
+          #root, #root > *, #root > * > * {
             overflow: visible !important;
             height: auto !important;
+            display: block !important;
+            position: static !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .print-hide {
+            display: none !important;
+          }
+          #print-area-wrapper {
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+            overflow: visible !important;
+            width: 100% !important;
+            height: auto !important;
+            flex: none !important;
+            gap: 0 !important;
+          }
+          .print-page-wrapper {
+            opacity: 1 !important;
+            filter: none !important;
+            transform: none !important;
+            position: static !important;
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           .print-container { 
-            width: 100% !important; 
-            min-height: 100% !important; 
+            width: 100% !important;
+            max-width: 100% !important;
+            min-height: auto !important;
+            height: auto !important;
             box-shadow: none !important; 
+            border-radius: 0 !important;
             margin: 0 !important; 
             padding: 10mm !important; 
             page-break-after: always;
+            page-break-inside: avoid;
             background: white !important;
             color: black !important;
             opacity: 1 !important;
             filter: none !important;
             transform: none !important;
-            ring: none !important;
+            overflow: visible !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box !important;
           }
           .print-container:last-child {
             page-break-after: auto;
@@ -392,7 +456,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
       `}} />
 
       {/* Header */}
-      <header className="print:hidden" style={{
+      <header className="print:hidden print-hide" style={{
         backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
         padding: '0 24px', height: 64, display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', flexShrink: 0, position: 'relative', zIndex: 50,
@@ -442,7 +506,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
       </header>
 
       {/* Page Tabs */}
-      <div className="print:hidden" style={{
+      <div className="print:hidden print-hide" style={{
         backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
         padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 8,
         flexShrink: 0, overflowX: 'auto',
@@ -491,7 +555,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
       {/* Main layout */}
       <div className="print:overflow-visible print:block" style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 10 }}>
         {/* Left Settings Panel */}
-        <div className="print:hidden custom-scrollbar" style={{
+        <div className="print:hidden print-hide custom-scrollbar" style={{
           width: 288, backgroundColor: '#ffffff', borderRight: '1px solid #E2E8F0',
           padding: 20, overflowY: 'auto', flexShrink: 0,
           display: 'flex', flexDirection: 'column', gap: 20,
@@ -846,6 +910,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
 
         {/* Right Preview Panel */}
         <div
+          id="print-area-wrapper"
           ref={printAreaRef}
           className="print:p-0 print:bg-white print:block print:overflow-visible custom-scrollbar"
           style={{
@@ -860,6 +925,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             return (
             <div
               key={page.id}
+              className="print-page-wrapper"
               style={{
                 position: 'relative',
                 transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',

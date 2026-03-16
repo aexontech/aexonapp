@@ -96,7 +96,7 @@ export default function MainLayout({ children, activeMenu, onNavigate, onLogout,
     <div style={{ height: '100vh', background: '#F8FAFC', display: 'flex', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0C1E35', overflow: 'hidden', position: 'relative' }} className="print:overflow-visible print:h-auto print:bg-white print:block">
       <style>{pulseKeyframes}</style>
 
-      <aside style={{ width: sidebarWidth, background: 'white', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', height: '100%', zIndex: 40, transition: 'width 300ms ease-in-out', flexShrink: 0 }} className="print:hidden">
+      <aside style={{ width: sidebarWidth, background: 'white', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', height: '100%', zIndex: 40, transition: 'width 300ms ease-in-out', flexShrink: 0 }} className="print:hidden print-hide">
         <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between', paddingLeft: isCollapsed ? 0 : 16, paddingRight: isCollapsed ? 0 : 16, borderBottom: '1px solid #E2E8F0', flexShrink: 0 }}>
           <div
             onClick={() => onNavigate(isAdmin ? 'admin-dashboard' : 'dashboard')}
