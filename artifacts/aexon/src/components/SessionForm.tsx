@@ -113,15 +113,25 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
     backgroundColor: 'white',
     border: '1px solid #CBD5E1',
     borderRadius: 16,
-    padding: 28,
     boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
   };
 
+  const sectionBodyStyle: React.CSSProperties = {
+    padding: 28,
+  };
+
+  const sectionHeaderBarStyle: React.CSSProperties = {
+    background: 'linear-gradient(135deg, #0C1E35 0%, #1E3A5F 100%)',
+    padding: '14px 28px',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    borderRadius: '15px 15px 0 0',
+  };
+
   const sectionLabelStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 800, color: '#0C1E35',
+    fontSize: 12, fontWeight: 800, color: '#FFFFFF',
     textTransform: 'uppercase', letterSpacing: '0.08em',
     display: 'flex', alignItems: 'center', gap: 8,
-    marginBottom: 24,
+    margin: 0,
   };
 
   const fieldLabelStyle: React.CSSProperties = {
@@ -218,15 +228,15 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
 
             <div style={sectionCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={sectionHeaderBarStyle}>
                 <h3 style={sectionLabelStyle}>
-                  <User style={{ width: 16, height: 16, color: '#0C1E35' }} />
+                  <User style={{ width: 16, height: 16, color: '#FFFFFF' }} />
                   Identitas Pasien
                 </h3>
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>Wajib Diisi *</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>Wajib Diisi *</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+              <div style={{ ...sectionBodyStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 <div>
                   <label style={fieldLabelStyle}>Nama Lengkap *</label>
                   <input
@@ -304,13 +314,15 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
               </div>
             </div>
 
-            <div style={{ ...sectionCardStyle, position: 'relative', overflow: 'visible' }}>
-              <h3 style={sectionLabelStyle}>
-                <Stethoscope style={{ width: 16, height: 16, color: '#0C1E35' }} />
-                Diagnosis ICD-10
-              </h3>
+            <div style={sectionCardStyle}>
+              <div style={sectionHeaderBarStyle}>
+                <h3 style={sectionLabelStyle}>
+                  <Stethoscope style={{ width: 16, height: 16, color: '#FFFFFF' }} />
+                  Diagnosis ICD-10
+                </h3>
+              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+              <div style={{ ...sectionBodyStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, overflow: 'visible' }}>
                 <div style={{ position: 'relative', overflow: 'visible' }}>
                   <ICD10Autocomplete
                     value={formData.diagnosis_icd10}
@@ -331,12 +343,14 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
               </div>
             </div>
 
-            <div style={{ ...sectionCardStyle, position: 'relative', overflow: 'visible' }}>
-              <h3 style={sectionLabelStyle}>
-                <Activity style={{ width: 16, height: 16, color: '#0C1E35' }} />
-                Prosedur & Tindakan (ICD-9-CM)
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={sectionCardStyle}>
+              <div style={sectionHeaderBarStyle}>
+                <h3 style={sectionLabelStyle}>
+                  <Activity style={{ width: 16, height: 16, color: '#FFFFFF' }} />
+                  Prosedur & Tindakan (ICD-9-CM)
+                </h3>
+              </div>
+              <div style={{ ...sectionBodyStyle, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <AnimatePresence mode="popLayout">
                   {formData.procedures_icd9.map((proc, index) => (
                     <motion.div
@@ -406,11 +420,13 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
             </div>
 
             <div style={sectionCardStyle}>
-              <h3 style={sectionLabelStyle}>
-                <Building2 style={{ width: 16, height: 16, color: '#0C1E35' }} />
-                Administrasi
-              </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, alignItems: 'end' }}>
+              <div style={sectionHeaderBarStyle}>
+                <h3 style={sectionLabelStyle}>
+                  <Building2 style={{ width: 16, height: 16, color: '#FFFFFF' }} />
+                  Administrasi
+                </h3>
+              </div>
+              <div style={{ ...sectionBodyStyle, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, alignItems: 'end' }}>
                 <div>
                   <label style={fieldLabelStyle}>Operator / Dokter</label>
                   <div style={{
