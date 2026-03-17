@@ -302,6 +302,38 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
 
             <div style={{ ...sectionCardStyle, position: 'relative', overflow: 'visible' }}>
               <h3 style={sectionLabelStyle}>
+                <Stethoscope style={{ width: 16, height: 16, color: '#0C1E35' }} />
+                Diagnosis ICD-10
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                <div style={{ position: 'relative', overflow: 'visible' }}>
+                  <ICD10Autocomplete
+                    value={formData.diagnosis_icd10}
+                    onChange={(val) => updateField('diagnosis_icd10', val)}
+                    label="Diagnosis Utama (ICD-10)"
+                    required={formData.category === 'Kamar Operasi'}
+                  />
+                </div>
+
+                <div>
+                  <label style={fieldLabelStyle}>Diagnosis Banding</label>
+                  <input
+                    type="text"
+                    name="differentialDiagnosis"
+                    value={formData.differentialDiagnosis}
+                    onChange={handleChange}
+                    style={inputStyle}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
+                    placeholder="Diagnosis banding (opsional)..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ ...sectionCardStyle, position: 'relative', overflow: 'visible' }}>
+              <h3 style={sectionLabelStyle}>
                 <Activity style={{ width: 16, height: 16, color: '#0C1E35' }} />
                 Prosedur & Tindakan (ICD-9-CM)
               </h3>
@@ -371,38 +403,6 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                     Tambah Tindakan
                   </button>
                 )}
-              </div>
-            </div>
-
-            <div style={{ ...sectionCardStyle, position: 'relative', overflow: 'visible' }}>
-              <h3 style={sectionLabelStyle}>
-                <Stethoscope style={{ width: 16, height: 16, color: '#0C1E35' }} />
-                Diagnosis ICD-10
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                <div style={{ position: 'relative', overflow: 'visible' }}>
-                  <ICD10Autocomplete
-                    value={formData.diagnosis_icd10}
-                    onChange={(val) => updateField('diagnosis_icd10', val)}
-                    label="Diagnosis Utama (ICD-10)"
-                    required={formData.category === 'Kamar Operasi'}
-                  />
-                </div>
-
-                <div>
-                  <label style={fieldLabelStyle}>Diagnosis Banding</label>
-                  <input
-                    type="text"
-                    name="differentialDiagnosis"
-                    value={formData.differentialDiagnosis}
-                    onChange={handleChange}
-                    style={inputStyle}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
-                    placeholder="Diagnosis banding (opsional)..."
-                  />
-                </div>
               </div>
             </div>
 

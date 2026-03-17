@@ -13,6 +13,7 @@ interface ReportPage {
   reportLayout: 'standard' | 'beforeAfter' | 'rightLeft';
   pageSize: 'A4' | 'F4' | 'Letter';
   orientation: 'portrait' | 'landscape';
+  examType: 'endoskopi' | 'mikroskop';
   selectedPhotos: Capture[];
   selectedVideos: Capture[];
   photoCaptions: Record<string, string>;
@@ -36,6 +37,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
       reportLayout: 'standard',
       pageSize: 'A4',
       orientation: 'portrait',
+      examType: 'endoskopi',
       selectedPhotos: [],
       selectedVideos: [],
       photoCaptions: {},
@@ -63,6 +65,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
       reportLayout: 'standard',
       pageSize: 'A4',
       orientation: 'portrait',
+      examType: 'endoskopi',
       selectedPhotos: [],
       selectedVideos: [],
       photoCaptions: {},
@@ -256,7 +259,8 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
           pdf!.addImage(imgData, 'JPEG', imgX, imgY, imgW, imgH);
         }
 
-        const fileName = `Laporan_Endoskopi_${session.patient.name.replace(/\s+/g, '_')}_${session.date.toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`;
+        const examLabel = activePage.examType === 'mikroskop' ? 'Mikroskop' : 'Endoskopi';
+        const fileName = `Laporan_${examLabel}_${session.patient.name.replace(/\s+/g, '_')}_${session.date.toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`;
         pdf!.save(fileName);
       } finally {
         wrapperEls.forEach((el, i) => {
@@ -274,12 +278,13 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
   };
 
   const handleEmail = () => {
-    const subject = encodeURIComponent(`Laporan Endoskopi - ${session.patient.name} - ${session.date.toLocaleDateString('id-ID')}`);
+    const examLabel = activePage.examType === 'mikroskop' ? 'Mikroskop' : 'Endoskopi';
+    const subject = encodeURIComponent(`Laporan ${examLabel} - ${session.patient.name} - ${session.date.toLocaleDateString('id-ID')}`);
     const procedures = session.patient.procedures?.join(', ') || '-';
     const diagnosis = session.patient.diagnosis || '-';
     const body = encodeURIComponent(
       `Yth. Sejawat,\n\n` +
-      `Berikut ringkasan laporan endoskopi:\n\n` +
+      `Berikut ringkasan laporan ${examLabel.toLowerCase()}:\n\n` +
       `INFORMASI PASIEN\n` +
       `Nama Pasien  : ${session.patient.name}\n` +
       `No. RM       : ${session.patient.rmNumber}\n` +
@@ -298,11 +303,12 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
   };
 
   const handleWhatsApp = () => {
+    const examLabel = activePage.examType === 'mikroskop' ? 'Mikroskop' : 'Endoskopi';
     const procedures = session.patient.procedures?.join(', ') || '-';
     const diagnosis = session.patient.diagnosis || '-';
     const text = encodeURIComponent(
       `Yth. Sejawat,\n\n` +
-      `Berikut ringkasan laporan endoskopi:\n\n` +
+      `Berikut ringkasan laporan ${examLabel.toLowerCase()}:\n\n` +
       `*INFORMASI PASIEN*\n` +
       `Nama Pasien : *${session.patient.name}*\n` +
       `No. RM : ${session.patient.rmNumber}\n` +
@@ -403,8 +409,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
           .print-container { 
             width: 100% !important;
             max-width: 100% !important;
-            min-height: auto !important;
-            height: auto !important;
+            height: 100vh !important;
             box-shadow: none !important; 
             border-radius: 0 !important;
             margin: 0 !important; 
@@ -629,15 +634,40 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             </div>
           </div>
 
+          {/* Exam Type */}
+          <div>
+            <div style={sectionLabelStyle}>Jenis Pemeriksaan</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['endoskopi', 'mikroskop'] as const).map(t => (
+                <button key={t} onClick={() => updateActivePage({ examType: t })} style={pillBtn(activePage.examType === t)}>
+                  {t === 'endoskopi' ? 'Endoskopi' : 'Mikroskop'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Paper Size */}
           <div>
             <div style={sectionLabelStyle}>Ukuran Kertas</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['A4', 'F4', 'Letter'] as const).map(s => (
-                <button key={s} onClick={() => updateActivePage({ pageSize: s })} style={pillBtn(activePage.pageSize === s)}>
-                  {s}
-                </button>
-              ))}
+            <div style={{ position: 'relative' }}>
+              <select
+                value={activePage.pageSize}
+                onChange={(e) => updateActivePage({ pageSize: e.target.value as 'A4' | 'F4' | 'Letter' })}
+                style={{
+                  width: '100%', padding: '10px 14px', backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13,
+                  fontWeight: 600, color: '#0C1E35', outline: 'none', cursor: 'pointer',
+                  appearance: 'none' as const,
+                  fontFamily: 'Plus Jakarta Sans, sans-serif',
+                }}
+              >
+                <option value="A4">A4 (210 x 297 mm)</option>
+                <option value="F4">F4 / Folio (215 x 330 mm)</option>
+                <option value="Letter">Letter (216 x 279 mm)</option>
+              </select>
+              <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <ChevronRight style={{ width: 14, height: 14, color: '#94A3B8', transform: 'rotate(90deg)' }} />
+              </div>
             </div>
           </div>
 
@@ -979,16 +1009,16 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                         {page.reportType === 'clinical' ? 'Laporan Medis' : 'Academic Report'}
                       </div>
                       <h1 style={{
-                        fontSize: 20, fontWeight: 900, color: '#0C1E35',
+                        fontSize: 22, fontWeight: 900, color: '#0C1E35',
                         letterSpacing: '-0.02em', marginBottom: 6, lineHeight: 1.1,
                         textTransform: 'uppercase',
                       }}>
-                        {page.reportType === 'clinical' ? 'Laporan Endoskopi' : 'Academic Case Report'}
+                        {page.reportType === 'clinical' ? (page.examType === 'mikroskop' ? 'Laporan Mikroskop' : 'Laporan Endoskopi') : 'Academic Case Report'}
                       </h1>
                       {page.reportType === 'clinical' && selectedHospital ? (
                         <div>
-                          <p style={{ color: '#0C1E35', fontWeight: 800, fontSize: 13, lineHeight: 1.2 }}>{selectedHospital.name}</p>
-                          <p style={{ color: '#475569', fontSize: 10, marginTop: 3, maxWidth: 340, lineHeight: 1.5 }}>{selectedHospital.address}</p>
+                          <p style={{ color: '#0C1E35', fontWeight: 800, fontSize: 14, lineHeight: 1.2 }}>{selectedHospital.name}</p>
+                          <p style={{ color: '#475569', fontSize: 11, marginTop: 3, maxWidth: 340, lineHeight: 1.5 }}>{selectedHospital.address}</p>
                           <div style={{
                             display: 'flex', flexWrap: 'wrap', gap: '0 14px',
                             color: 'rgba(12,30,53,0.5)', fontSize: 8.5, marginTop: 6,
@@ -1029,10 +1059,10 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                 <div style={{
                   background: 'linear-gradient(135deg, rgba(12,30,53,0.025) 0%, rgba(12,30,53,0.04) 100%)',
                   border: '1px solid rgba(12,30,53,0.08)',
-                  borderRadius: 8, padding: 14, marginBottom: 18,
+                  borderRadius: 8, padding: 16, marginBottom: 20,
                 }} className="print-patient-info">
                   {page.reportType === 'clinical' ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 20px', fontSize: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 20px', fontSize: 12 }}>
                       {[
                         { label: 'Nama Pasien', value: session.patient.name },
                         { label: 'No. Rekam Medis', value: session.patient.rmNumber },
@@ -1042,32 +1072,32 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                         { label: 'Kategori / Lokasi', value: session.patient.category },
                       ].map((item, i) => (
                         <div key={i}>
-                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>{item.label}</span>
-                          <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 11 }}>{item.value}</span>
+                          <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>{item.label}</span>
+                          <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 13 }}>{item.value}</span>
                         </div>
                       ))}
-                      <div style={{ gridColumn: 'span 3', borderTop: '1px solid rgba(12,30,53,0.08)', marginTop: 4, paddingTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                      <div style={{ gridColumn: 'span 3', borderTop: '1px solid rgba(12,30,53,0.08)', marginTop: 4, paddingTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div>
-                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Dokter Operator</span>
-                          <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 11 }}>{session.patient.operator}</span>
+                          <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Dokter Operator</span>
+                          <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 13 }}>{session.patient.operator}</span>
                         </div>
                         <div>
-                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Tindakan</span>
-                          <ul style={{ listStyleType: 'disc', paddingLeft: 14, margin: 0, fontWeight: 700, color: '#0C1E35', fontSize: 10 }}>
+                          <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Tindakan</span>
+                          <ul style={{ listStyleType: 'disc', paddingLeft: 14, margin: 0, fontWeight: 700, color: '#0C1E35', fontSize: 12 }}>
                             {session.patient.procedures.filter(p => p).map((p, i) => (
                               <li key={i}>{p}</li>
                             ))}
                           </ul>
                         </div>
-                        <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(12,30,53,0.06)', paddingTop: 8 }}>
+                        <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(12,30,53,0.06)', paddingTop: 10 }}>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                             <div>
-                              <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Diagnosis Utama</span>
-                              <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 10 }}>{session.patient.diagnosis || '-'}</span>
+                              <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Diagnosis Utama</span>
+                              <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 12 }}>{session.patient.diagnosis || '-'}</span>
                             </div>
                             <div>
-                              <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Diagnosis Banding</span>
-                              <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 10 }}>{session.patient.differentialDiagnosis || '-'}</span>
+                              <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Diagnosis Banding</span>
+                              <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 12 }}>{session.patient.differentialDiagnosis || '-'}</span>
                             </div>
                           </div>
                         </div>
@@ -1108,9 +1138,9 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                 {/* Photo Grid */}
                 <div style={{ marginBottom: 18 }} className="print-section">
                   <h3 style={{
-                    fontSize: 12, fontWeight: 800, color: '#0C1E35',
+                    fontSize: 14, fontWeight: 800, color: '#0C1E35',
                     display: 'flex', alignItems: 'center', gap: 8,
-                    paddingBottom: 6, marginBottom: 10,
+                    paddingBottom: 6, marginBottom: 12,
                     borderBottom: '2px solid rgba(12,30,53,0.12)',
                   }} className="print-section-title">
                     <span style={{ width: 3, height: 16, backgroundColor: '#0C1E35', borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
@@ -1118,11 +1148,15 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                      page.reportLayout === 'rightLeft' ? 'Dokumentasi Perbandingan Kanan / Kiri' :
                      'Dokumentasi Visual'}
                   </h3>
-                  {page.selectedPhotos.length > 0 ? (
+                  {page.selectedPhotos.length > 0 ? (() => {
+                    const count = page.selectedPhotos.length;
+                    const isCompare = page.reportLayout !== 'standard';
+                    const cols = isCompare ? 2 : count <= 1 ? 1 : count <= 2 ? 2 : count <= 4 ? 2 : 3;
+                    return (
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: page.reportLayout === 'standard' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
-                      gap: 10,
+                      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                      gap: count <= 2 ? 14 : 10,
                     }} className="print-grid">
                       {page.selectedPhotos.map((photo, index) => (
                         <div key={photo.id} className="print-photo-card">
@@ -1132,12 +1166,12 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                             overflow: 'hidden', border: '1px solid rgba(12,30,53,0.1)',
                           }}>
                             <img src={photo.url} alt={`Capture ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            {page.reportLayout !== 'standard' && (
+                            {isCompare && (
                               <div style={{
                                 position: 'absolute', top: 6, left: 6,
                                 padding: '3px 8px', backgroundColor: 'rgba(12,30,53,0.85)',
                                 backdropFilter: 'blur(4px)', borderRadius: 4,
-                                fontSize: 7, fontWeight: 900, color: '#ffffff',
+                                fontSize: 8, fontWeight: 900, color: '#ffffff',
                                 textTransform: 'uppercase', letterSpacing: '0.15em',
                               }}>
                                 {page.reportLayout === 'beforeAfter'
@@ -1147,7 +1181,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                             )}
                             <div style={{
                               position: 'absolute', bottom: 4, right: 6,
-                              fontSize: 7, fontWeight: 800, color: 'rgba(255,255,255,0.7)',
+                              fontSize: 8, fontWeight: 800, color: 'rgba(255,255,255,0.7)',
                               textShadow: '0 1px 3px rgba(0,0,0,0.5)',
                             }}>
                               {index + 1}/{page.selectedPhotos.length}
@@ -1159,7 +1193,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                               border: '1px solid rgba(12,30,53,0.06)',
                               borderRadius: 4, padding: '5px 8px', marginTop: 5,
                             }}>
-                              <p style={{ fontSize: 8, lineHeight: 1.4, fontWeight: 500, color: '#475569', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
+                              <p style={{ fontSize: 9, lineHeight: 1.5, fontWeight: 500, color: '#475569', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
                                 {page.photoCaptions[photo.id]}
                               </p>
                             </div>
@@ -1167,12 +1201,13 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                         </div>
                       ))}
                     </div>
-                  ) : (
+                    );
+                  })() : (
                     <div style={{
                       height: 80, backgroundColor: '#FAFBFC', border: '1.5px dashed #CBD5E1',
                       borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>Tidak ada foto yang dipilih</p>
+                      <p style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Tidak ada foto yang dipilih</p>
                     </div>
                   )}
                 </div>
@@ -1181,9 +1216,9 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                 {page.selectedVideos.length > 0 && (
                   <div style={{ marginBottom: 18 }} className="print-section">
                     <h3 style={{
-                      fontSize: 12, fontWeight: 800, color: '#0C1E35',
+                      fontSize: 14, fontWeight: 800, color: '#0C1E35',
                       display: 'flex', alignItems: 'center', gap: 8,
-                      paddingBottom: 6, marginBottom: 10,
+                      paddingBottom: 6, marginBottom: 12,
                       borderBottom: '2px solid rgba(12,30,53,0.12)',
                     }} className="print-section-title">
                       <span style={{ width: 3, height: 16, backgroundColor: '#0C1E35', borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
@@ -1223,44 +1258,47 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                 )}
 
                 {/* Clinical Notes */}
-                <div style={{ marginBottom: 18, flex: 1 }} className="print-section">
+                <div style={{ marginBottom: 18 }} className="print-section">
                   <h3 style={{
-                    fontSize: 12, fontWeight: 800, color: '#0C1E35',
+                    fontSize: 14, fontWeight: 800, color: '#0C1E35',
                     display: 'flex', alignItems: 'center', gap: 8,
-                    paddingBottom: 6, marginBottom: 10,
+                    paddingBottom: 6, marginBottom: 12,
                     borderBottom: '2px solid rgba(12,30,53,0.12)',
                   }} className="print-section-title">
                     <span style={{ width: 3, height: 16, backgroundColor: '#0C1E35', borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
                     Catatan Klinis
                   </h3>
-                  <div style={{ fontSize: 10 }}>
+                  <div style={{ fontSize: 12 }}>
                     {page.clinicalNotes ? (
-                      <p style={{ whiteSpace: 'pre-wrap', color: '#475569', lineHeight: 1.6, margin: 0 }}>{page.clinicalNotes}</p>
+                      <p style={{ whiteSpace: 'pre-wrap', color: '#475569', lineHeight: 1.7, margin: 0 }}>{page.clinicalNotes}</p>
                     ) : (
                       <p style={{ color: '#94A3B8', fontStyle: 'italic', margin: 0 }}>Tidak ada catatan klinis.</p>
                     )}
                   </div>
                 </div>
 
+                {/* Spacer to push footer to bottom */}
+                <div style={{ flex: 1 }} />
+
                 {/* Signature Area */}
                 {page.reportType === 'clinical' && (
-                  <div style={{ marginTop: 'auto', paddingTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-                    <div style={{ textAlign: 'center', width: 180 }}>
-                      <p style={{ fontSize: 9, color: 'rgba(12,30,53,0.5)', marginBottom: 48 }}>Dokter Pemeriksa,</p>
+                  <div style={{ paddingTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ textAlign: 'center', width: 200 }}>
+                      <p style={{ fontSize: 11, color: 'rgba(12,30,53,0.5)', marginBottom: 52 }}>Dokter Pemeriksa,</p>
                       <div style={{ borderBottom: '2px solid rgba(12,30,53,0.25)', marginBottom: 6 }} />
-                      <p style={{ fontWeight: 800, color: '#0C1E35', fontSize: 11, margin: 0 }}>{session.patient.operator}</p>
+                      <p style={{ fontWeight: 800, color: '#0C1E35', fontSize: 13, margin: 0 }}>{session.patient.operator}</p>
                     </div>
                   </div>
                 )}
 
                 {/* Footer */}
                 <div style={{
-                  marginTop: 24, paddingTop: 12,
+                  marginTop: 20, paddingTop: 12,
                   borderTop: '1.5px solid rgba(12,30,53,0.1)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}>
                   <span style={{ width: 20, height: 1.5, backgroundColor: 'rgba(12,30,53,0.15)', display: 'inline-block' }} />
-                  <p style={{ fontSize: 8, color: 'rgba(12,30,53,0.35)', fontWeight: 600, margin: 0 }}>
+                  <p style={{ fontSize: 9, color: 'rgba(12,30,53,0.35)', fontWeight: 600, margin: 0 }}>
                     Dihasilkan oleh <span className="font-aexon" style={{ color: 'rgba(12,30,53,0.55)' }}>Aexon</span> &bull; {new Date().toLocaleString('id-ID')} &bull; Halaman {pageIdx + 1} dari {pages.length}
                   </p>
                   <span style={{ width: 20, height: 1.5, backgroundColor: 'rgba(12,30,53,0.15)', display: 'inline-block' }} />
