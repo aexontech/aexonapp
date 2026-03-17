@@ -35,6 +35,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
     procedures: [''],
     diagnosis: '',
     differentialDiagnosis: '',
+    differentialDiagnosis_icd10: '',
     category: 'Poli',
     diagnosis_icd10: '',
     procedures_icd9: [''],
@@ -50,6 +51,9 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
       const updated = { ...prev, [field]: value };
       if (field === 'diagnosis_icd10') {
         updated.diagnosis = value;
+      }
+      if (field === 'differentialDiagnosis_icd10') {
+        updated.differentialDiagnosis = value;
       }
       return updated;
     });
@@ -316,17 +320,12 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                   />
                 </div>
 
-                <div>
-                  <label style={fieldLabelStyle}>Diagnosis Banding</label>
-                  <input
-                    type="text"
-                    name="differentialDiagnosis"
-                    value={formData.differentialDiagnosis}
-                    onChange={handleChange}
-                    style={inputStyle}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
-                    placeholder="Diagnosis banding (opsional)..."
+                <div style={{ position: 'relative', overflow: 'visible' }}>
+                  <ICD10Autocomplete
+                    value={formData.differentialDiagnosis_icd10}
+                    onChange={(val) => updateField('differentialDiagnosis_icd10', val)}
+                    label="Diagnosis Banding (ICD-10)"
+                    placeholder="Cari diagnosis banding ICD-10..."
                   />
                 </div>
               </div>

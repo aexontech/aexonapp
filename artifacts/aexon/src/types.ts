@@ -7,6 +7,7 @@ export interface PatientData {
   procedures: string[];
   diagnosis: string;
   differentialDiagnosis: string;
+  differentialDiagnosis_icd10: string;
   category: 'Kamar Operasi' | 'Poli' | 'IGD';
   diagnosis_icd10: string;
   procedures_icd9: string[];
