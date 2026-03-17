@@ -310,7 +310,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
       setCropImageSrc(reader.result as string);
       setCropKopIdx(idx);
       setCropState({ x: 0, y: 0 });
-      setCropZoom(1);
+      setCropZoom(0.8);
       setCroppedAreaPixels(null);
       setCropModalOpen(true);
     };
@@ -2227,7 +2227,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              style={{ backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 25px 50px rgba(0,0,0,0.15)', width: '100%', maxWidth: 512, overflow: 'hidden' }}
+              style={{ backgroundColor: '#fff', borderRadius: 16, boxShadow: '0 25px 50px rgba(0,0,0,0.15)', width: '100%', maxWidth: 680, overflow: 'hidden' }}
               onClick={e => e.stopPropagation()}
             >
               <div style={{ padding: 20, borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2248,16 +2248,18 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                 </button>
               </div>
 
-              <div style={{ position: 'relative', width: '100%', height: 320, backgroundColor: '#0F172A' }}>
+              <div style={{ position: 'relative', width: '100%', height: 480, backgroundColor: '#0F172A' }}>
                 <Cropper
                   image={cropImageSrc}
                   crop={cropState}
                   zoom={cropZoom}
-                  aspect={1}
+                  minZoom={0.5}
+                  maxZoom={5}
                   onCropChange={setCropState}
                   onZoomChange={setCropZoom}
                   onCropComplete={onCropComplete}
                   showGrid={true}
+                  objectFit="contain"
                   style={{
                     containerStyle: { background: '#0f172a' },
                     cropAreaStyle: { border: '2px solid #0C1E35' },
@@ -2270,8 +2272,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                   <ZoomOut style={{ width: 16, height: 16, color: '#94A3B8', flexShrink: 0 }} />
                   <input
                     type="range"
-                    min={1}
-                    max={3}
+                    min={0.5}
+                    max={5}
                     step={0.1}
                     value={cropZoom}
                     onChange={(e) => setCropZoom(Number(e.target.value))}
