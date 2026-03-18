@@ -19,7 +19,7 @@ import ConfirmModal from './components/ConfirmModal';
 import ToastProvider, { useToast } from './components/ToastProvider';
 import { PatientData, Session, UserProfile, HospitalSettings, UserRole } from './types';
 import { saveUserData, loadUserData } from './lib/storage';
-import { onSessionExpired, Plan, SubscriptionStatus } from './lib/aexonConnect';
+import { onSessionExpired, isOfflineTooLong, clearLastOnline, Plan, SubscriptionStatus } from './lib/aexonConnect';
 import { AlertTriangle } from 'lucide-react';
 
 function RouteRedirect({ to }: { to: string }) {
@@ -85,19 +85,68 @@ function AppContent() {
     refreshSubscriptionStatus();
   };
 
+  const forceLogout = useCallback((message: string) => {
+    setUserProfile(null);
+    setSelectedPlan(null);
+    setSubscriptionData(null);
+    setPatientData(null);
+    setSessions([]);
+    setViewingSession(null);
+    setTrialDaysLeft(null);
+    clearLastOnline();
+    navigate('/');
+    showToast(message, 'warning');
+  }, [navigate, showToast]);
+
   useEffect(() => {
     onSessionExpired(() => {
-      setUserProfile(null);
-      setSelectedPlan(null);
-      setSubscriptionData(null);
-      setPatientData(null);
-      setSessions([]);
-      setViewingSession(null);
-      setTrialDaysLeft(null);
-      navigate('/');
-      showToast('Sesi telah berakhir. Silakan login kembali.', 'warning');
+      forceLogout('Sesi telah berakhir. Silakan login kembali.');
     });
-  }, [navigate, showToast]);
+  }, [forceLogout]);
+
+  useEffect(() => {
+    if (!userProfile) return;
+    if (isOfflineTooLong()) {
+      forceLogout('Anda telah offline lebih dari 24 jam. Silakan login kembali.');
+      return;
+    }
+  }, [userProfile, forceLogout]);
+
+  useEffect(() => {
+    if (!userProfile) return;
+
+    const LICENSE_CHECK_INTERVAL = 5 * 60 * 1000;
+
+    const checkLicense = async () => {
+      if (!navigator.onLine) return;
+      try {
+        const { aexonConnect } = await import('./lib/aexonConnect');
+        const { data: subStatus, status } = await aexonConnect.getSubscription();
+        if (status === 401) {
+          if (isOfflineTooLong()) {
+            forceLogout('Sesi tidak dapat diperbarui. Silakan login kembali.');
+          }
+          return;
+        }
+        if (subStatus) {
+          setSubscriptionData(subStatus);
+          setSelectedPlan(subStatus.plan ?? null);
+          setTrialDaysLeft(subStatus.trial_days_left ?? null);
+        }
+      } catch {}
+    };
+
+    checkLicense();
+    const interval = setInterval(checkLicense, LICENSE_CHECK_INTERVAL);
+
+    const handleOnline = () => checkLicense();
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [userProfile, forceLogout]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {

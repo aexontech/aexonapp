@@ -2,6 +2,8 @@ const AEXON_CONNECT_API_URL = (import.meta.env.VITE_AEXON_CONNECT_API_URL || '')
 
 const TOKEN_KEY = 'aexon_jwt_token';
 const REFRESH_TOKEN_KEY = 'aexon_refresh_token';
+const LAST_ONLINE_KEY = 'aexon_last_online';
+const OFFLINE_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 if (!AEXON_CONNECT_API_URL) {
   console.warn('[AexonConnect] VITE_AEXON_CONNECT_API_URL is not set. API calls will fail.');
@@ -47,6 +49,28 @@ function clearToken() {
     localStorage.removeItem(REFRESH_TOKEN_KEY);
   } catch {
   }
+}
+
+function updateLastOnline() {
+  try {
+    localStorage.setItem(LAST_ONLINE_KEY, Date.now().toString());
+  } catch {}
+}
+
+export function isOfflineTooLong(): boolean {
+  try {
+    const last = localStorage.getItem(LAST_ONLINE_KEY);
+    if (!last) return false;
+    return Date.now() - parseInt(last, 10) > OFFLINE_EXPIRY_MS;
+  } catch {
+    return false;
+  }
+}
+
+export function clearLastOnline() {
+  try {
+    localStorage.removeItem(LAST_ONLINE_KEY);
+  } catch {}
 }
 
 let _onSessionExpired: (() => void) | null = null;
@@ -124,9 +148,11 @@ async function request<T = any>(
       if (newToken) {
         return request<T>(endpoint, options, true);
       }
-      clearToken();
-      _onSessionExpired?.();
-      return { data: null, error: 'Sesi telah berakhir. Silakan login kembali.', status: 401 };
+      return { data: null, error: 'Token tidak valid. Silakan cek koneksi internet.', status: 401 };
+    }
+
+    if (res.ok) {
+      updateLastOnline();
     }
 
     if (res.status === 404) {
@@ -297,7 +323,7 @@ export const aexonConnect = {
     });
   },
 
-  async getSubscription(): Promise<{ data: SubscriptionStatus | null; error: string | null }> {
+  async getSubscription(): Promise<{ data: SubscriptionStatus | null; error: string | null; status: number }> {
     const result = await request<any>('/subscription');
     if (result.data) {
       const d = result.data;
@@ -312,7 +338,7 @@ export const aexonConnect = {
         trial_days_left: d.trial_days_left ?? null,
       };
     }
-    return result as { data: SubscriptionStatus | null; error: string | null };
+    return result as { data: SubscriptionStatus | null; error: string | null; status: number };
   },
 
   async toggleAutoRenew(): Promise<{ data: ToggleAutoRenewResponse | null; error: string | null }> {
