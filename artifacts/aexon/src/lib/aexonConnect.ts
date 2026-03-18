@@ -115,6 +115,24 @@ export interface SubscriptionStatus {
   plan_name?: string;
   billing_cycle?: string;
   expires_at?: string;
+  auto_renew?: boolean;
+}
+
+export interface ToggleAutoRenewResponse {
+  auto_renew: boolean;
+}
+
+export interface InvoiceResponse {
+  invoice_id: string;
+  invoice_url: string;
+  amount: number;
+  status: string;
+}
+
+export interface DeviceSessionResponse {
+  session_id: string;
+  device_id: string;
+  valid: boolean;
 }
 
 export interface Plan {
