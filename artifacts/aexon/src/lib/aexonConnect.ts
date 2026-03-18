@@ -112,7 +112,13 @@ async function request<T = any>(
       body = await res.json();
     }
 
-    if (res.status === 401 && !_isRetry) {
+    const isEnvelope = body && typeof body === 'object' && 'success' in body;
+    const envelopeData = isEnvelope ? body.data : body;
+    const envelopeError = isEnvelope ? body.error : (body?.message || body?.error);
+    const envelopeSuccess = isEnvelope ? body.success : res.ok;
+
+    const isAuthEndpoint = endpoint.startsWith('/auth/');
+    if (res.status === 401 && !_isRetry && !isAuthEndpoint) {
       const newToken = await attemptTokenRefresh();
       if (newToken) {
         return request<T>(endpoint, options, true);
@@ -125,20 +131,20 @@ async function request<T = any>(
     if (res.status === 404) {
       return {
         data: null,
-        error: body?.message || body?.error || 'Fitur ini belum tersedia.',
+        error: envelopeError || 'Fitur ini belum tersedia.',
         status: 404,
       };
     }
 
-    if (!res.ok) {
+    if (!res.ok || envelopeSuccess === false) {
       return {
         data: null,
-        error: body?.message || body?.error || `Request failed (${res.status})`,
+        error: envelopeError || `Request failed (${res.status})`,
         status: res.status,
       };
     }
 
-    return { data: body as T, error: null, status: res.status };
+    return { data: envelopeData as T, error: null, status: res.status };
   } catch (err: any) {
     return {
       data: null,
