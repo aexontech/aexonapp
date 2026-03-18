@@ -89,14 +89,16 @@ export default function Checkout({
         const { data: subStatus } = await aexonConnect.getSubscription();
         if (!subStatus) return;
 
-        if (subStatus.status === "active") {
+        const status = (subStatus.status || "").toLowerCase();
+
+        if (status === "active" || status === "trial") {
           stopPolling();
           setPaymentStatus("paid");
           onSuccess?.();
-        } else if (subStatus.status === "expired") {
+        } else if (status === "expired") {
           stopPolling();
           setPaymentStatus("expired");
-        } else if (subStatus.status === "cancelled" || subStatus.status === "none") {
+        } else if (status === "cancelled" || status === "failed" || status === "rejected") {
           stopPolling();
           setPaymentStatus("failed");
         }
@@ -213,7 +215,7 @@ export default function Checkout({
 
       const invoiceStatus = (checkoutData.status || "").toLowerCase();
 
-      if (invoiceStatus === "paid" || invoiceStatus === "settled") {
+      if (invoiceStatus === "paid" || invoiceStatus === "settled" || invoiceStatus === "completed") {
         setPaymentStatus("paid");
         showToast("Pembayaran berhasil! Langganan Anda aktif.", "success");
         onSuccess?.();
@@ -222,13 +224,13 @@ export default function Checkout({
 
       if (invoiceStatus === "expired") {
         setPaymentStatus("expired");
-        showToast("Invoice telah kedaluwarsa.", "error");
+        showToast("Invoice telah kedaluwarsa. Silakan buat pesanan baru.", "error");
         return;
       }
 
       if (invoiceStatus === "failed" || invoiceStatus === "rejected") {
         setPaymentStatus("failed");
-        showToast("Pembayaran ditolak.", "error");
+        showToast("Pembayaran ditolak oleh penyedia pembayaran.", "error");
         return;
       }
 
@@ -533,7 +535,7 @@ export default function Checkout({
   }
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{
         backgroundColor: "#ffffff", borderBottom: "1px solid #E2E8F0",
         padding: "14px 32px", display: "flex", alignItems: "center", gap: 16,

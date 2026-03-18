@@ -349,10 +349,20 @@ export const aexonConnect = {
   async getPlans(): Promise<{ data: Plan[] | null; error: string | null }> {
     const result = await request<any[]>('/pricing');
     if (result.data && Array.isArray(result.data)) {
-      result.data = result.data.map((p: any) => ({
+      const mapped = result.data.map((p: any) => ({
         ...p,
         product_name: p.products?.name || p.product_name || 'Aexon',
       }));
+
+      const byBillingCycle = new Map<string, any>();
+      for (const plan of mapped) {
+        const cycle = plan.billing_cycle;
+        const existing = byBillingCycle.get(cycle);
+        if (!existing || Number(plan.price) < Number(existing.price)) {
+          byBillingCycle.set(cycle, plan);
+        }
+      }
+      result.data = Array.from(byBillingCycle.values());
     }
     return result as { data: Plan[] | null; error: string | null };
   },

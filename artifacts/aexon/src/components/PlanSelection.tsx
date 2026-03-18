@@ -56,8 +56,9 @@ export default function PlanSelection({ onSelectPlan, onBack }: PlanSelectionPro
 
   return (
     <div style={{
-      minHeight: '100vh', backgroundColor: '#F8FAFC',
+      height: '100%', backgroundColor: '#F8FAFC',
       display: 'flex', flexDirection: 'column',
+      overflow: 'hidden',
     }}>
       <div style={{
         backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
@@ -83,7 +84,8 @@ export default function PlanSelection({ onSelectPlan, onBack }: PlanSelectionPro
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', padding: '48px 24px 80px',
-      }}>
+        overflowY: 'auto',
+      }} className="custom-scrollbar">
         <motion.div
           initial={{ y: 16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
