@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Router, Route, Switch, useLocation } from 'wouter';
 import Launcher from './components/Launcher';
-import Pricing from './components/Pricing';
 import MainLayout from './components/MainLayout';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/AdminDashboard';
@@ -305,10 +304,6 @@ function AppContent() {
     }
   };
 
-  const handleSelectPlan = (plan: 'subscription') => {
-    setSelectedPlan(plan);
-    navigate('/dashboard');
-  };
 
   const handleStartSession = (data: PatientData) => {
     setPatientData(data);
@@ -412,14 +407,7 @@ function AppContent() {
 
   if (!userProfile) {
     return (
-      <Switch>
-        <Route path="/pricing">
-          <Pricing onSelectPlan={handleSelectPlan} />
-        </Route>
-        <Route>
-          <Launcher onLogin={handleLogin} />
-        </Route>
-      </Switch>
+      <Launcher onLogin={handleLogin} />
     );
   }
 
