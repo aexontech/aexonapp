@@ -48,7 +48,7 @@ import { UserProfile, HospitalSettings, Session, Capture } from '../types';
 import { useToast } from './ToastProvider';
 import ConfirmModal from './ConfirmModal';
 import { saveUserData, loadUserData, getLocalStorageUsage, decryptData } from '../lib/storage';
-import { aexonConnect, Plan } from '../lib/aexonConnect';
+import { aexonConnect, Plan, SubscriptionStatus } from '../lib/aexonConnect';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   const image = new Image();
@@ -87,6 +87,7 @@ interface SettingsProps {
   onCheckout: (plan: Plan) => void;
   plan: 'subscription' | 'enterprise' | null;
   sessions: Session[];
+  subscriptionData?: SubscriptionStatus | null;
 }
 
 interface RestoreConflict {
@@ -96,7 +97,7 @@ interface RestoreConflict {
 
 type ConflictAction = 'skip' | 'overwrite';
 
-export default function Settings({ userProfile, hospitalSettingsList, onUpdateUser, onUpdateHospitalList, onUpdateSessions, onCancelSubscription, onCheckout, plan, sessions }: SettingsProps) {
+export default function Settings({ userProfile, hospitalSettingsList, onUpdateUser, onUpdateHospitalList, onUpdateSessions, onCancelSubscription, onCheckout, plan, sessions, subscriptionData }: SettingsProps) {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'profil' | 'keamanan' | 'kop-surat' | 'langganan' | 'backup'>('profil');
 
@@ -1726,30 +1727,53 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                     <div>
                       <span style={{ fontSize: 10, fontWeight: 700, color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Paket Saat Ini</span>
                       <h4 style={{ fontSize: 24, fontWeight: 900 }}>
-                        {plan === 'subscription' ? 'Annual Subscription' : 'Trial Period'}
+                        {subscriptionData?.plan_name || (plan === 'subscription' ? 'Aexon Subscription' : plan === 'enterprise' ? 'Enterprise' : 'Trial Period')}
                       </h4>
                     </div>
-                    <span style={{
-                      padding: '4px 12px', fontSize: 12, fontWeight: 700, borderRadius: 20,
-                      backgroundColor: plan === 'subscription' ? 'rgba(16,185,129,0.2)' : 'rgba(234,179,8,0.2)',
-                      color: plan === 'subscription' ? '#6EE7B7' : '#FDE047',
-                    }}>
-                      {plan === 'subscription' ? 'Aktif' : 'Trial'}
-                    </span>
+                    {(() => {
+                      const st = subscriptionData?.status || (plan ? 'active' : 'none');
+                      const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
+                        active: { label: 'Aktif', bg: 'rgba(16,185,129,0.2)', color: '#6EE7B7' },
+                        trial: { label: 'Trial', bg: 'rgba(234,179,8,0.2)', color: '#FDE047' },
+                        pending: { label: 'Menunggu', bg: 'rgba(234,179,8,0.2)', color: '#FDE047' },
+                        expired: { label: 'Kedaluwarsa', bg: 'rgba(239,68,68,0.2)', color: '#FCA5A5' },
+                        cancelled: { label: 'Dibatalkan', bg: 'rgba(239,68,68,0.2)', color: '#FCA5A5' },
+                        none: { label: 'Tidak Aktif', bg: 'rgba(148,163,184,0.2)', color: '#94A3B8' },
+                      };
+                      const cfg = statusConfig[st] || statusConfig['none'];
+                      return (
+                        <span style={{
+                          padding: '4px 12px', fontSize: 12, fontWeight: 700, borderRadius: 20,
+                          backgroundColor: cfg.bg, color: cfg.color,
+                        }}>
+                          {cfg.label}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
                     <div>
                       <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Terdaftar</p>
-                      <p style={{ fontSize: 14, fontWeight: 700 }}>12 Des 2025</p>
+                      <p style={{ fontSize: 14, fontWeight: 700 }}>
+                        {subscriptionData?.starts_at
+                          ? new Date(subscriptionData.starts_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : '-'}
+                      </p>
                     </div>
                     <div>
                       <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Berlaku Hingga</p>
-                      <p style={{ fontSize: 14, fontWeight: 700 }}>12 Des 2026</p>
+                      <p style={{ fontSize: 14, fontWeight: 700 }}>
+                        {subscriptionData?.expires_at
+                          ? new Date(subscriptionData.expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : '-'}
+                      </p>
                     </div>
                     <div>
-                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Status</p>
-                      <p style={{ fontSize: 14, fontWeight: 700 }}>{plan === 'subscription' ? 'Aktif' : 'Trial'}</p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Siklus</p>
+                      <p style={{ fontSize: 14, fontWeight: 700 }}>
+                        {subscriptionData?.billing_cycle === 'annual' ? 'Tahunan' : subscriptionData?.billing_cycle === 'monthly' ? 'Bulanan' : '-'}
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -66,11 +66,12 @@ async function attemptTokenRefresh(): Promise<string | null> {
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
     if (res.ok) {
-      const data = await res.json();
-      if (data.token) {
+      const body = await res.json();
+      const payload = body && typeof body === 'object' && 'success' in body ? body.data : body;
+      if (payload?.token) {
         const isRemember = !!localStorage.getItem(TOKEN_KEY);
-        storeToken(data.token, data.refresh_token, isRemember);
-        return data.token;
+        storeToken(payload.token, payload.refresh_token, isRemember);
+        return payload.token;
       }
     }
   } catch {
@@ -172,10 +173,12 @@ export interface LoginResponse {
 
 export interface SubscriptionStatus {
   status: 'active' | 'trial' | 'pending' | 'expired' | 'cancelled' | 'none';
+  plan_type: 'subscription' | 'enterprise' | null;
   plan: 'subscription' | 'enterprise' | null;
   trial_days_left: number | null;
   plan_name?: string;
   billing_cycle?: string;
+  starts_at?: string;
   expires_at?: string;
   auto_renew?: boolean;
 }
@@ -204,6 +207,13 @@ export interface Plan {
   price: number;
   original_price: number | null;
   features: string[];
+  is_popular?: boolean;
+  product_id?: string;
+  products?: {
+    name: string;
+    slug?: string | null;
+    description?: string;
+  };
   product_name: string;
 }
 
@@ -288,7 +298,21 @@ export const aexonConnect = {
   },
 
   async getSubscription(): Promise<{ data: SubscriptionStatus | null; error: string | null }> {
-    return request<SubscriptionStatus>('/subscription');
+    const result = await request<any>('/subscription');
+    if (result.data) {
+      const d = result.data;
+      const planType = d.plan_type || d.plan || null;
+      const status = d.status || 'none';
+      const isActive = status === 'active' || status === 'trial';
+      result.data = {
+        ...d,
+        status,
+        plan_type: planType,
+        plan: isActive ? (planType || 'subscription') : null,
+        trial_days_left: d.trial_days_left ?? null,
+      };
+    }
+    return result as { data: SubscriptionStatus | null; error: string | null };
   },
 
   async toggleAutoRenew(): Promise<{ data: ToggleAutoRenewResponse | null; error: string | null }> {
@@ -323,7 +347,14 @@ export const aexonConnect = {
   },
 
   async getPlans(): Promise<{ data: Plan[] | null; error: string | null }> {
-    return request<Plan[]>('/plans');
+    const result = await request<any[]>('/pricing');
+    if (result.data && Array.isArray(result.data)) {
+      result.data = result.data.map((p: any) => ({
+        ...p,
+        product_name: p.products?.name || p.product_name || 'Aexon',
+      }));
+    }
+    return result as { data: Plan[] | null; error: string | null };
   },
 
   async validatePromo(code: string): Promise<{ data: PromoValidation | null; error: string | null }> {

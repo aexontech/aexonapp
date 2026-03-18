@@ -20,7 +20,7 @@ import ConfirmModal from './components/ConfirmModal';
 import ToastProvider, { useToast } from './components/ToastProvider';
 import { PatientData, Session, UserProfile, HospitalSettings, UserRole } from './types';
 import { saveUserData, loadUserData } from './lib/storage';
-import { onSessionExpired, Plan } from './lib/aexonConnect';
+import { onSessionExpired, Plan, SubscriptionStatus } from './lib/aexonConnect';
 import { AlertTriangle } from 'lucide-react';
 
 function RouteRedirect({ to }: { to: string }) {
@@ -36,6 +36,7 @@ function AppContent() {
   const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | null>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
+  const [subscriptionData, setSubscriptionData] = useState<SubscriptionStatus | null>(null);
 
   const [patientData, setPatientData] = useState<PatientData | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -73,6 +74,7 @@ function AppContent() {
       const { aexonConnect } = await import('./lib/aexonConnect');
       const { data: subStatus } = await aexonConnect.getSubscription();
       if (!subStatus) return;
+      setSubscriptionData(subStatus);
       setSelectedPlan(subStatus.plan ?? null);
       setTrialDaysLeft(subStatus.trial_days_left ?? null);
     } catch (err) {
@@ -88,6 +90,7 @@ function AppContent() {
     onSessionExpired(() => {
       setUserProfile(null);
       setSelectedPlan(null);
+      setSubscriptionData(null);
       setPatientData(null);
       setSessions([]);
       setViewingSession(null);
@@ -150,6 +153,12 @@ function AppContent() {
     setShowNavGuard(false);
     setPendingNavTarget(null);
   };
+
+  useEffect(() => {
+    if (userProfile) {
+      refreshSubscriptionStatus();
+    }
+  }, [userProfile?.id]);
 
   useEffect(() => {
     if (userProfile) {
@@ -274,6 +283,7 @@ function AppContent() {
     setShowEula(false);
     setUserProfile(null);
     setSelectedPlan(null);
+    setSubscriptionData(null);
     setTrialDaysLeft(null);
     navigate('/');
   };
@@ -344,6 +354,7 @@ function AppContent() {
     }
     navigate('/');
     setSelectedPlan(null);
+    setSubscriptionData(null);
     setPatientData(null);
     setSessions([]);
     setViewingSession(null);
@@ -567,6 +578,7 @@ function AppContent() {
               }}
               plan={selectedPlan}
               sessions={sessions}
+              subscriptionData={subscriptionData}
             />
           </Route>
 
