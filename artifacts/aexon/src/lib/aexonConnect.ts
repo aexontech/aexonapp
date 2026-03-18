@@ -1,0 +1,265 @@
+const AEXON_CONNECT_API_URL = import.meta.env.VITE_AEXON_CONNECT_API_URL || '';
+
+const TOKEN_KEY = 'aexon_jwt_token';
+const REFRESH_TOKEN_KEY = 'aexon_refresh_token';
+
+function getStoredToken(): string | null {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeToken(token: string, refreshToken?: string, remember = false) {
+  try {
+    const storage = remember ? localStorage : sessionStorage;
+    storage.setItem(TOKEN_KEY, token);
+    if (refreshToken) storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    if (!remember) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+    } else {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+    }
+  } catch {
+  }
+}
+
+function clearToken() {
+  try {
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  } catch {
+  }
+}
+
+async function request<T = any>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<{ data: T | null; error: string | null; status: number }> {
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> || {}),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const res = await fetch(`${AEXON_CONNECT_API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    let body: any = null;
+    const contentType = res.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      body = await res.json();
+    }
+
+    if (!res.ok) {
+      return {
+        data: null,
+        error: body?.message || body?.error || `Request failed (${res.status})`,
+        status: res.status,
+      };
+    }
+
+    return { data: body as T, error: null, status: res.status };
+  } catch (err: any) {
+    return {
+      data: null,
+      error: err.message || 'Koneksi gagal. Periksa internet dan coba lagi.',
+      status: 0,
+    };
+  }
+}
+
+export interface LoginResponse {
+  token: string;
+  refresh_token?: string;
+  user: {
+    id: string;
+    email: string;
+    full_name: string;
+    role: 'doctor' | 'admin';
+    enterprise_id?: string | null;
+    specialization?: string;
+    str_number?: string;
+    sip_number?: string;
+    phone?: string;
+  };
+}
+
+export interface SubscriptionStatus {
+  status: 'active' | 'trial' | 'expired' | 'cancelled' | 'none';
+  plan: 'subscription' | 'enterprise' | null;
+  trial_days_left: number | null;
+  plan_name?: string;
+  billing_cycle?: string;
+  expires_at?: string;
+}
+
+export interface Plan {
+  id: string;
+  billing_cycle: 'monthly' | 'annual';
+  price: number;
+  original_price: number | null;
+  features: string[];
+  product_name: string;
+}
+
+export interface CheckoutResponse {
+  order_id: string;
+  invoice_url: string;
+  invoice_id: string;
+  amount: number;
+}
+
+export interface PromoValidation {
+  code: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  label: string;
+}
+
+export interface DeviceRegisterResponse {
+  device_token: string;
+  device_id: string;
+}
+
+export interface DeviceVerifyResponse {
+  verified: boolean;
+  message?: string;
+}
+
+export interface BillingHistoryItem {
+  id: string;
+  order_id: string;
+  plan_name: string;
+  billing_cycle: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  invoice_url?: string;
+}
+
+export const aexonConnect = {
+  getToken: getStoredToken,
+  clearSession: clearToken,
+
+  async login(email: string, password: string, remember = false): Promise<{ data: LoginResponse | null; error: string | null }> {
+    const { data, error } = await request<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (data?.token) {
+      storeToken(data.token, data.refresh_token, remember);
+    }
+
+    return { data, error };
+  },
+
+  async register(payload: {
+    email: string;
+    password: string;
+    full_name: string;
+    str_number: string;
+    sip_number?: string;
+    specialization?: string;
+  }): Promise<{ data: any; error: string | null }> {
+    return request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async resetPassword(email: string): Promise<{ data: any; error: string | null }> {
+    return request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async changePassword(current_password: string, new_password: string): Promise<{ data: any; error: string | null }> {
+    return request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password, new_password }),
+    });
+  },
+
+  async updateProfile(payload: Record<string, any>): Promise<{ data: any; error: string | null }> {
+    return request('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getSubscriptionStatus(): Promise<{ data: SubscriptionStatus | null; error: string | null }> {
+    return request<SubscriptionStatus>('/subscription/status');
+  },
+
+  async getPlans(): Promise<{ data: Plan[] | null; error: string | null }> {
+    return request<Plan[]>('/plans');
+  },
+
+  async validatePromo(code: string): Promise<{ data: PromoValidation | null; error: string | null }> {
+    return request<PromoValidation>('/subscription/promo/validate', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  async checkout(payload: {
+    plan_id: string;
+    device_id: string;
+    promo_code?: string;
+  }): Promise<{ data: CheckoutResponse | null; error: string | null }> {
+    return request<CheckoutResponse>('/subscription/checkout', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async registerDevice(device_id: string): Promise<{ data: DeviceRegisterResponse | null; error: string | null }> {
+    return request<DeviceRegisterResponse>('/device/register', {
+      method: 'POST',
+      body: JSON.stringify({ device_id }),
+    });
+  },
+
+  async verifyDevice(device_id: string): Promise<{ data: DeviceVerifyResponse | null; error: string | null }> {
+    return request<DeviceVerifyResponse>('/device/verify', {
+      method: 'POST',
+      body: JSON.stringify({ device_id }),
+    });
+  },
+
+  async getBillingHistory(): Promise<{ data: BillingHistoryItem[] | null; error: string | null }> {
+    return request<BillingHistoryItem[]>('/subscription/billing-history');
+  },
+
+  async logout(): Promise<void> {
+    try {
+      await request('/auth/logout', { method: 'POST' });
+    } catch {
+    }
+    clearToken();
+  },
+};
+
+export function getDeviceId(): string {
+  const KEY = 'aexon_device_id';
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    id = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}

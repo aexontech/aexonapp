@@ -58,7 +58,7 @@ interface ProductPlan {
 import { useToast } from './ToastProvider';
 import ConfirmModal from './ConfirmModal';
 import { saveUserData, loadUserData, getLocalStorageUsage, decryptData, getEncryptionKey } from '../lib/storage';
-import { supabase } from '../lib/supabase';
+import { aexonConnect } from '../lib/aexonConnect';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   const image = new Image();
@@ -168,11 +168,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   useEffect(() => {
     if (activeTab === 'langganan' && isPersonal) {
       setBillingLoading(true);
-      supabase
-        .from('payment_logs')
-        .select('*')
-        .eq('doctor_id', userProfile.id)
-        .order('created_at', { ascending: false })
+      aexonConnect.getBillingHistory()
         .then(({ data, error }) => {
           if (!error && data) setBillingHistory(data);
           setBillingLoading(false);
@@ -182,30 +178,21 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
   useEffect(() => {
     async function fetchPlansAndSettings() {
-      if (!supabase) { setPlansLoading(false); return; }
       try {
-        const { data: betaData } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'beta_mode')
-          .maybeSingle();
-
-        const isBetaMode = betaData?.value === 'true';
-
-        const { data: allPlans, error } = await supabase
-          .from('product_plans')
-          .select('*, products(name)')
-          .order('price', { ascending: true });
-        if (error) {
+        const { data: remotePlans, error } = await aexonConnect.getPlans();
+        if (error || !remotePlans) {
           console.error('Failed to fetch plans:', error);
           showToast('Gagal memuat daftar paket. Silakan coba lagi nanti.', 'error');
-        } else if (allPlans) {
-          const filtered = allPlans.filter(p =>
-            isBetaMode
-              ? p.original_price !== null
-              : p.original_price === null
-          );
-          setPlans(filtered);
+        } else {
+          const mapped = remotePlans.map(p => ({
+            id: p.id,
+            billing_cycle: p.billing_cycle,
+            price: p.price,
+            original_price: p.original_price,
+            features: p.features,
+            products: { name: p.product_name },
+          }));
+          setPlans(mapped);
         }
       } catch (err) {
         console.error('Failed to fetch plans:', err);
@@ -467,31 +454,23 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         profileForm.lastNameChangeDate = now.toISOString();
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      const authId = user?.id;
+      const updatePayload: Record<string, any> = {
+        specialization: profileForm.specialization,
+      };
 
-      if (authId) {
-        const updatePayload: Record<string, any> = {
-          specialization: profileForm.specialization,
-        };
+      if (!isDokterInstitusi) {
+        updatePayload.full_name = profileForm.name;
+        updatePayload.str_number = profileForm.strNumber || null;
+        updatePayload.sip_number = profileForm.sipNumber || null;
+        updatePayload.phone = profileForm.phone;
+      }
 
-        if (!isDokterInstitusi) {
-          updatePayload.full_name = profileForm.name;
-          updatePayload.str_number = profileForm.strNumber || null;
-          updatePayload.sip_number = profileForm.sipNumber || null;
-          updatePayload.phone = profileForm.phone;
-        }
+      const { error } = await aexonConnect.updateProfile(updatePayload);
 
-        const { error } = await supabase
-          .from('doctor_accounts')
-          .update(updatePayload)
-          .eq('user_id', authId);
-
-        if (error) {
-          showToast('Gagal menyimpan ke server: ' + error.message, 'error');
-          setProfileSaving(false);
-          return;
-        }
+      if (error) {
+        showToast('Gagal menyimpan ke server: ' + error, 'error');
+        setProfileSaving(false);
+        return;
       }
 
       onUpdateUser(profileForm);
@@ -522,26 +501,18 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
 
     setPasswordSaving(true);
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userProfile.email,
-        password: currentPassword,
-      });
+      const { error } = await aexonConnect.changePassword(currentPassword, newPassword);
 
-      if (signInError) {
-        showToast('Password saat ini salah.', 'error');
+      if (error) {
+        showToast(error.includes('current') || error.includes('invalid') ? 'Password saat ini salah.' : (error || 'Gagal mengubah password.'), 'error');
         setPasswordSaving(false);
         return;
       }
 
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) {
-        showToast(error.message || 'Gagal mengubah password.', 'error');
-      } else {
-        showToast('Password berhasil diubah.', 'success');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      }
+      showToast('Password berhasil diubah.', 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch {
       showToast('Gagal terhubung ke server.', 'error');
     }

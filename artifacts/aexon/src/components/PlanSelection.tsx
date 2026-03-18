@@ -8,7 +8,7 @@ import {
   Tag,
   CreditCard,
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { aexonConnect, Plan } from '../lib/aexonConnect';
 import { useToast } from './ToastProvider';
 
 interface ProductPlan {
@@ -36,28 +36,21 @@ export default function PlanSelection({ onSelectPlan, onBack }: PlanSelectionPro
 
   useEffect(() => {
     async function fetchPlans() {
-      if (!supabase) { setLoading(false); return; }
       try {
-        const { data: betaData } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'beta_mode')
-          .maybeSingle();
+        const { data: remotePlans, error } = await aexonConnect.getPlans();
 
-        const isBetaMode = betaData?.value === 'true';
-
-        const { data: allPlans, error } = await supabase
-          .from('product_plans')
-          .select('*, products(name)')
-          .order('price', { ascending: true });
-
-        if (error) {
+        if (error || !remotePlans) {
           showToast('Gagal memuat paket', 'error');
-        } else if (allPlans) {
-          const filtered = allPlans.filter((p: any) =>
-            isBetaMode ? p.original_price !== null : p.original_price === null
-          );
-          setPlans(filtered);
+        } else {
+          const mapped: ProductPlan[] = remotePlans.map((p: Plan) => ({
+            id: p.id,
+            billing_cycle: p.billing_cycle,
+            price: p.price,
+            original_price: p.original_price,
+            features: p.features,
+            products: { name: p.product_name },
+          }));
+          setPlans(mapped);
         }
       } catch {
         showToast('Gagal memuat paket', 'error');

@@ -83,46 +83,17 @@ function AppContent() {
   const refreshSubscriptionStatus = async () => {
     if (!userProfile) return;
     try {
-      const { supabase } = await import('./lib/supabase');
-      if (!supabase) return;
+      const { aexonConnect } = await import('./lib/aexonConnect');
+      const { data: subStatus } = await aexonConnect.getSubscriptionStatus();
+      if (!subStatus) return;
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('enterprise_id')
-        .eq('id', user.id)
-        .single();
-
-      if (profile?.enterprise_id) {
-        setSelectedPlan('enterprise');
-        setTrialDaysLeft(null);
-        return;
-      }
-
-      const { data: subscriptions } = await supabase
-        .from('subscriptions')
-        .select('*, product_plans(*), products(*)')
-        .eq('doctor_id', user.id)
-        .in('status', ['active', 'trial'])
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      const subscription = subscriptions && subscriptions.length > 0 ? subscriptions[0] : null;
-
-      if (subscription) {
-        setSelectedPlan('subscription');
-        if (subscription.status === 'trial' && subscription.current_period_end) {
-          const end = new Date(subscription.current_period_end);
-          const now = new Date();
-          setTrialDaysLeft(Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))));
-        } else {
-          setTrialDaysLeft(null);
-        }
+      if (subStatus.plan) {
+        setSelectedPlan(subStatus.plan);
       } else {
         setSelectedPlan(null);
       }
+
+      setTrialDaysLeft(subStatus.trial_days_left ?? null);
     } catch (err) {
       console.error('Failed to refresh subscription status:', err);
     }
@@ -352,7 +323,12 @@ function AppContent() {
     persistSessions(updatedSessions);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const { aexonConnect } = await import('./lib/aexonConnect');
+      await aexonConnect.logout();
+    } catch {
+    }
     setCurrentView('launcher');
     setSelectedPlan(null);
     setPatientData(null);

@@ -18,7 +18,7 @@ import {
   ChevronDown,
   Lock,
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { aexonConnect, getDeviceId } from '../lib/aexonConnect';
 import { useToast } from './ToastProvider';
 
 interface CheckoutPlan {
@@ -94,28 +94,10 @@ export default function Checkout({ plan, userEmail, userName, onBack, onSuccess 
     setPromoLoading(true);
     setPromoError('');
     try {
-      if (!supabase) throw new Error('Database tidak tersedia');
-
-      const { data, error } = await supabase
-        .from('promo_codes')
-        .select('code, discount_type, discount_value, label, is_active, expires_at, usage_limit, usage_count')
-        .eq('code', code)
-        .maybeSingle();
+      const { data, error } = await aexonConnect.validatePromo(code);
 
       if (error || !data) {
-        setPromoError('Kode promo tidak ditemukan');
-        return;
-      }
-      if (!data.is_active) {
-        setPromoError('Kode promo sudah tidak aktif');
-        return;
-      }
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
-        setPromoError('Kode promo sudah kadaluarsa');
-        return;
-      }
-      if (data.usage_limit && data.usage_count >= data.usage_limit) {
-        setPromoError('Kode promo sudah mencapai batas penggunaan');
+        setPromoError(error || 'Kode promo tidak ditemukan');
         return;
       }
 
@@ -142,73 +124,24 @@ export default function Checkout({ plan, userEmail, userName, onBack, onSuccess 
   const handlePlaceOrder = async () => {
     setProcessing(true);
     try {
-      const newOrderId = generateOrderId();
+      const deviceId = getDeviceId();
 
-      if (!supabase) throw new Error('Koneksi database tidak tersedia');
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Sesi login tidak ditemukan. Silakan login ulang.');
-
-      const insertPayload: Record<string, any> = {
-        user_id: user.id,
+      const { data: checkoutData, error: checkoutError } = await aexonConnect.checkout({
         plan_id: plan.id,
-        amount: totalPrice,
-        status: 'pending',
-      };
+        device_id: deviceId,
+        promo_code: appliedPromo?.code || undefined,
+      });
 
-      const { error: insertError } = await supabase.from('payment_logs').insert(insertPayload);
-
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        throw new Error('Gagal menyimpan pesanan ke database.');
+      if (checkoutError || !checkoutData) {
+        throw new Error(checkoutError || 'Gagal membuat pesanan.');
       }
 
-      const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-      const apiBase = `${window.location.origin}${baseUrl}`;
-
-      try {
-        const xenditRes = await fetch(`${apiBase}/api/xendit/create-invoice`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: newOrderId,
-            amount: totalPrice,
-            payerEmail: userEmail,
-            description: `Langganan Aexon - ${plan.products?.name} (${isAnnual ? 'Tahunan' : 'Bulanan'})`,
-            planName: plan.products?.name || 'Aexon',
-            billingCycle: plan.billing_cycle,
-            userName,
-            promoCode: appliedPromo?.code || null,
-            promoDiscount: promoDiscount || 0,
-            successRedirectUrl: window.location.origin + baseUrl,
-            failureRedirectUrl: window.location.origin + baseUrl,
-          }),
-        });
-
-        const xenditData = await xenditRes.json();
-
-        if (xenditRes.ok && xenditData.invoiceUrl) {
-          try {
-            await supabase.from('payment_logs').update({
-              xendit_invoice_id: xenditData.invoiceId,
-              xendit_invoice_url: xenditData.invoiceUrl,
-            }).eq('order_id', newOrderId);
-          } catch (_) {
-          }
-
-          window.open(xenditData.invoiceUrl, '_blank');
-          setOrderId(newOrderId);
-          setXenditInvoiceUrl(xenditData.invoiceUrl);
-          setOrderPlaced(true);
-          showToast('Invoice Xendit berhasil dibuat!', 'success');
-          onSuccess?.();
-          return;
-        }
-      } catch (xenditErr) {
-        console.warn('Xendit not available, falling back to manual:', xenditErr);
+      if (checkoutData.invoice_url) {
+        window.open(checkoutData.invoice_url, '_blank');
+        setXenditInvoiceUrl(checkoutData.invoice_url);
       }
 
-      setOrderId(newOrderId);
+      setOrderId(checkoutData.order_id);
       setOrderPlaced(true);
       showToast('Pesanan berhasil dibuat!', 'success');
       onSuccess?.();

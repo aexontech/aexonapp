@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, Eye, EyeOff, ChevronLeft, Loader2, AlertCircle, CheckCircle2, User, Building2, MessageCircle } from 'lucide-react';
 import { Logo } from './Logo';
-import { supabase } from '../lib/supabase';
+import { aexonConnect } from '../lib/aexonConnect';
 
 type LoginType = 'personal' | 'institusi';
 type InstitusiRole = 'doctor' | 'admin';
@@ -46,83 +46,57 @@ export default function Launcher({ onLogin }: LauncherProps) {
     setError('');
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      if (authError) throw authError;
+      const { data: loginData, error: loginError } = await aexonConnect.login(email, password);
 
-      const { data: profile, error: profileError } = await supabase
-        .from('doctor_accounts')
-        .select('*')
-        .eq('user_id', data.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        setError('Profil dokter tidak ditemukan. Hubungi administrator.');
+      if (loginError || !loginData) {
+        setError(
+          loginError === 'Invalid login credentials'
+            ? 'Email atau password salah. Periksa kembali.'
+            : loginError ?? 'Koneksi gagal. Periksa internet dan coba lagi.'
+        );
         setIsLoading(false);
-        await supabase.auth.signOut();
         return;
       }
 
-      if (loginType === 'personal' && profile.enterprise_id) {
+      const user = loginData.user;
+
+      if (loginType === 'personal' && user.enterprise_id) {
         setError('Akun ini terdaftar sebagai akun institusi. Pilih tab Institusi.');
         setIsLoading(false);
         return;
       }
-      if (loginType === 'institusi' && !profile.enterprise_id) {
+      if (loginType === 'institusi' && !user.enterprise_id) {
         setError('Akun ini bukan akun institusi. Pilih tab Personal.');
         setIsLoading(false);
         return;
       }
-      if (loginType === 'institusi' && institusiRole === 'admin' && profile.role !== 'admin') {
+      if (loginType === 'institusi' && institusiRole === 'admin' && user.role !== 'admin') {
         setError('Akun ini adalah Dokter Institusi. Pilih Dokter Institusi.');
         setIsLoading(false);
         return;
       }
-      if (loginType === 'institusi' && institusiRole === 'doctor' && profile.role !== 'doctor') {
+      if (loginType === 'institusi' && institusiRole === 'doctor' && user.role !== 'doctor') {
         setError('Akun ini adalah Admin Institusi. Pilih Admin Institusi.');
         setIsLoading(false);
         return;
       }
 
-      let plan: 'subscription' | 'enterprise' | null = null;
-      let trialDaysLeft: number | null = null;
+      const { data: subStatus } = await aexonConnect.getSubscriptionStatus();
 
-      if (profile.enterprise_id) {
-        plan = 'enterprise';
-      } else {
-        const { data: subscription } = await supabase
-          .from('subscriptions')
-          .select('*, product_plans(*), products(*)')
-          .eq('doctor_id', profile.id)
-          .in('status', ['active', 'trial'])
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (subscription) {
-          plan = 'subscription';
-          if (subscription.status === 'trial' && subscription.current_period_end) {
-            const end = new Date(subscription.current_period_end);
-            const now = new Date();
-            trialDaysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-          }
-        }
-      }
+      let plan: 'subscription' | 'enterprise' | null = subStatus?.plan ?? null;
+      let trialDaysLeft: number | null = subStatus?.trial_days_left ?? null;
 
       onLogin(
-        profile.role ?? 'doctor',
-        data.user.email ?? '',
-        profile.full_name ?? data.user.email ?? '',
+        user.role ?? 'doctor',
+        user.email ?? '',
+        user.full_name ?? user.email ?? '',
         plan,
         trialDaysLeft,
-        profile.enterprise_id ?? undefined
+        user.enterprise_id ?? undefined
       );
 
     } catch (err: any) {
-      setError(
-        err.message === 'Invalid login credentials'
-          ? 'Email atau password salah. Periksa kembali.'
-          : err.message ?? 'Koneksi gagal. Periksa internet dan coba lagi.'
-      );
+      setError(err.message ?? 'Koneksi gagal. Periksa internet dan coba lagi.');
     } finally {
       setIsLoading(false);
     }
@@ -134,10 +108,8 @@ export default function Launcher({ onLogin }: LauncherProps) {
     setResetError('');
 
     try {
-      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: 'https://aexon.id/reset-password'
-      });
-      if (resetErr) throw resetErr;
+      const { error: resetErr } = await aexonConnect.resetPassword(resetEmail);
+      if (resetErr) throw new Error(resetErr);
       setResetSent(true);
     } catch (err: any) {
       setResetError(err.message || 'Gagal mengirim link reset. Coba lagi.');
@@ -167,36 +139,21 @@ export default function Launcher({ onLogin }: LauncherProps) {
       return;
     }
 
-    const fullName = regName.trim();
-
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const { error: regErr } = await aexonConnect.register({
         email: regEmail,
         password: regPassword,
-        options: {
-          data: {
-            full_name: fullName,
-            str_number: regStr.trim(),
-            sip_number: regSip.trim()
-          }
-        }
+        full_name: regName.trim(),
+        str_number: regStr.trim(),
+        sip_number: regSip.trim() || undefined,
+        specialization: regSpecialization.trim() || undefined,
       });
-      if (signUpError) {
-        if (signUpError.message?.includes('already registered')) {
+
+      if (regErr) {
+        if (regErr.includes('already registered') || regErr.includes('already exists')) {
           throw new Error('Email sudah terdaftar. Gunakan email lain atau login.');
         }
-        throw signUpError;
-      }
-
-      if (data.user) {
-        await supabase.from('doctor_accounts').insert({
-          user_id: data.user.id,
-          full_name: fullName,
-          str_number: regStr.trim(),
-          sip_number: regSip.trim() || null,
-          role: 'doctor',
-          specialization: regSpecialization.trim() || null
-        });
+        throw new Error(regErr);
       }
 
       setRegSuccess(true);
