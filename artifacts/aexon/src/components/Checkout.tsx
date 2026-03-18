@@ -126,7 +126,7 @@ export default function Checkout({ plan, userEmail, userName, onBack, onSuccess 
     try {
       const deviceId = getDeviceId();
 
-      const { data: checkoutData, error: checkoutError } = await aexonConnect.checkout({
+      const { data: checkoutData, error: checkoutError } = await aexonConnect.createInvoice({
         plan_id: plan.id,
         device_id: deviceId,
         promo_code: appliedPromo?.code || undefined,

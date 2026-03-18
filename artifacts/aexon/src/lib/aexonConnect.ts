@@ -124,6 +124,7 @@ export interface ToggleAutoRenewResponse {
 
 export interface InvoiceResponse {
   invoice_id: string;
+  order_id?: string;
   invoice_url: string;
   amount: number;
   status: string;
@@ -142,13 +143,6 @@ export interface Plan {
   original_price: number | null;
   features: string[];
   product_name: string;
-}
-
-export interface CheckoutResponse {
-  order_id: string;
-  invoice_url: string;
-  invoice_id: string;
-  amount: number;
 }
 
 export interface PromoValidation {
@@ -231,8 +225,40 @@ export const aexonConnect = {
     });
   },
 
-  async getSubscriptionStatus(): Promise<{ data: SubscriptionStatus | null; error: string | null }> {
-    return request<SubscriptionStatus>('/subscription/status');
+  async getSubscription(doctorId?: string): Promise<{ data: SubscriptionStatus | null; error: string | null }> {
+    const query = doctorId ? `?doctor_id=${encodeURIComponent(doctorId)}` : '';
+    return request<SubscriptionStatus>(`/subscription${query}`);
+  },
+
+  async toggleAutoRenew(): Promise<{ data: ToggleAutoRenewResponse | null; error: string | null }> {
+    return request<ToggleAutoRenewResponse>('/subscription/toggle-renew', {
+      method: 'POST',
+    });
+  },
+
+  async createInvoice(payload: {
+    plan_id: string;
+    device_id: string;
+    promo_code?: string;
+  }): Promise<{ data: InvoiceResponse | null; error: string | null }> {
+    return request<InvoiceResponse>('/subscription/checkout', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async createDeviceSession(deviceId: string): Promise<{ data: DeviceSessionResponse | null; error: string | null }> {
+    return request<DeviceSessionResponse>('/login-session', {
+      method: 'POST',
+      body: JSON.stringify({ device_id: deviceId }),
+    });
+  },
+
+  async checkDeviceSession(deviceId: string): Promise<{ data: DeviceSessionResponse | null; error: string | null }> {
+    return request<DeviceSessionResponse>('/check-session', {
+      method: 'POST',
+      body: JSON.stringify({ device_id: deviceId }),
+    });
   },
 
   async getPlans(): Promise<{ data: Plan[] | null; error: string | null }> {
@@ -243,17 +269,6 @@ export const aexonConnect = {
     return request<PromoValidation>('/subscription/promo/validate', {
       method: 'POST',
       body: JSON.stringify({ code }),
-    });
-  },
-
-  async checkout(payload: {
-    plan_id: string;
-    device_id: string;
-    promo_code?: string;
-  }): Promise<{ data: CheckoutResponse | null; error: string | null }> {
-    return request<CheckoutResponse>('/subscription/checkout', {
-      method: 'POST',
-      body: JSON.stringify(payload),
     });
   },
 

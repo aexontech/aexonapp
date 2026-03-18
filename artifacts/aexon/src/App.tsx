@@ -84,7 +84,7 @@ function AppContent() {
     if (!userProfile) return;
     try {
       const { aexonConnect } = await import('./lib/aexonConnect');
-      const { data: subStatus } = await aexonConnect.getSubscriptionStatus();
+      const { data: subStatus } = await aexonConnect.getSubscription(userProfile.id);
       if (!subStatus) return;
 
       if (subStatus.plan) {

@@ -81,7 +81,10 @@ export default function Launcher({ onLogin }: LauncherProps) {
         return;
       }
 
-      const { data: subStatus } = await aexonConnect.getSubscriptionStatus();
+      const { data: subStatus } = await aexonConnect.getSubscription(user.id);
+
+      const deviceId = (await import('../lib/aexonConnect')).getDeviceId();
+      await aexonConnect.createDeviceSession(deviceId);
 
       let plan: 'subscription' | 'enterprise' | null = subStatus?.plan ?? null;
       let trialDaysLeft: number | null = subStatus?.trial_days_left ?? null;
