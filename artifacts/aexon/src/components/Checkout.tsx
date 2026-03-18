@@ -36,10 +36,12 @@ interface CheckoutProps {
   userName: string;
   onBack: () => void;
   onSuccess?: () => void;
+  onDone?: () => void;
 }
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_MAX_DURATION_MS = 30 * 60 * 1000;
+const AUTO_REDIRECT_SECONDS = 10;
 
 export default function Checkout({
   plan,
@@ -47,11 +49,13 @@ export default function Checkout({
   userName,
   onBack,
   onSuccess,
+  onDone,
 }: CheckoutProps) {
   const { showToast } = useToast();
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("idle");
   const [invoiceId, setInvoiceId] = useState("");
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(AUTO_REDIRECT_SECONDS);
 
   const [promoCode, setPromoCode] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
@@ -114,6 +118,22 @@ export default function Checkout({
       }
     }, POLL_INTERVAL_MS);
   }, [stopPolling, onSuccess]);
+
+  const isResultScreen = paymentStatus === "paid" || paymentStatus === "failed" || paymentStatus === "expired";
+
+  useEffect(() => {
+    if (!isResultScreen) {
+      setCountdown(AUTO_REDIRECT_SECONDS);
+      return;
+    }
+    if (countdown <= 0) {
+      if (paymentStatus === "paid" && onSuccess) onSuccess();
+      if (onDone) onDone();
+      return;
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [isResultScreen, countdown, paymentStatus, onSuccess, onDone]);
 
   if (!plan) {
     return (
@@ -324,7 +344,7 @@ export default function Checkout({
             </div>
           )}
           <button
-            onClick={onBack}
+            onClick={() => { if (onSuccess) onSuccess(); if (onDone) onDone(); }}
             style={{
               padding: "16px 40px", backgroundColor: "#0C1E35", color: "#fff",
               fontWeight: 800, borderRadius: 14, border: "none", cursor: "pointer",
@@ -336,6 +356,9 @@ export default function Checkout({
           >
             Mulai Menggunakan Aexon
           </button>
+          <p style={{ fontSize: 12, color: "#94A3B8", marginTop: 16 }}>
+            Otomatis kembali ke dashboard dalam {countdown} detik
+          </p>
         </motion.div>
       </div>
     );
@@ -427,6 +450,9 @@ export default function Checkout({
               Kembali ke Pilihan Paket
             </button>
           </div>
+          <p style={{ fontSize: 12, color: "#94A3B8", marginTop: 16 }}>
+            Otomatis kembali ke dashboard dalam {countdown} detik
+          </p>
         </motion.div>
       </div>
     );

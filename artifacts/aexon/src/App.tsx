@@ -531,6 +531,7 @@ function AppContent() {
                 userName={userProfile.name ?? userProfile.email}
                 onBack={() => navigate('/subscription/plans')}
                 onSuccess={handleCheckoutSuccess}
+                onDone={() => navigate('/dashboard')}
               />
             ) : <RouteRedirect to="/subscription/plans" />}
           </Route>
