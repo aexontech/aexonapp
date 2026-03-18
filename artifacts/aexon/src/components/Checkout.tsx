@@ -565,7 +565,7 @@ export default function Checkout({
             fontSize: 16, fontWeight: 800, color: "#0C1E35",
             fontFamily: "Outfit, sans-serif",
           }}>
-            Checkout
+            Ringkasan Pesanan
           </span>
         </div>
         <div style={{ flex: 1 }} />
@@ -597,18 +597,18 @@ export default function Checkout({
               }}>
                 <span style={{ color: "#0C1E35", fontWeight: 600 }}>Paket</span>
                 <ChevronRight style={{ width: 12, height: 12 }} />
-                <span style={{ color: "#0C1E35", fontWeight: 600 }}>Pembayaran</span>
+                <span style={{ color: "#0C1E35", fontWeight: 600 }}>Ringkasan</span>
                 <ChevronRight style={{ width: 12, height: 12 }} />
-                <span>Konfirmasi</span>
+                <span>Pembayaran</span>
               </div>
               <h1 style={{
                 fontSize: 22, fontWeight: 900, color: "#0C1E35",
                 fontFamily: "Outfit, sans-serif", marginBottom: 4,
               }}>
-                Informasi Pembayaran
+                Ringkasan Pesanan
               </h1>
               <p style={{ fontSize: 13, color: "#94A3B8" }}>
-                Lengkapi data di bawah untuk menyelesaikan pesanan
+                Tinjau pesanan Anda sebelum melanjutkan ke pembayaran
               </p>
             </motion.div>
 
@@ -654,47 +654,6 @@ export default function Checkout({
               initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.15 }}
-            >
-              <div style={{
-                fontSize: 13, fontWeight: 700, color: "#0C1E35", marginBottom: 12,
-                fontFamily: "Outfit, sans-serif",
-              }}>
-                Metode Pembayaran
-              </div>
-              <div style={{
-                padding: 16, borderRadius: 12, border: "2px solid #0C1E35",
-                backgroundColor: "#fff", display: "flex", alignItems: "center",
-                gap: 14, position: "relative",
-              }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10, backgroundColor: "#F1F5F9",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                }}>
-                  <CreditCard style={{ width: 20, height: 20, color: "#0C1E35" }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0C1E35" }}>
-                    Xendit Payment Gateway
-                  </div>
-                  <div style={{ fontSize: 12, color: "#94A3B8" }}>
-                    VA, E-Wallet, QRIS, Kartu Kredit/Debit
-                  </div>
-                </div>
-                <div style={{
-                  position: "absolute", top: -10, right: 16,
-                  backgroundColor: "#0C1E35", color: "#fff",
-                  fontSize: 10, fontWeight: 800, padding: "3px 10px",
-                  borderRadius: 999, letterSpacing: "0.05em",
-                }}>
-                  TERPILIH
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
             >
               <div style={{
                 fontSize: 13, fontWeight: 700, color: "#0C1E35", marginBottom: 12,
@@ -792,7 +751,7 @@ export default function Checkout({
             <motion.div
               initial={{ y: 10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.25 }}
+              transition={{ delay: 0.2 }}
             >
               <button
                 onClick={handlePlaceOrder}
@@ -820,7 +779,10 @@ export default function Checkout({
                     Memproses...
                   </>
                 ) : (
-                  <>Buat Pesanan · {formatRupiah(totalPrice)}</>
+                  <>
+                    <CreditCard style={{ width: 18, height: 18 }} />
+                    Lanjutkan ke Pembayaran · {formatRupiah(totalPrice)}
+                  </>
                 )}
               </button>
 
@@ -829,7 +791,7 @@ export default function Checkout({
                 gap: 6, marginTop: 14, fontSize: 12, color: "#CBD5E1",
               }}>
                 <ShieldCheck style={{ width: 13, height: 13 }} />
-                Data Anda dilindungi enkripsi SSL
+                Anda akan diarahkan ke halaman pembayaran yang aman
               </div>
             </motion.div>
           </div>
