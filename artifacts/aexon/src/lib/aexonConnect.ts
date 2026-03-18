@@ -325,6 +325,7 @@ export const aexonConnect = {
     plan_id: string;
     device_id: string;
     promo_code?: string;
+    return_url?: string;
   }): Promise<{ data: InvoiceResponse | null; error: string | null }> {
     return request<InvoiceResponse>('/subscription/checkout', {
       method: 'POST',

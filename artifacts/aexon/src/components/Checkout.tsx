@@ -51,7 +51,7 @@ export default function Checkout({
   const { showToast } = useToast();
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("idle");
   const [invoiceId, setInvoiceId] = useState("");
-  const [xenditInvoiceUrl, setXenditInvoiceUrl] = useState<string | null>(null);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
   const [promoCode, setPromoCode] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
@@ -73,6 +73,14 @@ export default function Checkout({
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "complete" && paymentStatus === "idle") {
+      setPaymentStatus("pending");
+      startPolling();
+    }
+  }, []);
 
   const startPolling = useCallback(() => {
     stopPolling();
@@ -200,11 +208,14 @@ export default function Checkout({
     try {
       const deviceId = getDeviceId();
 
+      const returnUrl = `${window.location.origin}${import.meta.env.BASE_URL || '/'}subscription/checkout?payment=complete`;
+
       const { data: checkoutData, error: checkoutError } =
         await aexonConnect.createInvoice({
           plan_id: plan.id,
           device_id: deviceId,
           promo_code: appliedPromo?.code || undefined,
+          return_url: returnUrl,
         });
 
       if (checkoutError || !checkoutData) {
@@ -235,7 +246,7 @@ export default function Checkout({
       }
 
       if (checkoutData.invoice_url) {
-        setXenditInvoiceUrl(checkoutData.invoice_url);
+        setPaymentUrl(checkoutData.invoice_url);
         setPaymentStatus("pending");
         startPolling();
         window.open(checkoutData.invoice_url, "_blank", "noopener,noreferrer");
@@ -253,8 +264,8 @@ export default function Checkout({
   };
 
   const handleRetryPayment = () => {
-    if (xenditInvoiceUrl) {
-      window.open(xenditInvoiceUrl, "_blank", "noopener,noreferrer");
+    if (paymentUrl) {
+      window.open(paymentUrl, "_blank", "noopener,noreferrer");
       setPaymentStatus("pending");
       startPolling();
     }
@@ -381,7 +392,7 @@ export default function Checkout({
             </div>
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {xenditInvoiceUrl && !isExpired && (
+            {paymentUrl && !isExpired && (
               <button
                 onClick={handleRetryPayment}
                 style={{
@@ -475,10 +486,10 @@ export default function Checkout({
             </div>
           )}
 
-          {xenditInvoiceUrl && (
+          {paymentUrl && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
               <a
-                href={xenditInvoiceUrl}
+                href={paymentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -495,7 +506,7 @@ export default function Checkout({
                 <ExternalLink style={{ width: 14, height: 14, opacity: 0.6 }} />
               </a>
               <p style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.5 }}>
-                Anda akan diarahkan ke halaman pembayaran Xendit yang aman.
+                Anda akan diarahkan ke halaman pembayaran yang aman.
                 <br />
                 Tersedia: Virtual Account, E-Wallet, Kartu Kredit, QRIS, dll.
               </p>
