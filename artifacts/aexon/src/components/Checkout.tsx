@@ -863,7 +863,9 @@ export default function Checkout({
                   </div>
                 </div>
 
-                {Array.isArray(plan.features) && plan.features.length > 0 && (
+                {Array.isArray(plan.features) && plan.features.length > 0 && (() => {
+                  const filteredFeatures = plan.features.filter((f: string) => !/^hemat\s+rp/i.test(f.trim()));
+                  return filteredFeatures.length > 0 && (
                   <div style={{
                     paddingBottom: 20, borderBottom: "1px solid #E2E8F0", marginBottom: 20,
                   }}>
@@ -883,11 +885,11 @@ export default function Checkout({
                         transform: featuresExpanded ? "rotate(0deg)" : "rotate(-90deg)",
                         transition: "transform 200ms",
                       }} />
-                      Fitur ({plan.features.length})
+                      Fitur ({filteredFeatures.length})
                     </button>
                     {featuresExpanded && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
-                        {plan.features.map((f: string, i: number) => (
+                        {filteredFeatures.map((f: string, i: number) => (
                           <div key={i} style={{
                             display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#64748B",
                           }}>
@@ -901,7 +903,8 @@ export default function Checkout({
                       </div>
                     )}
                   </div>
-                )}
+                  );
+                })()}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#475569" }}>

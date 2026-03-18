@@ -353,6 +353,9 @@ export const aexonConnect = {
       const mapped = result.data.map((p: any) => ({
         ...p,
         product_name: p.products?.name || p.product_name || 'Aexon',
+        features: Array.isArray(p.features)
+          ? p.features.filter((f: string) => !/^hemat\s+rp/i.test((f || '').trim()))
+          : [],
       }));
 
       const byBillingCycle = new Map<string, any>();

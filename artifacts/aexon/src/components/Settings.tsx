@@ -2387,9 +2387,11 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                             </div>
                           </div>
 
-                          {Array.isArray(planItem.features) && planItem.features.length > 0 && (
+                          {Array.isArray(planItem.features) && planItem.features.length > 0 && (() => {
+                            const filtered = planItem.features.filter((f: string) => !/^hemat\s+rp/i.test(f.trim()));
+                            return filtered.length > 0 && (
                             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                              {planItem.features.slice(0, 4).map((f: string, i: number) => (
+                              {filtered.slice(0, 4).map((f: string, i: number) => (
                                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748B' }}>
                                   <div style={{ width: 16, height: 16, borderRadius: '50%', backgroundColor: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -2399,13 +2401,14 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                                   {f}
                                 </div>
                               ))}
-                              {planItem.features.length > 4 && (
+                              {filtered.length > 4 && (
                                 <div style={{ fontSize: 12, color: '#94A3B8', marginLeft: 24 }}>
-                                  +{planItem.features.length - 4} fitur lainnya
+                                  +{filtered.length - 4} fitur lainnya
                                 </div>
                               )}
                             </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       );
                     })}

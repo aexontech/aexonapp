@@ -250,12 +250,14 @@ export default function PlanSelection({ onSelectPlan, onBack }: PlanSelectionPro
                       )}
                     </div>
 
-                    {Array.isArray(planItem.features) && planItem.features.length > 0 && (
+                    {Array.isArray(planItem.features) && planItem.features.length > 0 && (() => {
+                      const filteredFeatures = planItem.features.filter((f: string) => !/^hemat\s+rp/i.test(f.trim()));
+                      return filteredFeatures.length > 0 && (
                       <div style={{
                         borderTop: '1px solid #F1F5F9', paddingTop: 16,
                         display: 'flex', flexDirection: 'column', gap: 8,
                       }}>
-                        {planItem.features.map((f: string, i: number) => (
+                        {filteredFeatures.map((f: string, i: number) => (
                           <div key={i} style={{
                             display: 'flex', alignItems: 'center', gap: 8,
                             fontSize: 13, color: '#64748B',
@@ -273,7 +275,8 @@ export default function PlanSelection({ onSelectPlan, onBack }: PlanSelectionPro
                           </div>
                         ))}
                       </div>
-                    )}
+                      );
+                    })()}
                   </motion.div>
                 );
               })}
