@@ -259,7 +259,12 @@ export default function Checkout({
     } catch (err: any) {
       console.error("Failed to place order:", err);
       setPaymentStatus("idle");
-      showToast(err?.message || "Gagal membuat pesanan. Silakan coba lagi.", "error");
+      const msg = err?.message || "";
+      if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("belum tersedia")) {
+        showToast("Layanan checkout belum tersedia. Hubungi administrator.", "error");
+      } else {
+        showToast(msg || "Gagal membuat pesanan. Silakan coba lagi.", "error");
+      }
     }
   };
 
