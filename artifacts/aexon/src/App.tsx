@@ -36,6 +36,7 @@ function AppContent() {
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionStatus | null>(null);
+  const [restoringSession, setRestoringSession] = useState(true);
 
   const [patientData, setPatientData] = useState<PatientData | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -50,6 +51,65 @@ function AppContent() {
   const [editingDoctor, setEditingDoctor] = useState<UserProfile | null>(null);
 
   const hasActiveAccess = selectedPlan === 'subscription' || selectedPlan === 'enterprise' || (trialDaysLeft !== null && trialDaysLeft > 0);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const { aexonConnect } = await import('./lib/aexonConnect');
+        const token = aexonConnect.getToken();
+        if (!token) {
+          setRestoringSession(false);
+          return;
+        }
+
+        if (isOfflineTooLong()) {
+          aexonConnect.clearSession();
+          clearLastOnline();
+          setRestoringSession(false);
+          return;
+        }
+
+        const { data: profile } = await aexonConnect.getProfile();
+        if (!profile) {
+          setRestoringSession(false);
+          return;
+        }
+
+        const userId = profile.email.replace(/[^a-zA-Z0-9]/g, '_');
+        setUserProfile({
+          id: userId,
+          name: profile.full_name || profile.email,
+          specialization: profile.specialization || 'Spesialis',
+          email: profile.email,
+          phone: profile.phone || '',
+          role: profile.role as UserRole,
+          status: 'active',
+          enterprise_id: profile.enterprise_id ?? null
+        });
+
+        const { data: subStatus } = await aexonConnect.getSubscription();
+        if (subStatus) {
+          setSubscriptionData(subStatus);
+          setSelectedPlan(subStatus.plan ?? null);
+          setTrialDaysLeft(subStatus.trial_days_left ?? null);
+        }
+
+        const isEnterpriseUser = subStatus?.plan_type === 'enterprise';
+        const storageKey = isEnterpriseUser && profile.enterprise_id
+          ? `aexon_hospital_settings_${profile.enterprise_id}`
+          : `aexon_hospital_settings_${userId}`;
+        try {
+          const stored = localStorage.getItem(storageKey);
+          if (stored) setHospitalSettingsList(JSON.parse(stored));
+        } catch {}
+
+      } catch {
+      } finally {
+        setRestoringSession(false);
+      }
+    };
+    restoreSession();
+  }, []);
 
   const activeMenu = (() => {
     if (location.startsWith('/admin-kop-surat')) return 'admin-kop-surat';
@@ -451,6 +511,23 @@ function AppContent() {
         onAccept={handleEulaAccept}
         onDecline={handleEulaDecline}
       />
+    );
+  }
+
+  if (restoringSession) {
+    return (
+      <div style={{
+        height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#F8FAFC', fontFamily: 'Outfit, sans-serif',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="animate-spin" style={{
+            width: 36, height: 36, border: '3px solid #E2E8F0', borderTopColor: '#0C1E35',
+            borderRadius: '50%', margin: '0 auto 16px',
+          }} />
+          <p style={{ fontSize: 14, color: '#64748B' }}>Memulihkan sesi...</p>
+        </div>
+      </div>
     );
   }
 

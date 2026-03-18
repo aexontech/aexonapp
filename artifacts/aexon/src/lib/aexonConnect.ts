@@ -309,6 +309,10 @@ export const aexonConnect = {
     });
   },
 
+  async getProfile(): Promise<{ data: LoginResponse['user'] | null; error: string | null }> {
+    return request<LoginResponse['user']>('/auth/profile');
+  },
+
   async changePassword(current_password: string, new_password: string): Promise<{ data: any; error: string | null }> {
     return request('/auth/change-password', {
       method: 'POST',
