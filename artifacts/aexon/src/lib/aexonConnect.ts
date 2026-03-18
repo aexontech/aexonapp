@@ -1,7 +1,11 @@
-const AEXON_CONNECT_API_URL = import.meta.env.VITE_AEXON_CONNECT_API_URL || '';
+const AEXON_CONNECT_API_URL = (import.meta.env.VITE_AEXON_CONNECT_API_URL || '').replace(/\/+$/, '');
 
 const TOKEN_KEY = 'aexon_jwt_token';
 const REFRESH_TOKEN_KEY = 'aexon_refresh_token';
+
+if (!AEXON_CONNECT_API_URL) {
+  console.warn('[AexonConnect] VITE_AEXON_CONNECT_API_URL is not set. API calls will fail.');
+}
 
 function getStoredToken(): string | null {
   try {
@@ -50,8 +54,16 @@ async function request<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  if (!AEXON_CONNECT_API_URL) {
+    console.error('[AexonConnect] API URL not configured. Set VITE_AEXON_CONNECT_API_URL.');
+    return { data: null, error: 'AEXON Connect API belum dikonfigurasi. Hubungi administrator.', status: 0 };
+  }
+
+  const fullUrl = `${AEXON_CONNECT_API_URL}${endpoint}`;
+  console.log(`[AexonConnect] ${options.method || 'GET'} ${fullUrl}`);
+
   try {
-    const res = await fetch(`${AEXON_CONNECT_API_URL}${endpoint}`, {
+    const res = await fetch(fullUrl, {
       ...options,
       headers,
     });
