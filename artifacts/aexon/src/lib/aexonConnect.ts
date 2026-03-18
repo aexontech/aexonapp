@@ -165,7 +165,7 @@ export interface LoginResponse {
 }
 
 export interface SubscriptionStatus {
-  status: 'active' | 'trial' | 'expired' | 'cancelled' | 'none';
+  status: 'active' | 'trial' | 'pending' | 'expired' | 'cancelled' | 'none';
   plan: 'subscription' | 'enterprise' | null;
   trial_days_left: number | null;
   plan_name?: string;

@@ -11,23 +11,14 @@ import {
 import { aexonConnect, Plan } from '../lib/aexonConnect';
 import { useToast } from './ToastProvider';
 
-interface ProductPlan {
-  id: string;
-  billing_cycle: 'monthly' | 'annual';
-  price: number;
-  original_price: number | null;
-  features: string[];
-  products: { name: string };
-}
-
 interface PlanSelectionProps {
-  onSelectPlan: (plan: ProductPlan) => void;
+  onSelectPlan: (plan: Plan) => void;
   onBack: () => void;
 }
 
 export default function PlanSelection({ onSelectPlan, onBack }: PlanSelectionProps) {
   const { showToast } = useToast();
-  const [plans, setPlans] = useState<ProductPlan[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -42,15 +33,7 @@ export default function PlanSelection({ onSelectPlan, onBack }: PlanSelectionPro
         if (error || !remotePlans) {
           showToast('Gagal memuat paket', 'error');
         } else {
-          const mapped: ProductPlan[] = remotePlans.map((p: Plan) => ({
-            id: p.id,
-            billing_cycle: p.billing_cycle,
-            price: p.price,
-            original_price: p.original_price,
-            features: p.features,
-            products: { name: p.product_name },
-          }));
-          setPlans(mapped);
+          setPlans(remotePlans);
         }
       } catch {
         showToast('Gagal memuat paket', 'error');
@@ -218,7 +201,7 @@ export default function PlanSelection({ onSelectPlan, onBack }: PlanSelectionPro
                           </div>
                         </div>
                         <div style={{ fontSize: 12, color: '#94A3B8', marginLeft: 46 }}>
-                          {planItem.products?.name || 'Aexon'}
+                          {planItem.product_name || 'Aexon'}
                         </div>
                       </div>
                       <div style={{

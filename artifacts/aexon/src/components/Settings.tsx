@@ -45,20 +45,10 @@ import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { UserProfile, HospitalSettings, Session, Capture } from '../types';
 
-interface ProductPlan {
-  id: string;
-  billing_cycle: 'monthly' | 'annual';
-  price: number;
-  original_price: number | null;
-  features: string[];
-  products: {
-    name: string;
-  };
-}
 import { useToast } from './ToastProvider';
 import ConfirmModal from './ConfirmModal';
 import { saveUserData, loadUserData, getLocalStorageUsage, decryptData } from '../lib/storage';
-import { aexonConnect } from '../lib/aexonConnect';
+import { aexonConnect, Plan } from '../lib/aexonConnect';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
   const image = new Image();
@@ -94,7 +84,7 @@ interface SettingsProps {
   onUpdateHospitalList: (settings: HospitalSettings[]) => void;
   onUpdateSessions: (sessions: Session[]) => void;
   onCancelSubscription: () => void;
-  onCheckout: (plan: ProductPlan) => void;
+  onCheckout: (plan: Plan) => void;
   plan: 'subscription' | 'enterprise' | null;
   sessions: Session[];
 }
@@ -152,7 +142,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
   const [billingLoading, setBillingLoading] = useState(false);
-  const [plans, setPlans] = useState<ProductPlan[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
@@ -184,15 +174,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
           console.error('Failed to fetch plans:', error);
           showToast('Gagal memuat daftar paket. Silakan coba lagi nanti.', 'error');
         } else {
-          const mapped = remotePlans.map(p => ({
-            id: p.id,
-            billing_cycle: p.billing_cycle,
-            price: p.price,
-            original_price: p.original_price,
-            features: p.features,
-            products: { name: p.product_name },
-          }));
-          setPlans(mapped);
+          setPlans(remotePlans);
         }
       } catch (err) {
         console.error('Failed to fetch plans:', err);
@@ -2349,7 +2331,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
                               <div style={{ fontSize: 16, fontWeight: 700, color: '#0C1E35', marginBottom: 4 }}>
-                                {planItem.products?.name || 'Paket'} — {isAnnual ? 'Tahunan' : 'Bulanan'}
+                                {planItem.product_name || 'Paket'} — {isAnnual ? 'Tahunan' : 'Bulanan'}
                               </div>
                               {planItem.original_price && planItem.original_price > planItem.price && (
                                 <div style={{ fontSize: 13, color: '#94A3B8', textDecoration: 'line-through', marginBottom: 2 }}>

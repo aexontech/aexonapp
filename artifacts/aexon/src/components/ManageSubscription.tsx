@@ -293,7 +293,7 @@ export default function ManageSubscription({ onBack, onSubscribe }: ManageSubscr
                       <div>
                         <h4 className="text-sm font-bold text-blue-900 mb-1">Informasi Penambahan Seat</h4>
                         <p className="text-xs text-blue-700 leading-relaxed">
-                          Penambahan seat akan dikenakan biaya prorata hingga akhir periode langganan saat ini. Biaya per seat tambahan adalah Rp 250.000 / bulan.
+                          Penambahan seat akan dikenakan biaya prorata hingga akhir periode langganan saat ini. Biaya per seat tambahan adalah Rp 450.000 / bulan.
                         </p>
                       </div>
                     </div>

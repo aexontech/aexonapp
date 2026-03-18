@@ -20,7 +20,7 @@ import ConfirmModal from './components/ConfirmModal';
 import ToastProvider, { useToast } from './components/ToastProvider';
 import { PatientData, Session, UserProfile, HospitalSettings, UserRole } from './types';
 import { saveUserData, loadUserData } from './lib/storage';
-import { onSessionExpired } from './lib/aexonConnect';
+import { onSessionExpired, Plan } from './lib/aexonConnect';
 import { AlertTriangle } from 'lucide-react';
 
 function RouteRedirect({ to }: { to: string }) {
@@ -35,7 +35,7 @@ function AppContent() {
 
   const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | null>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
-  const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
 
   const [patientData, setPatientData] = useState<PatientData | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
