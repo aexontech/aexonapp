@@ -81,7 +81,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
         return;
       }
 
-      const { data: subStatus } = await aexonConnect.getSubscription(user.id);
+      const { data: subStatus } = await aexonConnect.getSubscription();
 
       const deviceId = (await import('../lib/aexonConnect')).getDeviceId();
       await aexonConnect.createDeviceSession(deviceId);

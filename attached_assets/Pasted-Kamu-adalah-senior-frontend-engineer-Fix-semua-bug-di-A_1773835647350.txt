@@ -1,0 +1,132 @@
+Kamu adalah senior frontend engineer. Fix semua bug di AEXON App (React + TypeScript + Vite). File utama ada di `src/`.
+
+### CRITICAL FIXES
+
+**File: `src/App.tsx`**
+
+1. **Hapus dummy doctor data yang hardcoded**:
+   - Hapus array `doctors` yang berisi Dr. Budi Santoso, Dr. Siti Aminah, Dr. Ahmad Fauzi dari initial state
+   - Ganti dengan empty array: `const [doctors, setDoctors] = useState<UserProfile[]>([])`
+   - Pastikan komponen `AdminDashboard` dan `AddDoctor` handle state kosong dengan baik (tampilkan empty state, bukan crash)
+
+2. **Fix routing — ganti string state enum dengan React Router**:
+   - Install `react-router-dom` jika belum ada, atau gunakan library routing yang sudah ada di `package.json`
+   - Sekarang routing via: `setCurrentView('dashboard')` di satu useState besar — ini tidak scalable
+   - Refactor: buat `<Routes>` dengan path yang jelas:
+     - `/` → Launcher
+     - `/pricing` → Pricing
+     - `/dashboard` → Dashboard
+     - `/session/new` → SessionForm
+     - `/session/active` → EndoscopyApp
+     - `/session/:id/report` → ReportGenerator
+     - `/settings` → Settings
+     - `/gallery` → Gallery
+     - `/subscription` → ManageSubscription
+     - `/subscription/plans` → PlanSelection
+     - `/subscription/checkout` → Checkout
+     - `/admin` → AdminDashboard
+   - Gunakan `useNavigate()` ganti `setCurrentView()`
+   - Pertahankan NavGuard logic untuk cegah navigasi saat recording aktif
+
+**File: `src/lib/storage.ts`**
+
+3. **Ganti XOR cipher dengan enkripsi AES-GCM sungguhan**:
+   - Hapus `xorCipher`, `getEncryptionKey`, `encryptData`, `decryptData` yang lama
+   - Implementasikan menggunakan Web Crypto API (built-in browser, tidak perlu library):
+```typescript
+     async function deriveKey(userId: string): Promise<CryptoKey> {
+       const encoder = new TextEncoder();
+       const keyMaterial = await crypto.subtle.importKey(
+         "raw", encoder.encode(`aexon_${userId}`),
+         "PBKDF2", false, ["deriveKey"]
+       );
+       return crypto.subtle.deriveKey(
+         { name: "PBKDF2", salt: encoder.encode("aexon_salt_v2"), iterations: 100000, hash: "SHA-256" },
+         keyMaterial,
+         { name: "AES-GCM", length: 256 },
+         false, ["encrypt", "decrypt"]
+       );
+     }
+     
+     export async function saveUserData(userId: string, dataKey: string, data: any): Promise<void> {
+       const key = await deriveKey(userId);
+       const iv = crypto.getRandomValues(new Uint8Array(12));
+       const encoded = new TextEncoder().encode(JSON.stringify(data));
+       const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+       const stored = { iv: Array.from(iv), data: Array.from(new Uint8Array(encrypted)) };
+       localStorage.setItem(`aexon_${dataKey}_${userId}`, JSON.stringify(stored));
+     }
+     
+     export async function loadUserData<T>(userId: string, dataKey: string): Promise<T | null> {
+       const raw = localStorage.getItem(`aexon_${dataKey}_${userId}`);
+       if (!raw) return null;
+       try {
+         const { iv, data } = JSON.parse(raw);
+         const key = await deriveKey(userId);
+         const decrypted = await crypto.subtle.decrypt(
+           { name: "AES-GCM", iv: new Uint8Array(iv) },
+           key, new Uint8Array(data)
+         );
+         return JSON.parse(new TextDecoder().decode(decrypted));
+       } catch {
+         // Fallback: coba parse legacy unencrypted data
+         try { return JSON.parse(raw); } catch { return null; }
+       }
+     }
+```
+   - Update semua pemanggil `saveUserData` dan `loadUserData` untuk pakai `await` (karena sekarang async)
+   - Tambahkan migration: saat `loadUserData` gagal decrypt dengan key baru, coba decode dengan XOR lama, lalu re-encrypt dengan AES-GCM
+
+**File: `src/lib/aexonConnect.ts`**
+
+4. **Fix `getSubscription` — jangan kirim `doctor_id` di URL**:
+   - Hapus parameter `doctorId` dari fungsi `getSubscription`
+   - Ganti: `return request<SubscriptionStatus>('/subscription')` (tanpa query param)
+   - Server harus ambil identitas dari JWT token (sudah ada di header `Authorization`)
+   - Update semua tempat yang memanggil `aexonConnect.getSubscription(someId)` → `aexonConnect.getSubscription()`
+
+5. **Tambahkan token refresh otomatis**:
+   - Di fungsi `request()`, jika response 401, coba refresh token:
+```typescript
+     if (res.status === 401) {
+       const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY) || localStorage.getItem(REFRESH_TOKEN_KEY);
+       if (refreshToken) {
+         const refreshRes = await fetch(`${AEXON_CONNECT_API_URL}/auth/refresh`, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ refresh_token: refreshToken }),
+         });
+         if (refreshRes.ok) {
+           const refreshData = await refreshRes.json();
+           storeToken(refreshData.token, refreshData.refresh_token);
+           // Retry request original dengan token baru
+           headers['Authorization'] = `Bearer ${refreshData.token}`;
+           // ... retry fetch
+         } else {
+           clearToken();
+           // Redirect ke login
+         }
+       }
+     }
+```
+
+6. **Tambahkan endpoint yang hilang** — beberapa fungsi di `aexonConnect.ts` memanggil endpoint yang tidak ada di backend:
+   - `/auth/reset-password` — belum ada di backend (perlu dibuat di Connect juga)
+   - `/auth/change-password` — belum ada di backend
+   - `/auth/profile` (PUT) — belum ada di backend
+   - `/subscription/billing-history` — belum ada di backend
+   - Untuk sekarang, tambahkan error handling yang jelas: jika endpoint return 404, tampilkan pesan "Fitur ini belum tersedia" bukan crash
+
+### QUALITY FIXES
+
+7. **Fix `vite.config.ts` — pastikan env variable terdokumentasi**:
+   - Buat file `.env.example` di root project dengan isi:
+ VITE_AEXON_CONNECT_API_URL=https://wukjqyvokoxitklffbja.supabase.co/functions/v1/aexonconnect
+   - Tambahkan validasi di `main.tsx`: jika `VITE_AEXON_CONNECT_API_URL` kosong di production, tampilkan error screen yang jelas bukan blank page
+
+8. **Fix `getDeviceId` — jangan simpan di localStorage saja**:
+   - `localStorage` bisa dihapus user sewaktu-waktu, menyebabkan device ID berubah
+   - Tambahkan fallback ke `sessionStorage` dan tampilkan warning di console jika ID regenerate
+   - Tambahkan komentar bahwa ini adalah limitasi web app (native app harusnya punya hardware ID)
+
+Pastikan semua perubahan tidak break TypeScript type checking. Jalankan `npm run build` untuk verifikasi.

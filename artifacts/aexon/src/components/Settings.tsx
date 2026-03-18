@@ -57,7 +57,7 @@ interface ProductPlan {
 }
 import { useToast } from './ToastProvider';
 import ConfirmModal from './ConfirmModal';
-import { saveUserData, loadUserData, getLocalStorageUsage, decryptData, getEncryptionKey } from '../lib/storage';
+import { saveUserData, loadUserData, getLocalStorageUsage, decryptData } from '../lib/storage';
 import { aexonConnect } from '../lib/aexonConnect';
 
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string> {
@@ -589,12 +589,11 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
         });
 
         if (manifestEncFile && sessionEncFile) {
-          const key = getEncryptionKey(userProfile.id);
-
           const manifestEncText = await manifestEncFile.async('text');
           let manifest: any;
           try {
-            manifest = JSON.parse(decryptData(manifestEncText, key));
+            const decryptedManifest = await decryptData(manifestEncText, userProfile.id);
+            manifest = JSON.parse(decryptedManifest);
           } catch {
             setShowMismatchModal(true);
             setRestoreLoading(false);
@@ -610,7 +609,8 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
           const sessionEncText = await sessionEncFile.async('text');
           let caseSession: Session;
           try {
-            caseSession = JSON.parse(decryptData(sessionEncText, key));
+            const decryptedSession = await decryptData(sessionEncText, userProfile.id);
+            caseSession = JSON.parse(decryptedSession);
           } catch {
             showToast('Gagal mendekripsi data case. File mungkin rusak atau bukan milik akun ini.', 'error');
             setRestoreLoading(false);
@@ -759,7 +759,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
     }
   };
 
-  const finalizeRestore = (newSessions: Session[], results: Map<string, ConflictAction>) => {
+  const finalizeRestore = async (newSessions: Session[], results: Map<string, ConflictAction>) => {
     let merged = [...sessions];
     let added = newSessions.length;
     let skipped = 0;
@@ -778,7 +778,7 @@ export default function Settings({ userProfile, hospitalSettingsList, onUpdateUs
     }
 
     onUpdateSessions(merged);
-    saveUserData(userProfile.id, 'sessions', merged);
+    await saveUserData(userProfile.id, 'sessions', merged);
 
     const parts: string[] = [];
     if (added > 0) parts.push(`${added} ditambahkan`);

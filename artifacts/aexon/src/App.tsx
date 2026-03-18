@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Router, Route, Switch, useLocation } from 'wouter';
 import Launcher from './components/Launcher';
 import Pricing from './components/Pricing';
 import MainLayout from './components/MainLayout';
@@ -19,16 +20,23 @@ import ConfirmModal from './components/ConfirmModal';
 import ToastProvider, { useToast } from './components/ToastProvider';
 import { PatientData, Session, UserProfile, HospitalSettings, UserRole } from './types';
 import { saveUserData, loadUserData } from './lib/storage';
+import { onSessionExpired } from './lib/aexonConnect';
 import { AlertTriangle } from 'lucide-react';
+
+function RouteRedirect({ to }: { to: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate(to); }, [to, navigate]);
+  return null;
+}
 
 function AppContent() {
   const { showToast } = useToast();
+  const [location, navigate] = useLocation();
 
-  const [currentView, setCurrentView] = useState<'launcher' | 'pricing' | 'dashboard' | 'admin-dashboard' | 'admin-kop-surat' | 'session-form' | 'active-session' | 'report-generator' | 'settings' | 'gallery' | 'add-doctor' | 'manage-subscription' | 'plan-selection' | 'checkout'>('launcher');
-  const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
   const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | null>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
-  
+  const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
+
   const [patientData, setPatientData] = useState<PatientData | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [viewingSession, setViewingSession] = useState<Session | null>(null);
@@ -38,70 +46,56 @@ function AppContent() {
   const [showNavGuard, setShowNavGuard] = useState(false);
   const [pendingNavTarget, setPendingNavTarget] = useState<string | null>(null);
   const [showEula, setShowEula] = useState(false);
-  const [doctors, setDoctors] = useState<UserProfile[]>([
-    {
-      id: 'DOC-001',
-      name: 'Dr. Budi Santoso, Sp.PD-KGEH',
-      specialization: 'Gastroenterohepatologi',
-      email: 'budi.santoso@rsup.co.id',
-      phone: '081234567890',
-      role: 'doctor',
-      status: 'active',
-      lastLogin: new Date(Date.now() - 1000 * 60 * 30),
-      strNumber: '1234567890123456',
-      sipNumber: 'SIP/2026/001/RS'
-    },
-    {
-      id: 'DOC-002',
-      name: 'Dr. Siti Aminah, Sp.B',
-      specialization: 'Bedah Umum',
-      email: 'siti.aminah@rsup.co.id',
-      phone: '081234567891',
-      role: 'doctor',
-      status: 'active',
-      lastLogin: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      strNumber: '2234567890123456',
-      sipNumber: 'SIP/2026/002/RS'
-    },
-    {
-      id: 'DOC-003',
-      name: 'Dr. Ahmad Fauzi, Sp.A',
-      specialization: 'Anak',
-      email: 'ahmad.fauzi@rsup.co.id',
-      phone: '081234567892',
-      role: 'doctor',
-      status: 'inactive',
-      lastLogin: new Date(Date.now() - 1000 * 60 * 60 * 24),
-      strNumber: '3234567890123456',
-      sipNumber: 'SIP/2026/003/RS'
-    }
-  ]);
+  const [doctors, setDoctors] = useState<UserProfile[]>([]);
   const [editingDoctor, setEditingDoctor] = useState<UserProfile | null>(null);
 
   const hasActiveAccess = selectedPlan === 'subscription' || selectedPlan === 'enterprise' || (trialDaysLeft !== null && trialDaysLeft > 0);
 
-  const refreshSubscriptionStatus = async () => {
+  const activeMenu = (() => {
+    if (location.startsWith('/admin-kop-surat')) return 'admin-kop-surat';
+    if (location.startsWith('/admin')) return 'admin-dashboard';
+    if (location.startsWith('/add-doctor')) return 'add-doctor';
+    if (location.startsWith('/session/active')) return 'active-session';
+    if (location.startsWith('/session/new')) return 'session-form';
+    if (location.startsWith('/session/') && location.includes('/report')) return 'report-generator';
+    if (location.startsWith('/gallery')) return 'gallery';
+    if (location.startsWith('/settings')) return 'settings';
+    if (location.startsWith('/subscription/checkout')) return 'checkout';
+    if (location.startsWith('/subscription/plans')) return 'plan-selection';
+    if (location.startsWith('/subscription')) return 'manage-subscription';
+    if (location.startsWith('/dashboard')) return 'dashboard';
+    return 'dashboard';
+  })();
+
+  const refreshSubscriptionStatus = useCallback(async () => {
     if (!userProfile) return;
     try {
       const { aexonConnect } = await import('./lib/aexonConnect');
-      const { data: subStatus } = await aexonConnect.getSubscription(userProfile.id);
+      const { data: subStatus } = await aexonConnect.getSubscription();
       if (!subStatus) return;
-
-      if (subStatus.plan) {
-        setSelectedPlan(subStatus.plan);
-      } else {
-        setSelectedPlan(null);
-      }
-
+      setSelectedPlan(subStatus.plan ?? null);
       setTrialDaysLeft(subStatus.trial_days_left ?? null);
     } catch (err) {
       console.error('Failed to refresh subscription status:', err);
     }
-  };
+  }, [userProfile]);
 
   const handleCheckoutSuccess = () => {
     refreshSubscriptionStatus();
   };
+
+  useEffect(() => {
+    onSessionExpired(() => {
+      setUserProfile(null);
+      setSelectedPlan(null);
+      setPatientData(null);
+      setSessions([]);
+      setViewingSession(null);
+      setTrialDaysLeft(null);
+      navigate('/');
+      showToast('Sesi telah berakhir. Silakan login kembali.', 'warning');
+    });
+  }, [navigate, showToast]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -114,23 +108,40 @@ function AppContent() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isRecordingActive]);
 
-  const handleNavigate = (menu: any) => {
-    if (currentView === 'active-session' && isRecordingActive) {
+  const handleNavigate = (menu: string) => {
+    if (location === '/session/active' && isRecordingActive) {
       setPendingNavTarget(menu);
       setShowNavGuard(true);
       return;
     }
+
+    const routeMap: Record<string, string> = {
+      'dashboard': '/dashboard',
+      'admin-dashboard': '/admin',
+      'admin-kop-surat': '/admin-kop-surat',
+      'session-form': '/session/new',
+      'active-session': '/session/active',
+      'report-generator': '/session/report',
+      'settings': '/settings',
+      'gallery': '/gallery',
+      'manage-subscription': '/subscription',
+      'plan-selection': '/subscription/plans',
+      'checkout': '/subscription/checkout',
+      'add-doctor': '/add-doctor',
+    };
+
     if ((menu === 'session-form' || menu === 'active-session') && !hasActiveAccess) {
-      setCurrentView('plan-selection');
+      navigate('/subscription/plans');
       return;
     }
-    setCurrentView(menu);
+
+    navigate(routeMap[menu] || '/dashboard');
   };
 
   const confirmNavGuard = () => {
     setShowNavGuard(false);
     if (pendingNavTarget) {
-      setCurrentView(pendingNavTarget as any);
+      handleNavigate(pendingNavTarget);
       setPendingNavTarget(null);
     }
   };
@@ -142,28 +153,11 @@ function AppContent() {
 
   useEffect(() => {
     if (userProfile) {
-      const parsed = loadUserData<any[]>(userProfile.id, 'sessions');
-      if (parsed && Array.isArray(parsed)) {
-        try {
-          const formatted = parsed.map((s: any) => ({
-            ...s,
-            date: new Date(s.date),
-            captures: (s.captures || []).map((c: any) => ({
-              ...c,
-              timestamp: new Date(c.timestamp)
-            }))
-          }));
-          setSessions(formatted);
-        } catch (e) {
-          console.error("Failed to parse sessions", e);
-          setSessions([]);
-        }
-      } else {
-        const legacySessions = localStorage.getItem(`aexon_sessions_${userProfile.id}`);
-        if (legacySessions) {
+      (async () => {
+        const parsed = await loadUserData<any[]>(userProfile.id, 'sessions');
+        if (parsed && Array.isArray(parsed)) {
           try {
-            const parsed2 = JSON.parse(legacySessions);
-            const formatted = parsed2.map((s: any) => ({
+            const formatted = parsed.map((s: any) => ({
               ...s,
               date: new Date(s.date),
               captures: (s.captures || []).map((c: any) => ({
@@ -172,21 +166,40 @@ function AppContent() {
               }))
             }));
             setSessions(formatted);
-            saveUserData(userProfile.id, 'sessions', parsed2);
-          } catch {
+          } catch (e) {
+            console.error("Failed to parse sessions", e);
             setSessions([]);
           }
         } else {
-          setSessions([]);
+          const legacySessions = localStorage.getItem(`aexon_sessions_${userProfile.id}`);
+          if (legacySessions) {
+            try {
+              const parsed2 = JSON.parse(legacySessions);
+              const formatted = parsed2.map((s: any) => ({
+                ...s,
+                date: new Date(s.date),
+                captures: (s.captures || []).map((c: any) => ({
+                  ...c,
+                  timestamp: new Date(c.timestamp)
+                }))
+              }));
+              setSessions(formatted);
+              await saveUserData(userProfile.id, 'sessions', parsed2);
+            } catch {
+              setSessions([]);
+            }
+          } else {
+            setSessions([]);
+          }
         }
-      }
+      })();
     }
   }, [userProfile?.id]);
 
-  const persistSessions = (updatedSessions: Session[]) => {
+  const persistSessions = async (updatedSessions: Session[]) => {
     if (userProfile) {
       try {
-        saveUserData(userProfile.id, 'sessions', updatedSessions);
+        await saveUserData(userProfile.id, 'sessions', updatedSessions);
       } catch (e) {
         showToast('Penyimpanan penuh. Beberapa foto mungkin tidak tersimpan. Pertimbangkan untuk menghapus sesi lama.', 'error', 8000);
       }
@@ -196,15 +209,15 @@ function AppContent() {
   const [hospitalSettingsList, setHospitalSettingsList] = useState<HospitalSettings[]>([]);
 
   const handleLogin = (
-    role: UserRole, 
-    email: string, 
-    fullName: string, 
-    plan: 'subscription' | 'enterprise' | null, 
+    role: UserRole,
+    email: string,
+    fullName: string,
+    plan: 'subscription' | 'enterprise' | null,
     trialDaysLeft: number | null,
     enterpriseId?: string
   ) => {
     const userId = email.replace(/[^a-zA-Z0-9]/g, '_');
-    
+
     setUserProfile({
       id: userId,
       name: fullName || email,
@@ -215,9 +228,9 @@ function AppContent() {
       status: 'active',
       enterprise_id: enterpriseId ?? null
     });
-    
+
     setSelectedPlan(plan);
-    
+
     if (trialDaysLeft !== null) {
       setTrialDaysLeft(trialDaysLeft);
     }
@@ -238,9 +251,9 @@ function AppContent() {
     }
 
     if (role === 'admin') {
-      setCurrentView('admin-dashboard');
+      navigate('/admin');
     } else {
-      setCurrentView('dashboard');
+      navigate('/dashboard');
     }
   };
 
@@ -251,9 +264,9 @@ function AppContent() {
     }
     setShowEula(false);
     if (userProfile?.role === 'admin') {
-      setCurrentView('admin-dashboard');
+      navigate('/admin');
     } else {
-      setCurrentView('dashboard');
+      navigate('/dashboard');
     }
   };
 
@@ -262,7 +275,7 @@ function AppContent() {
     setUserProfile(null);
     setSelectedPlan(null);
     setTrialDaysLeft(null);
-    setCurrentView('launcher');
+    navigate('/');
   };
 
   const handleUpdateHospitalList = (list: HospitalSettings[]) => {
@@ -284,12 +297,12 @@ function AppContent() {
 
   const handleSelectPlan = (plan: 'subscription') => {
     setSelectedPlan(plan);
-    setCurrentView('dashboard');
+    navigate('/dashboard');
   };
 
   const handleStartSession = (data: PatientData) => {
     setPatientData(data);
-    setCurrentView('active-session');
+    navigate('/session/active');
   };
 
   const handleEndSession = (session: Session) => {
@@ -298,17 +311,17 @@ function AppContent() {
     persistSessions(updatedSessions);
     setPatientData(null);
     setViewingSession(session);
-    setCurrentView('report-generator');
+    navigate('/session/report');
   };
 
   const handleViewSession = (session: Session) => {
     setViewingSession(session);
-    setCurrentView('report-generator');
+    navigate('/session/report');
   };
 
   const handleViewGallery = (session: Session) => {
     setViewingSession(session);
-    setCurrentView('gallery');
+    navigate('/gallery');
   };
 
   const handleUpdateSession = (updatedSession: Session) => {
@@ -329,7 +342,7 @@ function AppContent() {
       await aexonConnect.logout();
     } catch {
     }
-    setCurrentView('launcher');
+    navigate('/');
     setSelectedPlan(null);
     setPatientData(null);
     setSessions([]);
@@ -362,9 +375,9 @@ function AppContent() {
   };
 
   const handleToggleDoctorStatus = (doctorId: string) => {
-    setDoctors(prev => prev.map(d => 
-      d.id === doctorId 
-        ? { ...d, status: d.status === 'active' ? 'inactive' : 'active' } 
+    setDoctors(prev => prev.map(d =>
+      d.id === doctorId
+        ? { ...d, status: d.status === 'active' ? 'inactive' : 'active' }
         : d
     ));
   };
@@ -386,207 +399,222 @@ function AppContent() {
     );
   }
 
-  if (currentView === 'launcher') {
-    return <Launcher onLogin={handleLogin} />;
+  if (!userProfile) {
+    return (
+      <Switch>
+        <Route path="/pricing">
+          <Pricing onSelectPlan={handleSelectPlan} />
+        </Route>
+        <Route>
+          <Launcher onLogin={handleLogin} />
+        </Route>
+      </Switch>
+    );
   }
-
-  if (currentView === 'pricing') {
-    return <Pricing onSelectPlan={handleSelectPlan} />;
-  }
-
-  if (!userProfile) return null;
 
   return (
     <div className={getFontSizeClass()}>
-      <MainLayout 
-        activeMenu={currentView} 
+      <MainLayout
+        activeMenu={activeMenu}
         onNavigate={handleNavigate}
         onLogout={handleLogout}
         plan={selectedPlan}
         trialDaysLeft={trialDaysLeft}
         userProfile={userProfile!}
       >
-      {currentView === 'dashboard' && (
-        <Dashboard 
-          sessions={sessions} 
-          onNewSession={() => {
-            if (!hasActiveAccess) {
-              setCurrentView('plan-selection');
-            } else {
-              setCurrentView('session-form');
-            }
-          }}
-          onViewSession={handleViewSession}
-          onViewGallery={handleViewGallery}
-          onDeleteSession={handleDeleteSession}
-          onSubscribe={() => setCurrentView('plan-selection')}
-          userProfile={userProfile}
-          hasActiveAccess={hasActiveAccess}
-          selectedPlan={selectedPlan}
-          trialDaysLeft={trialDaysLeft}
-        />
-      )}
+        <Switch>
+          <Route path="/admin-kop-surat">
+            <AdminKopSurat
+              hospitalSettingsList={hospitalSettingsList}
+              onUpdateHospitalList={handleUpdateHospitalList}
+              enterprise_id={userProfile?.enterprise_id}
+            />
+          </Route>
 
-      {currentView === 'admin-dashboard' && (
-        <AdminDashboard 
-          doctors={doctors}
-          enterprise_id={userProfile?.enterprise_id}
-          onAddDoctor={() => {
-            setEditingDoctor(null);
-            setCurrentView('add-doctor');
-          }} 
-          onEditDoctor={(doctor) => {
-            setEditingDoctor(doctor);
-            setCurrentView('add-doctor');
-          }}
-          onDeleteDoctor={handleDeleteDoctor}
-          onToggleDoctorStatus={handleToggleDoctorStatus}
-          onManageSubscription={() => setCurrentView('manage-subscription')}
-          onSubscribe={() => setCurrentView('plan-selection')}
-        />
-      )}
+          <Route path="/admin">
+            <AdminDashboard
+              doctors={doctors}
+              enterprise_id={userProfile?.enterprise_id}
+              onAddDoctor={() => {
+                setEditingDoctor(null);
+                navigate('/add-doctor');
+              }}
+              onEditDoctor={(doctor) => {
+                setEditingDoctor(doctor);
+                navigate('/add-doctor');
+              }}
+              onDeleteDoctor={handleDeleteDoctor}
+              onToggleDoctorStatus={handleToggleDoctorStatus}
+              onManageSubscription={() => navigate('/subscription')}
+              onSubscribe={() => navigate('/subscription/plans')}
+            />
+          </Route>
 
-      {currentView === 'add-doctor' && (
-        <AddDoctor 
-          editingDoctor={editingDoctor}
-          onBack={() => {
-            setEditingDoctor(null);
-            setCurrentView('admin-dashboard');
-          }} 
-          onSave={(data) => {
-            if (editingDoctor) {
-              handleUpdateDoctor({ ...editingDoctor, ...data });
-            } else {
-              handleAddDoctor(data);
-            }
-            setCurrentView('admin-dashboard');
-          }}
-        />
-      )}
+          <Route path="/add-doctor">
+            <AddDoctor
+              editingDoctor={editingDoctor}
+              onBack={() => {
+                setEditingDoctor(null);
+                navigate('/admin');
+              }}
+              onSave={(data) => {
+                if (editingDoctor) {
+                  handleUpdateDoctor({ ...editingDoctor, ...data });
+                } else {
+                  handleAddDoctor(data);
+                }
+                navigate('/admin');
+              }}
+            />
+          </Route>
 
-      {currentView === 'admin-kop-surat' && (
-        <AdminKopSurat
-          hospitalSettingsList={hospitalSettingsList}
-          onUpdateHospitalList={handleUpdateHospitalList}
-          enterprise_id={userProfile?.enterprise_id}
-        />
-      )}
+          <Route path="/session/active">
+            {patientData ? (
+              <EndoscopyApp
+                plan={selectedPlan || 'subscription'}
+                patientData={patientData}
+                onEndSession={handleEndSession}
+                onLogout={handleLogout}
+                onRecordingStatusChange={setIsRecordingActive}
+              />
+            ) : <RouteRedirect to="/dashboard" />}
+          </Route>
 
-      {currentView === 'manage-subscription' && (
-        <ManageSubscription
-          onBack={() => setCurrentView('admin-dashboard')}
-          onSubscribe={() => setCurrentView('plan-selection')}
-        />
-      )}
-      
-      {currentView === 'session-form' && (
-        <SessionForm 
-          onSubmit={handleStartSession} 
-          onCancel={() => setCurrentView('dashboard')}
-          userProfile={userProfile}
-        />
-      )}
-      
-      {currentView === 'active-session' && patientData && (
-        <EndoscopyApp 
-          plan={selectedPlan || 'subscription'}
-          patientData={patientData}
-          onEndSession={handleEndSession}
-          onLogout={handleLogout}
-          onRecordingStatusChange={setIsRecordingActive}
-        />
-      )}
-      
-      {currentView === 'report-generator' && viewingSession && (
-        <ReportGenerator 
-          session={viewingSession} 
-          onBack={() => {
-            setViewingSession(null);
-            setCurrentView('dashboard');
-          }}
-          hospitalSettingsList={hospitalSettingsList}
-          userProfile={userProfile!}
-          plan={selectedPlan}
-        />
-      )}
+          <Route path="/session/new">
+            <SessionForm
+              onSubmit={handleStartSession}
+              onCancel={() => navigate('/dashboard')}
+              userProfile={userProfile}
+            />
+          </Route>
 
-      {currentView === 'gallery' && viewingSession && (
-        <Gallery 
-          session={viewingSession}
-          userId={userProfile?.id || ''}
-          onBack={() => {
-            setViewingSession(null);
-            setCurrentView('dashboard');
-          }}
-          onUpdateSession={(updatedSession) => {
-            setViewingSession(updatedSession);
-            handleUpdateSession(updatedSession);
-          }}
-          onViewReport={(session) => {
-            setViewingSession(session);
-            setCurrentView('report-generator');
-          }}
-        />
-      )}
+          <Route path="/session/report">
+            {viewingSession ? (
+              <ReportGenerator
+                session={viewingSession}
+                onBack={() => {
+                  setViewingSession(null);
+                  navigate('/dashboard');
+                }}
+                hospitalSettingsList={hospitalSettingsList}
+                userProfile={userProfile!}
+                plan={selectedPlan}
+              />
+            ) : <RouteRedirect to="/dashboard" />}
+          </Route>
 
-      {currentView === 'plan-selection' && (
-        <PlanSelection
-          onSelectPlan={(plan) => {
-            setCheckoutPlan(plan);
-            setCurrentView('checkout');
-          }}
-          onBack={() => setCurrentView(userProfile?.role === 'admin' ? 'admin-dashboard' : 'dashboard')}
-        />
-      )}
+          <Route path="/gallery">
+            {viewingSession ? (
+              <Gallery
+                session={viewingSession}
+                userId={userProfile?.id || ''}
+                onBack={() => {
+                  setViewingSession(null);
+                  navigate('/dashboard');
+                }}
+                onUpdateSession={(updatedSession) => {
+                  setViewingSession(updatedSession);
+                  handleUpdateSession(updatedSession);
+                }}
+                onViewReport={(session) => {
+                  setViewingSession(session);
+                  navigate('/session/report');
+                }}
+              />
+            ) : <RouteRedirect to="/dashboard" />}
+          </Route>
 
-      {currentView === 'settings' && (
-        <Settings 
-          userProfile={userProfile}
-          hospitalSettingsList={hospitalSettingsList}
-          onUpdateUser={setUserProfile}
-          onUpdateHospitalList={handleUpdateHospitalList}
-          onUpdateSessions={setSessions}
-          onCancelSubscription={handleCancelSubscription}
-          onCheckout={(plan) => {
-            setCheckoutPlan(plan);
-            setCurrentView('checkout');
-          }}
-          plan={selectedPlan}
-          sessions={sessions}
-        />
-      )}
+          <Route path="/subscription/checkout">
+            {checkoutPlan ? (
+              <Checkout
+                plan={checkoutPlan}
+                userEmail={userProfile.email}
+                userName={userProfile.name ?? userProfile.email}
+                onBack={() => navigate('/subscription/plans')}
+                onSuccess={handleCheckoutSuccess}
+              />
+            ) : <RouteRedirect to="/subscription/plans" />}
+          </Route>
 
-      {currentView === 'checkout' && checkoutPlan && (
-        <Checkout
-          plan={checkoutPlan}
-          userEmail={userProfile.email}
-          userName={userProfile.full_name ?? userProfile.name ?? userProfile.email}
-          onBack={() => setCurrentView('plan-selection')}
-          onSuccess={handleCheckoutSuccess}
-        />
-      )}
-    </MainLayout>
+          <Route path="/subscription/plans">
+            <PlanSelection
+              onSelectPlan={(plan) => {
+                setCheckoutPlan(plan);
+                navigate('/subscription/checkout');
+              }}
+              onBack={() => navigate(userProfile?.role === 'admin' ? '/admin' : '/dashboard')}
+            />
+          </Route>
 
-    <ConfirmModal
-      isOpen={showNavGuard}
-      onConfirm={confirmNavGuard}
-      onCancel={cancelNavGuard}
-      title="Keluar dari Sesi?"
-      message="Prosedur sedang berjalan. Keluar sekarang akan menghapus data yang belum disimpan. Yakin keluar?"
-      confirmText="Keluar"
-      cancelText="Batal"
-      variant="warning"
-      icon={<AlertTriangle className="w-10 h-10 text-amber-500" />}
-    />
+          <Route path="/subscription">
+            <ManageSubscription
+              onBack={() => navigate('/admin')}
+              onSubscribe={() => navigate('/subscription/plans')}
+            />
+          </Route>
+
+          <Route path="/settings">
+            <Settings
+              userProfile={userProfile}
+              hospitalSettingsList={hospitalSettingsList}
+              onUpdateUser={setUserProfile}
+              onUpdateHospitalList={handleUpdateHospitalList}
+              onUpdateSessions={setSessions}
+              onCancelSubscription={handleCancelSubscription}
+              onCheckout={(plan) => {
+                setCheckoutPlan(plan);
+                navigate('/subscription/checkout');
+              }}
+              plan={selectedPlan}
+              sessions={sessions}
+            />
+          </Route>
+
+          <Route>
+            <Dashboard
+              sessions={sessions}
+              onNewSession={() => {
+                if (!hasActiveAccess) {
+                  navigate('/subscription/plans');
+                } else {
+                  navigate('/session/new');
+                }
+              }}
+              onViewSession={handleViewSession}
+              onViewGallery={handleViewGallery}
+              onDeleteSession={handleDeleteSession}
+              onSubscribe={() => navigate('/subscription/plans')}
+              userProfile={userProfile}
+              hasActiveAccess={hasActiveAccess}
+              selectedPlan={selectedPlan}
+              trialDaysLeft={trialDaysLeft}
+            />
+          </Route>
+        </Switch>
+      </MainLayout>
+
+      <ConfirmModal
+        isOpen={showNavGuard}
+        onConfirm={confirmNavGuard}
+        onCancel={cancelNavGuard}
+        title="Keluar dari Sesi?"
+        message="Prosedur sedang berjalan. Keluar sekarang akan menghapus data yang belum disimpan. Yakin keluar?"
+        confirmText="Keluar"
+        cancelText="Batal"
+        variant="warning"
+        icon={<AlertTriangle className="w-10 h-10 text-amber-500" />}
+      />
     </div>
   );
 }
 
 function App() {
   return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
+    <Router>
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
+    </Router>
   );
 }
 

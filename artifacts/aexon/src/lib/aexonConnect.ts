@@ -15,6 +15,14 @@ function getStoredToken(): string | null {
   }
 }
 
+function getStoredRefreshToken(): string | null {
+  try {
+    return sessionStorage.getItem(REFRESH_TOKEN_KEY) || localStorage.getItem(REFRESH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 function storeToken(token: string, refreshToken?: string, remember = false) {
   try {
     const storage = remember ? localStorage : sessionStorage;
@@ -41,9 +49,39 @@ function clearToken() {
   }
 }
 
+let _onSessionExpired: (() => void) | null = null;
+
+export function onSessionExpired(callback: () => void) {
+  _onSessionExpired = callback;
+}
+
+async function attemptTokenRefresh(): Promise<string | null> {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${AEXON_CONNECT_API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.token) {
+        const isRemember = !!localStorage.getItem(TOKEN_KEY);
+        storeToken(data.token, data.refresh_token, isRemember);
+        return data.token;
+      }
+    }
+  } catch {
+  }
+  return null;
+}
+
 async function request<T = any>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  _isRetry = false
 ): Promise<{ data: T | null; error: string | null; status: number }> {
   const token = getStoredToken();
   const headers: Record<string, string> = {
@@ -72,6 +110,24 @@ async function request<T = any>(
     const contentType = res.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       body = await res.json();
+    }
+
+    if (res.status === 401 && !_isRetry) {
+      const newToken = await attemptTokenRefresh();
+      if (newToken) {
+        return request<T>(endpoint, options, true);
+      }
+      clearToken();
+      _onSessionExpired?.();
+      return { data: null, error: 'Sesi telah berakhir. Silakan login kembali.', status: 401 };
+    }
+
+    if (res.status === 404) {
+      return {
+        data: null,
+        error: body?.message || body?.error || 'Fitur ini belum tersedia.',
+        status: 404,
+      };
     }
 
     if (!res.ok) {
@@ -225,9 +281,8 @@ export const aexonConnect = {
     });
   },
 
-  async getSubscription(doctorId?: string): Promise<{ data: SubscriptionStatus | null; error: string | null }> {
-    const query = doctorId ? `?doctor_id=${encodeURIComponent(doctorId)}` : '';
-    return request<SubscriptionStatus>(`/subscription${query}`);
+  async getSubscription(): Promise<{ data: SubscriptionStatus | null; error: string | null }> {
+    return request<SubscriptionStatus>('/subscription');
   },
 
   async toggleAutoRenew(): Promise<{ data: ToggleAutoRenewResponse | null; error: string | null }> {
@@ -302,9 +357,21 @@ export const aexonConnect = {
 export function getDeviceId(): string {
   const KEY = 'aexon_device_id';
   let id = localStorage.getItem(KEY);
-  if (!id) {
-    id = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem(KEY, id);
+  if (id) {
+    sessionStorage.setItem(KEY, id);
+    return id;
   }
+  id = sessionStorage.getItem(KEY);
+  if (id) {
+    console.warn('[AexonConnect] Device ID recovered from sessionStorage — localStorage was cleared. Re-persisting.');
+    localStorage.setItem(KEY, id);
+    return id;
+  }
+  // Web app limitation: no hardware ID available, generating a software UUID.
+  // Native apps should use a hardware-bound identifier instead.
+  id = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  console.warn('[AexonConnect] Generated new device ID. This is a web app limitation — native apps should use hardware IDs.');
+  localStorage.setItem(KEY, id);
+  sessionStorage.setItem(KEY, id);
   return id;
 }

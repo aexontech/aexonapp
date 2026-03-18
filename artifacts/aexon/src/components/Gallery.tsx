@@ -5,7 +5,7 @@ import { AnimatePresence } from 'motion/react';
 import { Session, Capture } from '../types';
 import ImageEditor from './ImageEditor';
 import { useToast } from './ToastProvider';
-import { encryptData, getEncryptionKey } from '../lib/storage';
+import { encryptData } from '../lib/storage';
 
 interface GalleryProps {
   session: Session;
@@ -94,13 +94,11 @@ export default function Gallery({ session, userId, onBack, onUpdateSession, onVi
     try {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
-      const key = getEncryptionKey(userId);
-
       const sessionData = {
         ...session,
         captures: captures.map(c => ({ ...c, url: '', originalUrl: undefined, shapes: undefined })),
       };
-      const encryptedSession = encryptData(JSON.stringify(sessionData), key);
+      const encryptedSession = await encryptData(JSON.stringify(sessionData), userId);
       zip.file('session.enc', encryptedSession);
 
       const mediaFolder = zip.folder('media')!;
@@ -129,7 +127,7 @@ export default function Gallery({ session, userId, onBack, onUpdateSession, onVi
         mediaCount: exportedMediaIds.length,
         mediaIds: exportedMediaIds,
       };
-      const encryptedManifest = encryptData(JSON.stringify(manifest), key);
+      const encryptedManifest = await encryptData(JSON.stringify(manifest), userId);
       zip.file('manifest.enc', encryptedManifest);
 
       const blob = await zip.generateAsync({ type: 'blob' });

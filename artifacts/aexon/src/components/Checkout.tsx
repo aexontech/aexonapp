@@ -141,7 +141,7 @@ export default function Checkout({ plan, userEmail, userName, onBack, onSuccess 
         setXenditInvoiceUrl(checkoutData.invoice_url);
       }
 
-      setOrderId(checkoutData.order_id);
+      setOrderId(checkoutData.order_id || checkoutData.invoice_id);
       setOrderPlaced(true);
       showToast('Pesanan berhasil dibuat!', 'success');
       onSuccess?.();
