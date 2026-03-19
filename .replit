@@ -31,4 +31,3 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-VITE_AEXON_CONNECT_API_URL = "https://wukjqyvokoxitklffbja.supabase.co/functions/v1/aexonconnect"
