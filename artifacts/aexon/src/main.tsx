@@ -24,3 +24,4 @@ if (!apiUrl && import.meta.env.PROD) {
     </StrictMode>,
   );
 }
+

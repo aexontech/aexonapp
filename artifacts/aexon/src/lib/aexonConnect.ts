@@ -4,14 +4,17 @@ const AEXON_CONNECT_API_URL = (
 
 const TOKEN_KEY = "aexon_jwt_token";
 const REFRESH_TOKEN_KEY = "aexon_refresh_token";
+const SESSION_TOKEN_KEY = "aexon_session_token";
 const LAST_ONLINE_KEY = "aexon_last_online";
-const OFFLINE_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const OFFLINE_EXPIRY_MS = 30 * 60 * 60 * 1000; // 30 jam — operasi bisa memakan waktu hingga 12 jam
 
 if (!AEXON_CONNECT_API_URL) {
   console.warn(
     "[AexonConnect] VITE_AEXON_CONNECT_API_URL is not set. API calls will fail.",
   );
 }
+
+// ─── Token (JWT) ─────────────────────────────────────────────────────────────
 
 function getStoredToken(): string | null {
   try {
@@ -56,6 +59,30 @@ function clearToken() {
   } catch {}
 }
 
+// ─── Session Token (device session) ─────────────────────────────────────────
+
+function getStoredSessionToken(): string | null {
+  try {
+    return localStorage.getItem(SESSION_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeSessionToken(token: string) {
+  try {
+    localStorage.setItem(SESSION_TOKEN_KEY, token);
+  } catch {}
+}
+
+function clearSessionToken() {
+  try {
+    localStorage.removeItem(SESSION_TOKEN_KEY);
+  } catch {}
+}
+
+// ─── Offline tracking ────────────────────────────────────────────────────────
+
 function updateLastOnline() {
   try {
     localStorage.setItem(LAST_ONLINE_KEY, Date.now().toString());
@@ -78,11 +105,15 @@ export function clearLastOnline() {
   } catch {}
 }
 
+// ─── Session expired callback ────────────────────────────────────────────────
+
 let _onSessionExpired: (() => void) | null = null;
 
 export function onSessionExpired(callback: () => void) {
   _onSessionExpired = callback;
 }
+
+// ─── Token refresh ───────────────────────────────────────────────────────────
 
 async function attemptTokenRefresh(): Promise<string | null> {
   const refreshToken = getStoredRefreshToken();
@@ -109,6 +140,8 @@ async function attemptTokenRefresh(): Promise<string | null> {
   } catch {}
   return null;
 }
+
+// ─── Core request ────────────────────────────────────────────────────────────
 
 async function request<T = any>(
   endpoint: string,
@@ -139,10 +172,7 @@ async function request<T = any>(
   console.log(`[AexonConnect] ${options.method || "GET"} ${fullUrl}`);
 
   try {
-    const res = await fetch(fullUrl, {
-      ...options,
-      headers,
-    });
+    const res = await fetch(fullUrl, { ...options, headers });
 
     let body: any = null;
     const contentType = res.headers.get("content-type");
@@ -200,6 +230,8 @@ async function request<T = any>(
   }
 }
 
+// ─── Interfaces ───────────────────────────────────────────────────────────────
+
 export interface LoginResponse {
   token: string;
   refresh_token?: string;
@@ -213,21 +245,36 @@ export interface LoginResponse {
     str_number?: string;
     sip_number?: string;
     phone?: string;
+    last_name_change_date?: string | null;
+    preferences?: { fontSize: number } | null;
   };
 }
 
 export interface SubscriptionStatus {
-  status: "active" | "trial" | "pending" | "expired" | "cancelled" | "none";
-  plan_type: "subscription" | "enterprise" | null;
-  plan: "subscription" | "enterprise" | null;
+  status: string;
+  active?: boolean;
+  plan_type: "subscription" | "enterprise" | "trial" | null;
+  plan: { billing_cycle?: string; price?: number; original_price?: number | null; is_beta?: boolean; products?: { name?: string } } | null;
   trial_days_left: number | null;
   plan_name?: string;
   billing_cycle?: string;
-  created_at?: string;  // ← ADDED
-  current_period_start?: string;  // ← ADDED
+  created_at?: string;
+  current_period_start?: string;
   starts_at?: string;
   expires_at?: string;
   auto_renew?: boolean;
+  is_grace?: boolean;
+  plan_id?: string;
+  grace_until?: string;
+  trial_ends_at?: string;
+  // Enterprise-specific
+  institution_id?: string;
+  institution_name?: string;
+  institution_expired?: boolean;
+  institution_days_left?: number;
+  institution_total_seats?: number;
+  institution_used_seats?: number;
+  is_admin?: boolean;
 }
 
 export interface ToggleAutoRenewResponse {
@@ -242,9 +289,13 @@ export interface InvoiceResponse {
   status: string;
 }
 
-export interface DeviceSessionResponse {
-  session_id: string;
-  device_id: string;
+/** Response dari /login-session */
+export interface CreateSessionResponse {
+  session_token: string;
+}
+
+/** Response dari /check-session */
+export interface CheckSessionResponse {
   valid: boolean;
 }
 
@@ -271,30 +322,41 @@ export interface PromoValidation {
   label: string;
 }
 
-export interface DeviceRegisterResponse {
-  device_token: string;
-  device_id: string;
-}
-
-export interface DeviceVerifyResponse {
-  verified: boolean;
-  message?: string;
-}
-
 export interface BillingHistoryItem {
   id: string;
-  order_id: string;
-  plan_name: string;
-  billing_cycle: string;
+  order_id?: string;
+  invoice_number?: string;
+  access_key?: string;
+  plan_name?: string;
+  billing_cycle?: string;
+  is_beta?: boolean;
+  original_price?: number | null;
   amount: number;
   status: string;
   created_at: string;
   invoice_url?: string;
+  subscriptions?: {
+    billing_cycle?: string;
+    product_plans?: {
+      is_beta?: boolean;
+      price?: number;
+      original_price?: number | null;
+      products?: { name?: string };
+    };
+  };
 }
+
+// ─── API Client ───────────────────────────────────────────────────────────────
 
 export const aexonConnect = {
   getToken: getStoredToken,
-  clearSession: clearToken,
+
+  clearSession() {
+    clearToken();
+    clearSessionToken();
+  },
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
 
   async login(
     email: string,
@@ -305,11 +367,9 @@ export const aexonConnect = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-
     if (data?.token) {
       storeToken(data.token, data.refresh_token, remember);
     }
-
     return { data, error };
   },
 
@@ -317,7 +377,7 @@ export const aexonConnect = {
     email: string;
     password: string;
     full_name: string;
-    str_number: string;
+    str_number?: string;
     sip_number?: string;
     specialization?: string;
   }): Promise<{ data: any; error: string | null }> {
@@ -362,22 +422,43 @@ export const aexonConnect = {
     });
   },
 
+  async logout(): Promise<void> {
+    try {
+      await request("/auth/logout", { method: "POST" });
+    } catch {}
+    clearToken();
+    clearSessionToken();
+  },
+
+  // ── Subscription ──────────────────────────────────────────────────────────
+
   async getSubscription(): Promise<{
     data: SubscriptionStatus | null;
     error: string | null;
     status: number;
   }> {
-    const result = await request<any>("/subscription");
+    // ✅ FIXED: /subscription → /subscription/status (mengikuti Connect)
+    const result = await request<any>("/subscription/status");
     if (result.data) {
       const d = result.data;
-      const planType = d.plan_type || d.plan || null;
       const status = d.status || "none";
-      const isActive = status === "active" || status === "trial";
+      // d.plan = { billing_cycle, price, original_price, is_beta, products: { name } }
+      const planObj = d.plan && typeof d.plan === "object" ? d.plan : null;
+      const billingCycle = d.billing_cycle || planObj?.billing_cycle || null;
+      const isBeta = planObj?.is_beta ?? (planObj?.original_price != null && planObj?.original_price > planObj?.price);
+      const cycleLabel = billingCycle === "annual" ? "Tahunan" : billingCycle === "monthly" ? "Bulanan" : null;
+      // Derive nama: "Beta — Tahunan" / "Standard — Bulanan" (sama dengan PlanSelection)
+      const planName = cycleLabel
+        ? `${isBeta ? "Beta" : "Standard"} — ${cycleLabel}`
+        : planObj?.products?.name ?? null;
+      const planType = d.plan_type || (status === "trial" ? "trial" : null);
       result.data = {
         ...d,
         status,
+        plan_name: planName,
         plan_type: planType,
-        plan: isActive ? planType || "subscription" : null,
+        billing_cycle: billingCycle,
+        current_period_start: d.current_period_start ?? null,
         trial_days_left: d.trial_days_left ?? null,
       };
     }
@@ -397,34 +478,74 @@ export const aexonConnect = {
     });
   },
 
+  // Nonaktifkan auto_renew — alias toggle yang lebih eksplisit
+  async cancelSubscription(): Promise<{
+    data: { auto_renew: boolean } | null;
+    error: string | null;
+  }> {
+    return request<{ auto_renew: boolean }>("/subscription/toggle-renew", {
+      method: "POST",
+    });
+  },
+
+  async getPaymentUrl(invoiceNumber: string): Promise<{
+    data: { invoice_url: string; status: string } | null;
+    error: string | null;
+    status: number;
+  }> {
+    return request<{ invoice_url: string; status: string }>(
+      `/invoices/payment-url?invoice_number=${encodeURIComponent(invoiceNumber)}`
+    );
+  },
+
+  async cancelPendingInvoice(invoiceNumber: string): Promise<{
+    data: { cancelled: boolean; message: string } | null;
+    error: string | null;
+    status: number;
+  }> {
+    return request<{ cancelled: boolean; message: string }>("/subscription/cancel-invoice", {
+      method: "POST",
+      body: JSON.stringify({ invoice_number: invoiceNumber }),
+    });
+  },
+
   async createInvoice(payload: {
     plan_id: string;
     device_id: string;
     promo_code?: string;
     return_url?: string;
+    auto_renew?: boolean;
   }): Promise<{ data: InvoiceResponse | null; error: string | null }> {
-    return request<InvoiceResponse>("/payment/create", {
+    return request<InvoiceResponse>("/subscription/checkout", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
 
-  async createDeviceSession(
-    deviceId: string,
-  ): Promise<{ data: DeviceSessionResponse | null; error: string | null }> {
-    return request<DeviceSessionResponse>("/login-session", {
-      method: "POST",
-      body: JSON.stringify({ device_id: deviceId }),
-    });
-  },
-
-  async checkDeviceSession(
-    deviceId: string,
-  ): Promise<{ data: DeviceSessionResponse | null; error: string | null }> {
-    return request<DeviceSessionResponse>("/check-session", {
-      method: "POST",
-      body: JSON.stringify({ device_id: deviceId }),
-    });
+  async getBillingHistory(): Promise<{
+    data: BillingHistoryItem[] | null;
+    error: string | null;
+  }> {
+    // ✅ FIXED: /invoices → /subscription/billing-history (mengikuti Connect)
+    const result = await request<any[]>(
+      "/subscription/billing-history",
+    );
+    if (result.data && Array.isArray(result.data)) {
+      result.data = result.data.map((item: any) => {
+        const sub = item.subscriptions;
+        const plan = sub?.product_plans;
+        // plan.name = "Beta - Bulanan" / "Standard - Tahunan" dll — langsung dari SKU
+        const isBeta = plan?.is_beta ?? false;
+        const planLabel = plan?.name ?? (isBeta ? "Beta" : "Standard");
+        return {
+          ...item,
+          plan_name: planLabel,
+          is_beta: isBeta,
+          billing_cycle: sub?.billing_cycle ?? item.billing_cycle ?? null,
+        };
+      });
+    }
+    return result as { data: BillingHistoryItem[] | null; error: string | null; status: number };
   },
 
   async getPlans(): Promise<{ data: Plan[] | null; error: string | null }> {
@@ -462,51 +583,142 @@ export const aexonConnect = {
     });
   },
 
-  async registerDevice(
-    device_id: string,
-  ): Promise<{ data: DeviceRegisterResponse | null; error: string | null }> {
-    return request<DeviceRegisterResponse>("/device/register", {
+  // ── Device Session ────────────────────────────────────────────────────────
+
+  /**
+   * Dipanggil setelah login berhasil.
+   * Connect akan upsert sesi dengan user_id UNIQUE → device lain otomatis invalid.
+   * Session token disimpan di localStorage untuk validasi berikutnya.
+   */
+  async createDeviceSession(
+    deviceId: string,
+  ): Promise<{ data: CreateSessionResponse | null; error: string | null }> {
+    const result = await request<CreateSessionResponse>("/login-session", {
       method: "POST",
-      body: JSON.stringify({ device_id }),
+      body: JSON.stringify({ device_info: deviceId }),
     });
-  },
-
-  async verifyDevice(
-    device_id: string,
-  ): Promise<{ data: DeviceVerifyResponse | null; error: string | null }> {
-    return request<DeviceVerifyResponse>("/device/verify", {
-      method: "POST",
-      body: JSON.stringify({ device_id }),
-    });
-  },
-
-  // ✅ CHANGED: Renamed from getBillingHistory to getInvoices
-  async getInvoices(): Promise<{
-    data: { invoices: BillingHistoryItem[]; total: number } | null;
-    error: string | null;
-  }> {
-    return request<{ invoices: BillingHistoryItem[]; total: number }>("/invoices");
-  },
-
-  // Keep old method for backward compatibility
-  async getBillingHistory(): Promise<{
-    data: BillingHistoryItem[] | null;
-    error: string | null;
-  }> {
-    const result = await this.getInvoices();
-    if (result.data?.invoices) {
-      return { data: result.data.invoices, error: null };
+    // Simpan session token yang dikembalikan Connect
+    if (result.data?.session_token) {
+      storeSessionToken(result.data.session_token);
     }
-    return { data: null, error: result.error };
+    return result;
   },
 
-  async logout(): Promise<void> {
-    try {
-      await request("/auth/logout", { method: "POST" });
-    } catch {}
-    clearToken();
+  /**
+   * Dipanggil secara periodik untuk memverifikasi apakah device ini masih aktif.
+   * Jika user login di device lain, Connect akan timpa session_token di DB,
+   * sehingga token device ini tidak valid lagi → valid: false → force logout.
+   *
+   * Jika belum ada session_token tersimpan (user lama sebelum fitur ini),
+   * kembalikan valid: true agar tidak kick out paksa.
+   */
+  async checkDeviceSession(): Promise<{
+    data: CheckSessionResponse | null;
+    error: string | null;
+  }> {
+    const sessionToken = getStoredSessionToken();
+    if (!sessionToken) {
+      return { data: { valid: true }, error: null };
+    }
+    return request<CheckSessionResponse>("/check-session", {
+      method: "POST",
+      body: JSON.stringify({ session_token: sessionToken }),
+    });
+  },
+
+  // ─── Hospital Settings (Kop Surat) ──────────────────────────
+
+  async getHospitalSettings(params: { doctor_id?: string; institution_id?: string }) {
+    const qs = params.doctor_id
+      ? `?doctor_id=${params.doctor_id}`
+      : params.institution_id
+      ? `?institution_id=${params.institution_id}`
+      : "";
+    return request<any[]>(`/hospital-settings${qs}`);
+  },
+
+  async createHospitalSetting(payload: Record<string, any>) {
+    return request("/hospital-settings", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateHospitalSetting(id: string, payload: Record<string, any>) {
+    return request(`/hospital-settings/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteHospitalSetting(id: string) {
+    return request(`/hospital-settings/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  async requestCooldownReset(hospitalSettingId: string, reason?: string) {
+    return request("/hospital-settings/request-edit", {
+      method: "POST",
+      body: JSON.stringify({ hospital_setting_id: hospitalSettingId, reason }),
+    });
+  },
+
+  async migrateHospitalSettings(payload: {
+    doctor_id?: string;
+    institution_id?: string;
+    settings: Record<string, any>[];
+  }) {
+    return request("/hospital-settings/migrate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ── Enterprise: Get institution info ──────────────────────────
+  async getInstitution(): Promise<{ data: any; error: string | null }> {
+    const { data, error } = await request("/enterprise/institution");
+    return { data, error };
+  },
+
+  // ── Enterprise: List doctors ──────────────────────────────────
+  async getEnterpriseDoctors(): Promise<{
+    data: { doctors: any[]; pending_invitations: any[]; institution_id: string } | null;
+    error: string | null;
+  }> {
+    const { data, error } = await request("/enterprise/doctors");
+    return { data, error };
+  },
+
+  // ── Enterprise: Invite doctor ─────────────────────────────────
+  async inviteEnterpriseDoctor(payload: {
+    email: string; full_name: string;
+    specialty?: string; str_number?: string; sip_number?: string; phone?: string;
+  }): Promise<{ data: any; error: string | null }> {
+    const { data, error } = await request("/enterprise/invite-doctor", {
+      method: "POST", body: JSON.stringify(payload),
+    });
+    return { data, error };
+  },
+
+  // ── Enterprise: Remove doctor ─────────────────────────────────
+  async removeEnterpriseDoctor(doctorId: string): Promise<{ data: any; error: string | null }> {
+    const { data, error } = await request("/enterprise/remove-doctor", {
+      method: "POST", body: JSON.stringify({ doctor_id: doctorId }),
+    });
+    return { data, error };
+  },
+
+  // ── Enterprise: Toggle doctor status ──────────────────────────
+  async toggleEnterpriseDoctorStatus(doctorId: string): Promise<{ data: any; error: string | null }> {
+    const { data, error } = await request("/enterprise/toggle-doctor-status", {
+      method: "POST", body: JSON.stringify({ doctor_id: doctorId }),
+    });
+    return { data, error };
   },
 };
+
+// ─── Device ID ────────────────────────────────────────────────────────────────
 
 export function getDeviceId(): string {
   const KEY = "aexon_device_id";
@@ -523,8 +735,6 @@ export function getDeviceId(): string {
     localStorage.setItem(KEY, id);
     return id;
   }
-  // Web app limitation: no hardware ID available, generating a software UUID.
-  // Native apps should use a hardware-bound identifier instead.
   id =
     crypto.randomUUID?.() ||
     `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;

@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Router, Route, Switch, useLocation } from 'wouter';
+import { useHashLocation } from 'wouter/use-hash-location';
 import Launcher from './components/Launcher';
 import MainLayout from './components/MainLayout';
 import Dashboard from './components/Dashboard';
+import SessionHistory from './components/SessionHistory';
 import AdminDashboard from './components/AdminDashboard';
 import SessionForm from './components/SessionForm';
 import EndoscopyApp from './components/EndoscopyApp';
@@ -10,17 +12,20 @@ import ReportGenerator from './components/ReportGenerator';
 import Settings from './components/Settings';
 import Gallery from './components/Gallery';
 import AddDoctor from './components/AddDoctor';
-import ManageSubscription from './components/ManageSubscription';
 import PlanSelection from './components/PlanSelection';
 import Checkout from './components/Checkout';
-import AdminKopSurat from './components/AdminKopSurat';
+import ProfilePage from './components/ProfilePage';
+import SubscriptionPage from './components/SubscriptionPage';
+import PatientProfile from './components/PatientProfile';
 import EulaModal from './components/EulaModal';
 import ConfirmModal from './components/ConfirmModal';
 import ToastProvider, { useToast } from './components/ToastProvider';
-import { PatientData, Session, UserProfile, HospitalSettings, UserRole } from './types';
+import { PatientData, Session, UserProfile, HospitalSettings, UserRole, Capture } from './types';
 import { saveUserData, loadUserData } from './lib/storage';
 import { onSessionExpired, isOfflineTooLong, clearLastOnline, Plan, SubscriptionStatus } from './lib/aexonConnect';
+import { loadDraftSession, clearDraftSession, hasDraftSession } from './lib/draftSession';
 import { AlertTriangle } from 'lucide-react';
+import { isElectron, saveSessionToDisk, loadSessionsFromDisk, deleteSessionFromDisk } from './lib/electronStorage';
 
 function RouteRedirect({ to }: { to: string }) {
   const [, navigate] = useLocation();
@@ -32,7 +37,7 @@ function AppContent() {
   const { showToast } = useToast();
   const [location, navigate] = useLocation();
 
-  const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<'subscription' | 'enterprise' | 'trial' | null>(null);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionStatus | null>(null);
@@ -47,14 +52,39 @@ function AppContent() {
   const [showNavGuard, setShowNavGuard] = useState(false);
   const [pendingNavTarget, setPendingNavTarget] = useState<string | null>(null);
   const [showEula, setShowEula] = useState(false);
-  const [doctors, setDoctors] = useState<UserProfile[]>([]);
-  const [editingDoctor, setEditingDoctor] = useState<UserProfile | null>(null);
 
-  const hasActiveAccess = selectedPlan === 'subscription' || selectedPlan === 'enterprise' || (trialDaysLeft !== null && trialDaysLeft > 0);
+  // Resume sesi draft
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeDraft, setResumeDraft] = useState<{
+    patientData: PatientData;
+    captures: Capture[];
+    savedAt: string;
+  } | null>(null);
+  const [initialCaptures, setInitialCaptures] = useState<Capture[]>([]);
+
+  // Ref untuk pesan kick-out setelah spinner selesai
+  const kickOutMessageRef = useRef<string | null>(null);
+
+  // Ref untuk force-end sesi aktif (nav guard → stop recording + save)
+  const forceEndSessionRef = useRef<(() => void) | null>(null);
+  const profileRefreshedRef = useRef(false);
+
+  // Ref untuk forceLogout — mencegah license check effect re-register interval
+  const forceLogoutRef = useRef<(message: string) => void>(() => {});
+
+  const hasActiveAccess = (selectedPlan === 'subscription') || (selectedPlan === 'enterprise' && subscriptionData?.active !== false) || (selectedPlan === 'trial' && trialDaysLeft !== null && trialDaysLeft > 0);
+
+  // ── Session Restore ───────────────────────────────────────────────────────────
 
   useEffect(() => {
     const restoreSession = async () => {
       try {
+        // Electron: selalu mulai dari login (auto-logout saat tutup app)
+        if (window.aexonStorage) {
+          setRestoringSession(false);
+          return;
+        }
+
         const { aexonConnect } = await import('./lib/aexonConnect');
         const token = aexonConnect.getToken();
         if (!token) {
@@ -75,6 +105,25 @@ function AppContent() {
           return;
         }
 
+        let subStatus = (await aexonConnect.getSubscription()).data;
+        // Retry sekali jika subscription fetch gagal (network flaky saat startup)
+        if (!subStatus) {
+          await new Promise(r => setTimeout(r, 1500));
+          subStatus = (await aexonConnect.getSubscription()).data;
+        }
+
+        // Cek device session — kalau login di device lain → kick out
+        if (navigator.onLine) {
+          const { data: sessionCheck } = await aexonConnect.checkDeviceSession();
+          if (sessionCheck && !sessionCheck.valid) {
+            aexonConnect.clearSession();
+            clearLastOnline();
+            kickOutMessageRef.current = 'Akun Anda telah masuk dari perangkat lain.';
+            setRestoringSession(false);
+            return;
+          }
+        }
+
         const userId = profile.email.replace(/[^a-zA-Z0-9]/g, '_');
         setUserProfile({
           id: userId,
@@ -84,13 +133,16 @@ function AppContent() {
           phone: profile.phone || '',
           role: profile.role as UserRole,
           status: 'active',
-          enterprise_id: profile.enterprise_id ?? null
+          enterprise_id: profile.enterprise_id ?? null,
+          strNumber: profile.str_number || '',
+          sipNumber: profile.sip_number || '',
+          lastNameChangeDate: profile.last_name_change_date || undefined,
+          preferences: profile.preferences || { fontSize: 17 },
         });
 
-        const { data: subStatus } = await aexonConnect.getSubscription();
         if (subStatus) {
           setSubscriptionData(subStatus);
-          setSelectedPlan(subStatus.plan ?? null);
+          setSelectedPlan(subStatus.plan_type ?? null);
           setTrialDaysLeft(subStatus.trial_days_left ?? null);
         }
 
@@ -103,6 +155,20 @@ function AppContent() {
           if (stored) setHospitalSettingsList(JSON.parse(stored));
         } catch {}
 
+        // Cek draft sesi yang belum selesai (force quit / crash recovery)
+        try {
+          const hasDraft = await hasDraftSession(userId);
+          if (hasDraft) {
+            const draft = await loadDraftSession(userId);
+            if (draft) {
+              setResumeDraft(draft);
+              setShowResumeModal(true);
+            }
+          }
+        } catch {
+          // Draft recovery non-critical — silently continue
+        }
+
       } catch {
       } finally {
         setRestoringSession(false);
@@ -111,13 +177,24 @@ function AppContent() {
     restoreSession();
   }, []);
 
+  // Tampilkan pesan kick-out setelah spinner selesai
+  useEffect(() => {
+    if (!restoringSession && kickOutMessageRef.current) {
+      showToast(kickOutMessageRef.current, 'warning');
+      kickOutMessageRef.current = null;
+    }
+  }, [restoringSession]);
+
+  // ── Route helpers ─────────────────────────────────────────────────────────────
+
   const activeMenu = (() => {
-    if (location.startsWith('/admin-kop-surat')) return 'admin-kop-surat';
     if (location.startsWith('/admin')) return 'admin-dashboard';
     if (location.startsWith('/add-doctor')) return 'add-doctor';
+    if (location.startsWith('/patient-profile')) return 'patient-profile';
     if (location.startsWith('/session/active')) return 'active-session';
     if (location.startsWith('/session/new')) return 'session-form';
     if (location.startsWith('/session/') && location.includes('/report')) return 'report-generator';
+    if (location.startsWith('/history')) return 'session-history';
     if (location.startsWith('/gallery')) return 'gallery';
     if (location.startsWith('/settings')) return 'settings';
     if (location.startsWith('/subscription/checkout')) return 'checkout';
@@ -127,6 +204,8 @@ function AppContent() {
     return 'dashboard';
   })();
 
+  // ── Subscription refresh ──────────────────────────────────────────────────────
+
   const refreshSubscriptionStatus = useCallback(async () => {
     if (!userProfile) return;
     try {
@@ -134,7 +213,7 @@ function AppContent() {
       const { data: subStatus } = await aexonConnect.getSubscription();
       if (!subStatus) return;
       setSubscriptionData(subStatus);
-      setSelectedPlan(subStatus.plan ?? null);
+      setSelectedPlan(subStatus.plan_type ?? null);
       setTrialDaysLeft(subStatus.trial_days_left ?? null);
     } catch (err) {
       console.error('Failed to refresh subscription status:', err);
@@ -145,6 +224,8 @@ function AppContent() {
     refreshSubscriptionStatus();
   };
 
+  // ── Force logout ──────────────────────────────────────────────────────────────
+
   const forceLogout = useCallback((message: string) => {
     setUserProfile(null);
     setSelectedPlan(null);
@@ -153,24 +234,32 @@ function AppContent() {
     setSessions([]);
     setViewingSession(null);
     setTrialDaysLeft(null);
+    setInitialCaptures([]);
+    setHospitalSettingsList([]);
     clearLastOnline();
+    profileRefreshedRef.current = false;
     navigate('/');
     showToast(message, 'warning');
   }, [navigate, showToast]);
 
+  // Sync forceLogout ref agar license check effect tidak perlu depend on forceLogout
+  useEffect(() => { forceLogoutRef.current = forceLogout; }, [forceLogout]);
+
   useEffect(() => {
     onSessionExpired(() => {
-      forceLogout('Sesi telah berakhir. Silakan login kembali.');
+      forceLogoutRef.current('Sesi telah berakhir. Silakan login kembali.');
     });
-  }, [forceLogout]);
+  }, []);
 
   useEffect(() => {
     if (!userProfile) return;
     if (isOfflineTooLong()) {
-      forceLogout('Anda telah offline lebih dari 24 jam. Silakan login kembali.');
+      forceLogoutRef.current('Anda telah offline lebih dari 24 jam. Silakan login kembali.');
       return;
     }
-  }, [userProfile, forceLogout]);
+  }, [userProfile]);
+
+  // ── Periodic license + device session check (setiap 5 menit) ─────────────────
 
   useEffect(() => {
     if (!userProfile) return;
@@ -181,16 +270,25 @@ function AppContent() {
       if (!navigator.onLine) return;
       try {
         const { aexonConnect } = await import('./lib/aexonConnect');
+
+        // 1. Cek device session — kalau login di device lain → kick out
+        const { data: sessionCheck } = await aexonConnect.checkDeviceSession();
+        if (sessionCheck && !sessionCheck.valid) {
+          forceLogoutRef.current('Akun Anda telah masuk dari perangkat lain.');
+          return;
+        }
+
+        // 2. Cek status subscription
         const { data: subStatus, status } = await aexonConnect.getSubscription();
         if (status === 401) {
           if (isOfflineTooLong()) {
-            forceLogout('Sesi tidak dapat diperbarui. Silakan login kembali.');
+            forceLogoutRef.current('Sesi tidak dapat diperbarui. Silakan login kembali.');
           }
           return;
         }
         if (subStatus) {
           setSubscriptionData(subStatus);
-          setSelectedPlan(subStatus.plan ?? null);
+          setSelectedPlan(subStatus.plan_type ?? null);
           setTrialDaysLeft(subStatus.trial_days_left ?? null);
         }
       } catch {}
@@ -206,21 +304,36 @@ function AppContent() {
       clearInterval(interval);
       window.removeEventListener('online', handleOnline);
     };
-  }, [userProfile, forceLogout]);
+  }, [userProfile]);
+
+  // ── Recording guard (cegah close saat recording) ─────────────────────────────
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isRecordingActive) {
         e.preventDefault();
         e.returnValue = '';
+        return;
+      }
+      // Electron: clear JWT tokens saat window ditutup (auto-logout)
+      if (window.aexonStorage) {
+        try {
+          sessionStorage.removeItem('aexon_jwt_token');
+          sessionStorage.removeItem('aexon_refresh_token');
+          localStorage.removeItem('aexon_jwt_token');
+          localStorage.removeItem('aexon_refresh_token');
+        } catch {}
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isRecordingActive]);
 
+  // ── Navigation ────────────────────────────────────────────────────────────────
+
   const handleNavigate = (menu: string) => {
-    if (location === '/session/active' && isRecordingActive) {
+    // Selalu tanya konfirmasi saat di live view, mau record atau tidak
+    if (location === '/session/active') {
       setPendingNavTarget(menu);
       setShowNavGuard(true);
       return;
@@ -229,7 +342,7 @@ function AppContent() {
     const routeMap: Record<string, string> = {
       'dashboard': '/dashboard',
       'admin-dashboard': '/admin',
-      'admin-kop-surat': '/admin-kop-surat',
+      'session-history': '/history',
       'session-form': '/session/new',
       'active-session': '/session/active',
       'report-generator': '/session/report',
@@ -239,9 +352,20 @@ function AppContent() {
       'plan-selection': '/subscription/plans',
       'checkout': '/subscription/checkout',
       'add-doctor': '/add-doctor',
+      'profile': '/profile',
+      'patient-profile': '/patient-profile',
     };
 
     if ((menu === 'session-form' || menu === 'active-session') && !hasActiveAccess) {
+      if (selectedPlan === 'enterprise') {
+        showToast(
+          userProfile?.role === 'admin'
+            ? 'Langganan enterprise tidak aktif. Hubungi tim Aexon untuk memperpanjang.'
+            : 'Langganan enterprise tidak aktif. Hubungi Admin RS Anda.',
+          'warning'
+        );
+        return;
+      }
       navigate('/subscription/plans');
       return;
     }
@@ -249,10 +373,16 @@ function AppContent() {
     navigate(routeMap[menu] || '/dashboard');
   };
 
+  // Keluar dari sesi aktif → stop recording + auto-save semua captures
   const confirmNavGuard = () => {
     setShowNavGuard(false);
     if (pendingNavTarget) {
-      handleNavigate(pendingNavTarget);
+      if (location === '/session/active' && forceEndSessionRef.current) {
+        // Trigger EndoscopyApp: stop recording + buat session + navigate ke report
+        forceEndSessionRef.current();
+      } else {
+        handleNavigate(pendingNavTarget);
+      }
       setPendingNavTarget(null);
     }
   };
@@ -262,22 +392,65 @@ function AppContent() {
     setPendingNavTarget(null);
   };
 
+  // ── Session data ──────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    if (userProfile) {
+    if (userProfile?.id) {
       refreshSubscriptionStatus();
     }
   }, [userProfile?.id]);
 
+  // ── Profile refresh: jika nama masih email, ambil dari backend ──────────────
   useEffect(() => {
-    if (userProfile) {
+    if (!userProfile) return;
+    if (profileRefreshedRef.current) return;
+    const needsRefresh = userProfile.name === userProfile.email || userProfile.specialization === 'Spesialis';
+    if (needsRefresh) {
+      profileRefreshedRef.current = true;
       (async () => {
-        const parsed = await loadUserData<any[]>(userProfile.id, 'sessions');
+        try {
+          const { aexonConnect } = await import('./lib/aexonConnect');
+          const token = aexonConnect.getToken();
+          if (!token) return;
+          const { data: p } = await aexonConnect.getProfile();
+          if (p?.full_name) {
+            setUserProfile(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                name: p.full_name || prev.name,
+                specialization: p.specialization || prev.specialization,
+                phone: p.phone || prev.phone,
+                strNumber: p.str_number || prev.strNumber,
+                sipNumber: p.sip_number || prev.sipNumber,
+                lastNameChangeDate: p.last_name_change_date || prev.lastNameChangeDate,
+              };
+            });
+          }
+        } catch {
+          // Profile refresh failed — non-critical, will retry next cycle
+        }
+      })();
+    }
+  }, [userProfile?.id, userProfile?.name]);
+
+        useEffect(() => {
+          if (userProfile) {
+            (async () => {
+              // Electron: load dari encrypted disk storage
+              const diskSessions = await loadSessionsFromDisk();
+              if (diskSessions !== null) {
+                setSessions(diskSessions);
+                return;
+              }
+
+              const parsed = await loadUserData<Session[]>(userProfile.id, 'sessions');
         if (parsed && Array.isArray(parsed)) {
           try {
-            const formatted = parsed.map((s: any) => ({
+            const formatted: Session[] = parsed.map((s) => ({
               ...s,
               date: new Date(s.date),
-              captures: (s.captures || []).map((c: any) => ({
+              captures: (s.captures || []).map((c) => ({
                 ...c,
                 timestamp: new Date(c.timestamp)
               }))
@@ -291,11 +464,11 @@ function AppContent() {
           const legacySessions = localStorage.getItem(`aexon_sessions_${userProfile.id}`);
           if (legacySessions) {
             try {
-              const parsed2 = JSON.parse(legacySessions);
-              const formatted = parsed2.map((s: any) => ({
+              const parsed2: Session[] = JSON.parse(legacySessions);
+              const formatted: Session[] = parsed2.map((s) => ({
                 ...s,
                 date: new Date(s.date),
-                captures: (s.captures || []).map((c: any) => ({
+                captures: (s.captures || []).map((c) => ({
                   ...c,
                   timestamp: new Date(c.timestamp)
                 }))
@@ -314,22 +487,26 @@ function AppContent() {
   }, [userProfile?.id]);
 
   const persistSessions = async (updatedSessions: Session[]) => {
-    if (userProfile) {
-      try {
-        await saveUserData(userProfile.id, 'sessions', updatedSessions);
-      } catch (e) {
-        showToast('Penyimpanan penuh. Beberapa foto mungkin tidak tersimpan. Pertimbangkan untuk menghapus sesi lama.', 'error', 8000);
-      }
+    if (!userProfile) return;
+    // Electron: disk encrypted adalah source-of-truth, skip IndexedDB
+    if (isElectron()) return;
+    try {
+      await saveUserData(userProfile.id, 'sessions', updatedSessions);
+    } catch {
+      showToast('Penyimpanan penuh. Beberapa foto mungkin tidak tersimpan. Pertimbangkan untuk menghapus sesi lama.', 'error', 8000);
     }
   };
 
   const [hospitalSettingsList, setHospitalSettingsList] = useState<HospitalSettings[]>([]);
+  const [settingsTab, setSettingsTab] = useState<string>('keamanan');
+
+  // ── Login ─────────────────────────────────────────────────────────────────────
 
   const handleLogin = (
     role: UserRole,
     email: string,
     fullName: string,
-    plan: 'subscription' | 'enterprise' | null,
+    plan: 'subscription' | 'enterprise' | 'trial' | null,
     trialDaysLeft: number | null,
     enterpriseId?: string
   ) => {
@@ -343,7 +520,8 @@ function AppContent() {
       phone: '',
       role: role,
       status: 'active',
-      enterprise_id: enterpriseId ?? null
+      enterprise_id: enterpriseId ?? null,
+      preferences: { fontSize: 17 },
     });
 
     setSelectedPlan(plan);
@@ -367,12 +545,46 @@ function AppContent() {
       setHospitalSettingsList([]);
     }
 
+    // Cek apakah ada draft sesi yang belum selesai
+    hasDraftSession(userId).then((hasDraft) => {
+      if (hasDraft) {
+        loadDraftSession(userId).then((draft) => {
+          if (draft) {
+            setResumeDraft(draft);
+            setShowResumeModal(true);
+          }
+        });
+      }
+    });
+
     if (role === 'admin') {
       navigate('/admin');
     } else {
       navigate('/dashboard');
     }
   };
+
+  // ── Resume / Buang draft ──────────────────────────────────────────────────────
+
+  const handleResumeSession = () => {
+    if (!resumeDraft || !userProfile) return;
+    setShowResumeModal(false);
+    setPatientData(resumeDraft.patientData);
+    setInitialCaptures(resumeDraft.captures);
+    setResumeDraft(null);
+    navigate('/session/active');
+  };
+
+  const handleDiscardDraft = () => {
+    if (userProfile) {
+      clearDraftSession(userProfile.id);
+    }
+    setShowResumeModal(false);
+    setResumeDraft(null);
+    setInitialCaptures([]);
+  };
+
+  // ── EULA ──────────────────────────────────────────────────────────────────────
 
   const handleEulaAccept = () => {
     if (userProfile) {
@@ -413,24 +625,33 @@ function AppContent() {
     }
   };
 
+  // ── Session handlers ──────────────────────────────────────────────────────────
 
   const handleStartSession = (data: PatientData) => {
+    setInitialCaptures([]);
     setPatientData(data);
     navigate('/session/active');
   };
 
-  const handleEndSession = (session: Session) => {
+  const handleEndSession = async (session: Session) => {
     const updatedSessions = [session, ...sessions];
     setSessions(updatedSessions);
-    persistSessions(updatedSessions);
+    // Persist ke storage sebelum navigasi — pastikan data tersimpan
+    await persistSessions(updatedSessions);
+    // Electron: captures + metadata sudah tersimpan secara real-time di EndoscopyApp.
+    // saveSessionToDisk hanya dipanggil di Replit/browser sebagai fallback.
+    if (!isElectron()) {
+      saveSessionToDisk(session);
+    }
     setPatientData(null);
+    setInitialCaptures([]); // Reset setelah sesi selesai
     setViewingSession(session);
     navigate('/session/report');
   };
 
   const handleViewSession = (session: Session) => {
     setViewingSession(session);
-    navigate('/session/report');
+    navigate('/patient-profile');
   };
 
   const handleViewGallery = (session: Session) => {
@@ -448,14 +669,18 @@ function AppContent() {
     const updatedSessions = sessions.filter(s => s.id !== sessionId);
     setSessions(updatedSessions);
     persistSessions(updatedSessions);
+    deleteSessionFromDisk(sessionId);
   };
+
+  // ── Logout ────────────────────────────────────────────────────────────────────
 
   const handleLogout = async () => {
     try {
       const { aexonConnect } = await import('./lib/aexonConnect');
       await aexonConnect.logout();
-    } catch {
-    }
+    } catch {}
+    // Electron: hapus crypto key dari memory
+    try { await window.aexonStorage?.logout(); } catch {}
     navigate('/');
     setSelectedPlan(null);
     setSubscriptionData(null);
@@ -464,46 +689,45 @@ function AppContent() {
     setViewingSession(null);
     setUserProfile(null);
     setTrialDaysLeft(null);
+    setInitialCaptures([]);
+    setHospitalSettingsList([]);
+    profileRefreshedRef.current = false;
   };
 
-  const handleCancelSubscription = () => {
-    setSelectedPlan(null);
-    showToast('Paket berlangganan telah dibatalkan.', 'warning');
-  };
-
-  const handleAddDoctor = (doctorData: any) => {
-    const newDoctor: UserProfile = {
-      ...doctorData,
-      id: `DOC-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-      lastLogin: new Date()
-    };
-    setDoctors(prev => [...prev, newDoctor]);
-  };
-
-  const handleUpdateDoctor = (doctorData: UserProfile) => {
-    setDoctors(prev => prev.map(d => d.id === doctorData.id ? doctorData : d));
-    setEditingDoctor(null);
-  };
-
-  const handleDeleteDoctor = (doctorId: string) => {
-    setDoctors(prev => prev.filter(d => d.id !== doctorId));
-  };
-
-  const handleToggleDoctorStatus = (doctorId: string) => {
-    setDoctors(prev => prev.map(d =>
-      d.id === doctorId
-        ? { ...d, status: d.status === 'active' ? 'inactive' : 'active' }
-        : d
-    ));
-  };
-
-  const getFontSizeClass = () => {
-    switch (userProfile?.preferences?.fontSize) {
-      case 'large': return 'text-lg';
-      case 'extra-large': return 'text-xl';
-      default: return 'text-base';
+  const handleCancelSubscription = async () => {
+    try {
+      const { aexonConnect } = await import('./lib/aexonConnect');
+      const { data, error } = await aexonConnect.cancelSubscription();
+      if (error) {
+        showToast(error, 'error');
+        return;
+      }
+      if (data && data.auto_renew === false) {
+        showToast('Perpanjangan otomatis telah dinonaktifkan.', 'warning');
+      }
+      // Refresh subscription status dari server
+      await refreshSubscriptionStatus();
+    } catch {
+      showToast('Gagal membatalkan langganan. Coba lagi.', 'error');
     }
   };
+
+  // ── Font size ─────────────────────────────────────────────────────────────────
+
+  const getAppZoom = (): number => {
+    const fs = userProfile?.preferences?.fontSize;
+    if (typeof fs === 'number' && fs !== 14) return fs / 14;
+    return 1;
+  };
+
+  // Apply zoom at document level — MUST be before any early returns (React hooks rule)
+  const appZoom = getAppZoom();
+  React.useEffect(() => {
+    document.documentElement.style.zoom = `${appZoom}`;
+    return () => { document.documentElement.style.zoom = '1'; };
+  }, [appZoom]);
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   if (showEula) {
     return (
@@ -518,14 +742,23 @@ function AppContent() {
     return (
       <div style={{
         height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: '#F8FAFC', fontFamily: 'Outfit, sans-serif',
+        backgroundColor: '#F4F6F8', fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div className="animate-spin" style={{
-            width: 36, height: 36, border: '3px solid #E2E8F0', borderTopColor: '#0C1E35',
-            borderRadius: '50%', margin: '0 auto 16px',
-          }} />
-          <p style={{ fontSize: 14, color: '#64748B' }}>Memulihkan sesi...</p>
+          <div style={{
+            width: 56, height: 56, borderRadius: 16,
+            background: 'linear-gradient(135deg, #0C1E35 0%, #152d4f 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 20px',
+            boxShadow: '0 4px 20px rgba(12,30,53,0.2)',
+          }}>
+            <div className="animate-spin" style={{
+              width: 24, height: 24, border: '2.5px solid rgba(255,255,255,0.2)', borderTopColor: '#fff',
+              borderRadius: '50%',
+            }} />
+          </div>
+          <p style={{ fontSize: 15, fontWeight: 700, color: '#0C1E35', marginBottom: 4 }}>Memulihkan sesi...</p>
+          <p style={{ fontSize: 12, color: '#94A3B8' }}>Mengembalikan data pasien dan media</p>
         </div>
       </div>
     );
@@ -538,7 +771,7 @@ function AppContent() {
   }
 
   return (
-    <div className={getFontSizeClass()}>
+    <div>
       <MainLayout
         activeMenu={activeMenu}
         onNavigate={handleNavigate}
@@ -546,50 +779,24 @@ function AppContent() {
         plan={selectedPlan}
         trialDaysLeft={trialDaysLeft}
         userProfile={userProfile!}
+        subscriptionData={subscriptionData}
       >
         <Switch>
-          <Route path="/admin-kop-surat">
-            <AdminKopSurat
-              hospitalSettingsList={hospitalSettingsList}
-              onUpdateHospitalList={handleUpdateHospitalList}
-              enterprise_id={userProfile?.enterprise_id}
-            />
-          </Route>
-
           <Route path="/admin">
             <AdminDashboard
-              doctors={doctors}
               enterprise_id={userProfile?.enterprise_id}
-              onAddDoctor={() => {
-                setEditingDoctor(null);
-                navigate('/add-doctor');
-              }}
-              onEditDoctor={(doctor) => {
-                setEditingDoctor(doctor);
-                navigate('/add-doctor');
-              }}
-              onDeleteDoctor={handleDeleteDoctor}
-              onToggleDoctorStatus={handleToggleDoctorStatus}
+              onAddDoctor={() => navigate('/add-doctor')}
               onManageSubscription={() => navigate('/subscription')}
               onSubscribe={() => navigate('/subscription/plans')}
+              onShowToast={showToast}
             />
           </Route>
 
           <Route path="/add-doctor">
             <AddDoctor
-              editingDoctor={editingDoctor}
-              onBack={() => {
-                setEditingDoctor(null);
-                navigate('/admin');
-              }}
-              onSave={(data) => {
-                if (editingDoctor) {
-                  handleUpdateDoctor({ ...editingDoctor, ...data });
-                } else {
-                  handleAddDoctor(data);
-                }
-                navigate('/admin');
-              }}
+              onBack={() => navigate('/admin')}
+              onSuccess={(msg) => showToast(msg, 'success')}
+              onError={(msg) => showToast(msg, 'error')}
             />
           </Route>
 
@@ -601,6 +808,9 @@ function AppContent() {
                 onEndSession={handleEndSession}
                 onLogout={handleLogout}
                 onRecordingStatusChange={setIsRecordingActive}
+                onRegisterForceEnd={(fn) => { forceEndSessionRef.current = fn; }}
+                userId={userProfile!.id}
+                initialCaptures={initialCaptures.length > 0 ? initialCaptures : undefined}
               />
             ) : <RouteRedirect to="/dashboard" />}
           </Route>
@@ -613,17 +823,44 @@ function AppContent() {
             />
           </Route>
 
-          <Route path="/session/report">
+          <Route path="/patient-profile">
             {viewingSession ? (
-              <ReportGenerator
+              <PatientProfile
                 session={viewingSession}
                 onBack={() => {
                   setViewingSession(null);
                   navigate('/dashboard');
                 }}
+                onEditReport={(session) => {
+                  setViewingSession(session);
+                  navigate('/session/report');
+                }}
+                onViewGallery={(session) => {
+                  setViewingSession(session);
+                  navigate('/gallery');
+                }}
+                onUpdateSession={(updatedSession) => {
+                  setViewingSession(updatedSession);
+                  handleUpdateSession(updatedSession);
+                }}
+              />
+            ) : <RouteRedirect to="/dashboard" />}
+          </Route>
+
+          <Route path="/session/report">
+            {viewingSession ? (
+              <ReportGenerator
+                session={viewingSession}
+                onBack={() => {
+                  navigate('/patient-profile');
+                }}
                 hospitalSettingsList={hospitalSettingsList}
                 userProfile={userProfile!}
                 plan={selectedPlan}
+                onUpdateSession={(updatedSession) => {
+                  setViewingSession(updatedSession);
+                  handleUpdateSession(updatedSession);
+                }}
               />
             ) : <RouteRedirect to="/dashboard" />}
           </Route>
@@ -634,8 +871,7 @@ function AppContent() {
                 session={viewingSession}
                 userId={userProfile?.id || ''}
                 onBack={() => {
-                  setViewingSession(null);
-                  navigate('/dashboard');
+                  navigate('/patient-profile');
                 }}
                 onUpdateSession={(updatedSession) => {
                   setViewingSession(updatedSession);
@@ -662,7 +898,10 @@ function AppContent() {
             ) : <RouteRedirect to="/subscription/plans" />}
           </Route>
 
-          <Route path="/subscription/plans">
+            <Route path="/subscription/plans">
+              {selectedPlan === 'enterprise' ? (
+                <RouteRedirect to={userProfile?.role === 'admin' ? '/admin' : '/dashboard'} />
+              ) : (
             <PlanSelection
               onSelectPlan={(plan) => {
                 setCheckoutPlan(plan);
@@ -670,17 +909,36 @@ function AppContent() {
               }}
               onBack={() => navigate(userProfile?.role === 'admin' ? '/admin' : '/dashboard')}
             />
+           )}
           </Route>
 
           <Route path="/subscription">
-            <ManageSubscription
-              onBack={() => navigate('/admin')}
+            <SubscriptionPage
+              onBack={() => navigate(userProfile?.role === 'admin' ? '/admin' : '/dashboard')}
               onSubscribe={() => navigate('/subscription/plans')}
+              isEnterprise={selectedPlan === 'enterprise'}
+              isAdmin={userProfile?.role === 'admin'}
+              subscriptionData={subscriptionData}
+            />
+          </Route>
+
+          <Route path="/profile">
+            <ProfilePage
+              userProfile={userProfile}
+              plan={selectedPlan}
+              onBack={() => navigate(userProfile?.role === 'admin' ? '/admin' : '/dashboard')}
+              onUpdateUser={setUserProfile}
+              subscriptionData={subscriptionData}
+              trialDaysLeft={trialDaysLeft}
+              hospitalSettingsList={hospitalSettingsList}
+              onNavigateToSubscription={selectedPlan !== 'enterprise' ? () => navigate('/subscription') : undefined}
+              onNavigateToSettings={() => { setSettingsTab('kop-surat'); navigate('/settings'); }}
             />
           </Route>
 
           <Route path="/settings">
             <Settings
+              initialTab={settingsTab}
               userProfile={userProfile}
               hospitalSettingsList={hospitalSettingsList}
               onUpdateUser={setUserProfile}
@@ -691,9 +949,20 @@ function AppContent() {
                 setCheckoutPlan(plan);
                 navigate('/subscription/checkout');
               }}
+              onNavigateToProfile={() => navigate('/profile')}
+              onNavigateToSubscription={selectedPlan !== 'enterprise' ? () => navigate('/subscription') : undefined}
               plan={selectedPlan}
               sessions={sessions}
               subscriptionData={subscriptionData}
+            />
+          </Route>
+
+          <Route path="/history">
+            <SessionHistory
+              sessions={sessions}
+              onViewSession={handleViewSession}
+              onDeleteSession={handleDeleteSession}
+              onBack={() => navigate('/dashboard')}
             />
           </Route>
 
@@ -702,7 +971,16 @@ function AppContent() {
               sessions={sessions}
               onNewSession={() => {
                 if (!hasActiveAccess) {
-                  navigate('/subscription/plans');
+                  if (selectedPlan === 'enterprise') {
+                    showToast(
+                      userProfile?.role === 'admin'
+                        ? 'Langganan enterprise tidak aktif. Hubungi tim Aexon.'
+                        : 'Langganan enterprise tidak aktif. Hubungi Admin RS.',
+                      'warning'
+                    );
+                  } else {
+                    navigate('/subscription/plans');
+                  }
                 } else {
                   navigate('/session/new');
                 }
@@ -711,33 +989,130 @@ function AppContent() {
               onViewGallery={handleViewGallery}
               onDeleteSession={handleDeleteSession}
               onSubscribe={() => navigate('/subscription/plans')}
+              onNavigateHistory={() => navigate('/history')}
               userProfile={userProfile}
               hasActiveAccess={hasActiveAccess}
               selectedPlan={selectedPlan}
               trialDaysLeft={trialDaysLeft}
+              subscriptionData={subscriptionData}
             />
           </Route>
         </Switch>
       </MainLayout>
 
+      {/* Nav Guard — keluar di tengah sesi aktif */}
       <ConfirmModal
         isOpen={showNavGuard}
         onConfirm={confirmNavGuard}
         onCancel={cancelNavGuard}
         title="Keluar dari Sesi?"
-        message="Prosedur sedang berjalan. Keluar sekarang akan menghapus data yang belum disimpan. Yakin keluar?"
-        confirmText="Keluar"
-        cancelText="Batal"
+        message={isRecordingActive
+          ? "Rekaman akan dihentikan dan semua foto serta video yang sudah diambil akan otomatis tersimpan. Yakin keluar?"
+          : "Semua foto dan video yang sudah diambil akan otomatis tersimpan. Yakin keluar dari sesi ini?"}
+        confirmText="Keluar & Simpan"
+        cancelText="Lanjutkan Sesi"
         variant="warning"
         icon={<AlertTriangle className="w-10 h-10 text-amber-500" />}
       />
+
+      {/* Resume Modal — muncul saat login kalau ada draft sesi yang belum selesai */}
+      {showResumeModal && resumeDraft && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          backgroundColor: 'rgba(15,23,42,0.6)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}>
+          <div style={{
+            backgroundColor: '#fff', borderRadius: 20, padding: 36,
+            maxWidth: 440, width: '100%',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.15)',
+            textAlign: 'center',
+            position: 'relative', overflow: 'hidden',
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+          }}>
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+              background: 'linear-gradient(135deg, #F97316, #EAB308)',
+            }} />
+
+            <div style={{
+              width: 56, height: 56, borderRadius: 16,
+              backgroundColor: '#FFF7ED',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px',
+              border: '1px solid #FED7AA',
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M12 8v4l3 3" stroke="#F97316" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="9" stroke="#F97316" strokeWidth="2" />
+              </svg>
+            </div>
+
+            <h3 style={{
+              fontSize: 20, fontWeight: 900, color: '#0C1E35',
+              marginBottom: 8,
+            }}>
+              Ada Sesi yang Belum Selesai
+            </h3>
+
+            <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, marginBottom: 6 }}>
+              Pasien: <strong style={{ color: '#0C1E35' }}>
+                {resumeDraft.patientData.name}
+              </strong>
+            </p>
+            <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 6 }}>
+              {resumeDraft.captures.length} media tersimpan
+            </p>
+            <p style={{ fontSize: 12, color: '#CBD5E1', marginBottom: 28 }}>
+              Disimpan {new Date(resumeDraft.savedAt).toLocaleString('id-ID', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })}
+            </p>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={handleDiscardDraft}
+                style={{
+                  flex: 1, padding: '13px 0',
+                  backgroundColor: '#F4F6F8', color: '#475569',
+                  fontWeight: 700, fontSize: 13, borderRadius: 12,
+                  border: 'none', cursor: 'pointer',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  transition: 'background-color 150ms',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#E8ECF1'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F4F6F8'; }}
+              >
+                Buang
+              </button>
+              <button
+                onClick={handleResumeSession}
+                style={{
+                  flex: 1, padding: '13px 0',
+                  background: 'linear-gradient(135deg, #0C1E35 0%, #152d4f 100%)', color: '#fff',
+                  fontWeight: 700, fontSize: 13, borderRadius: 12,
+                  border: 'none', cursor: 'pointer',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  boxShadow: '0 4px 20px rgba(12,30,53,0.25)',
+                }}
+              >
+                Lanjutkan Sesi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function App() {
   return (
-    <Router>
+    <Router hook={window.aexonStorage ? useHashLocation : undefined}>
       <ToastProvider>
         <AppContent />
       </ToastProvider>

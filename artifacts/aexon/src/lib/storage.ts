@@ -1,3 +1,74 @@
+// ═══════════════════════════════════════════════════════════════════
+// STORAGE SERVICE — IndexedDB (menggantikan localStorage)
+// Kapasitas: puluhan GB vs localStorage yang hanya 5-10MB
+// ═══════════════════════════════════════════════════════════════════
+
+const DB_NAME = 'aexon_storage';
+const DB_VERSION = 1;
+const STORE_NAME = 'user_data';
+
+// ── IndexedDB helpers ───────────────────────────────────────────────
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbGet(key: string): Promise<string | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbSet(key: string, value: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.put(value, key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbDelete(key: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete(key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbGetAllKeys(): Promise<string[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAllKeys();
+    request.onsuccess = () => resolve(request.result as string[]);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// ── Encryption (tetap sama) ─────────────────────────────────────────
+
 function xorCipherLegacy(data: string, key: string): string {
   let result = '';
   for (let i = 0; i < data.length; i++) {
@@ -78,47 +149,76 @@ export async function decryptData(data: string, userId: string): Promise<string>
   }
 }
 
+// ── Public API (interface tetap sama, backend pindah ke IndexedDB) ──
+
 export async function saveUserData(userId: string, dataKey: string, data: any): Promise<void> {
   const json = JSON.stringify(data);
   const encrypted = await encryptData(json, userId);
-  localStorage.setItem(`aexon_${dataKey}_${userId}`, encrypted);
+  const storageKey = `aexon_${dataKey}_${userId}`;
+
+  // Simpan ke IndexedDB (kapasitas besar)
+  await idbSet(storageKey, encrypted);
+
+  // Hapus dari localStorage kalau masih ada (migrasi)
+  try { localStorage.removeItem(storageKey); } catch {}
 }
 
 export async function loadUserData<T = any>(userId: string, dataKey: string): Promise<T | null> {
-  const raw = localStorage.getItem(`aexon_${dataKey}_${userId}`);
-  if (!raw) {
-    if (dataKey === 'sessions') {
-      const legacyRaw = localStorage.getItem(`aexon_sessions_${userId}`);
-      if (legacyRaw) {
-        try {
-          return JSON.parse(legacyRaw) as T;
-        } catch {
-          return null;
-        }
+  const storageKey = `aexon_${dataKey}_${userId}`;
+
+  // 1. Coba dari IndexedDB dulu
+  const idbRaw = await idbGet(storageKey);
+  if (idbRaw) {
+    try {
+      const decrypted = await decryptData(idbRaw, userId);
+      return JSON.parse(decrypted) as T;
+    } catch (decryptErr) {
+      // Decryption failed — try as unencrypted data (legacy migration)
+      try { return JSON.parse(idbRaw) as T; } catch {
+        console.warn(`[Storage] Data corrupt untuk key ${storageKey} — decrypt & parse gagal`);
       }
     }
-    return null;
   }
-  try {
-    const decrypted = await decryptData(raw, userId);
-    const result = JSON.parse(decrypted) as T;
-    let isV2 = false;
+
+  // 2. Fallback ke localStorage (data lama sebelum migrasi)
+  const lsRaw = localStorage.getItem(storageKey);
+  if (lsRaw) {
     try {
-      const parsed = JSON.parse(raw);
-      isV2 = parsed?.v === 2;
-    } catch { /* raw is not JSON (legacy base64) */ }
-    if (!isV2) {
-      try { await saveUserData(userId, dataKey, result); } catch { /* migration failed, non-critical */ }
-    }
-    return result;
-  } catch {
-    try {
-      return JSON.parse(raw) as T;
+      const decrypted = await decryptData(lsRaw, userId);
+      const result = JSON.parse(decrypted) as T;
+      // Migrasi: pindahkan ke IndexedDB, hapus dari localStorage
+      try {
+        await saveUserData(userId, dataKey, result);
+      } catch { /* migrasi gagal, non-critical */ }
+      return result;
     } catch {
-      return null;
+      try { return JSON.parse(lsRaw) as T; } catch { return null; }
     }
   }
+
+  // 3. Legacy key format (aexon_sessions_userId tanpa prefix)
+  if (dataKey === 'sessions') {
+    const legacyRaw = localStorage.getItem(`aexon_sessions_${userId}`);
+    if (legacyRaw) {
+      try {
+        const result = JSON.parse(legacyRaw) as T;
+        // Migrasi ke IndexedDB
+        try { await saveUserData(userId, dataKey, result); } catch {}
+        return result;
+      } catch { return null; }
+    }
+  }
+
+  return null;
 }
+
+export async function deleteUserData(userId: string, dataKey: string): Promise<void> {
+  const storageKey = `aexon_${dataKey}_${userId}`;
+  await idbDelete(storageKey);
+  try { localStorage.removeItem(storageKey); } catch {}
+}
+
+// ── Storage usage info ──────────────────────────────────────────────
 
 export function getLocalStorageUsage(): { usedMB: number; usedFormatted: string } {
   let total = 0;
@@ -134,6 +234,22 @@ export function getLocalStorageUsage(): { usedMB: number; usedFormatted: string 
     usedMB,
     usedFormatted: usedMB < 1 ? `${(usedMB * 1024).toFixed(0)} KB` : `${usedMB.toFixed(1)} MB`
   };
+}
+
+export async function getStorageUsage(): Promise<{ usedMB: number; usedFormatted: string }> {
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const estimate = await navigator.storage.estimate();
+      const usedMB = (estimate.usage || 0) / (1024 * 1024);
+      return {
+        usedMB,
+        usedFormatted: usedMB < 1 ? `${(usedMB * 1024).toFixed(0)} KB`
+          : usedMB >= 1024 ? `${(usedMB / 1024).toFixed(1)} GB`
+          : `${usedMB.toFixed(1)} MB`
+      };
+    }
+  } catch {}
+  return getLocalStorageUsage();
 }
 
 export function getEncryptionKey(userId: string): string {

@@ -9,7 +9,7 @@ const eulaText = `PERJANJIAN LISENSI PENGGUNA AKHIR (EULA)
 
 Versi 1.0 | PT. Aexon Inovasi Teknologi | Terakhir diperbarui: Januari 2025
 
-Dengan menggunakan aplikasi Aexon Endoscopy ("Aplikasi"), Anda ("Pengguna") menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan yang tercantum dalam Perjanjian Lisensi Pengguna Akhir ("EULA") ini. Apabila Pengguna tidak menyetujui ketentuan ini, Pengguna tidak diperkenankan untuk mengakses atau menggunakan Aplikasi.
+Dengan menggunakan aplikasi Aexon ("Aplikasi"), Anda ("Pengguna") menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan yang tercantum dalam Perjanjian Lisensi Pengguna Akhir ("EULA") ini. Apabila Pengguna tidak menyetujui ketentuan ini, Pengguna tidak diperkenankan untuk mengakses atau menggunakan Aplikasi.
 
 1. PENGGUNAAN APLIKASI. Aplikasi ini dirancang dan dikembangkan secara eksklusif untuk keperluan dokumentasi prosedur endoskopi oleh tenaga medis profesional yang memiliki Surat Tanda Registrasi (STR) dan Surat Izin Praktik (SIP) yang masih berlaku sesuai dengan ketentuan peraturan perundang-undangan yang berlaku di wilayah Negara Kesatuan Republik Indonesia. Penggunaan Aplikasi di luar keperluan medis profesional sebagaimana dimaksud di atas adalah dilarang dan merupakan pelanggaran terhadap ketentuan EULA ini. Pengguna bertanggung jawab penuh atas segala penggunaan Aplikasi yang dilakukan dengan menggunakan akun Pengguna. PT. Aexon Inovasi Teknologi tidak bertanggung jawab atas penyalahgunaan Aplikasi oleh pihak yang tidak berwenang yang mengakses akun Pengguna akibat kelalaian Pengguna dalam menjaga kerahasiaan kredensial akun.
 

@@ -22,17 +22,17 @@ export function useToast() {
 }
 
 const iconMap: Record<ToastType, React.ReactNode> = {
-  success: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
-  error: <XCircle className="w-5 h-5 text-red-500" />,
-  warning: <AlertTriangle className="w-5 h-5 text-amber-500" />,
-  info: <Info className="w-5 h-5 text-blue-500" />,
+  success: <CheckCircle2 style={{ width: 20, height: 20, color: '#10B981' }} />,
+  error: <XCircle style={{ width: 20, height: 20, color: '#EF4444' }} />,
+  warning: <AlertTriangle style={{ width: 20, height: 20, color: '#F59E0B' }} />,
+  info: <Info style={{ width: 20, height: 20, color: '#3B82F6' }} />,
 };
 
-const bgMap: Record<ToastType, string> = {
-  success: 'bg-emerald-50 border-emerald-200',
-  error: 'bg-red-50 border-red-200',
-  warning: 'bg-amber-50 border-amber-200',
-  info: 'bg-blue-50 border-blue-200',
+const bgMap: Record<ToastType, { bg: string; border: string }> = {
+  success: { bg: '#ECFDF5', border: '#A7F3D0' },
+  error: { bg: '#FEF2F2', border: '#FECACA' },
+  warning: { bg: '#FFFBEB', border: '#FDE68A' },
+  info: { bg: '#EFF6FF', border: '#BFDBFE' },
 };
 
 export default function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -53,7 +53,11 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none" style={{ maxWidth: '420px' }}>
+      <div style={{
+        position: 'fixed', top: 20, right: 20, zIndex: 9999,
+        display: 'flex', flexDirection: 'column', gap: 12,
+        pointerEvents: 'none', maxWidth: 420, zoom: 1,
+      }}>
         <AnimatePresence>
           {toasts.map(toast => (
             <motion.div
@@ -62,12 +66,21 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 80, scale: 0.95 }}
               transition={{ duration: 0.25 }}
-              className={`pointer-events-auto flex items-start gap-3 px-5 py-4 rounded-2xl border shadow-xl backdrop-blur-md ${bgMap[toast.type]}`}
+              style={{
+                pointerEvents: 'auto',
+                display: 'flex', alignItems: 'flex-start', gap: 14,
+                padding: '16px 20px',
+                borderRadius: 14,
+                border: `1px solid ${bgMap[toast.type].border}`,
+                backgroundColor: bgMap[toast.type].bg,
+                boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                backdropFilter: 'blur(8px)',
+              }}
             >
-              <div className="shrink-0 mt-0.5">{iconMap[toast.type]}</div>
-              <p className="text-sm font-semibold text-slate-800 flex-1 leading-snug">{toast.message}</p>
-              <button onClick={() => removeToast(toast.id)} className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors">
-                <X className="w-4 h-4" />
+              <div style={{ flexShrink: 0, marginTop: 1 }}>{iconMap[toast.type]}</div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#1E293B', flex: 1, lineHeight: 1.5, margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{toast.message}</p>
+              <button onClick={() => removeToast(toast.id)} style={{ flexShrink: 0, color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, transition: 'color 150ms' }}>
+                <X style={{ width: 16, height: 16 }} />
               </button>
             </motion.div>
           ))}

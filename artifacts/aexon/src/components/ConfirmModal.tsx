@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, Trash2, LogOut, X } from 'lucide-react';
+import { AlertTriangle, Trash2 } from 'lucide-react';
+
+const FONT = "'Plus Jakarta Sans', sans-serif";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -14,27 +16,30 @@ interface ConfirmModalProps {
   icon?: React.ReactNode;
 }
 
-const variantStyles = {
+const variantConfig = {
   danger: {
-    accent: 'bg-red-500',
-    iconBg: 'bg-red-50',
-    confirmBtn: 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20',
-    cancelBtn: 'bg-slate-100 hover:bg-slate-200 text-slate-600',
-    defaultIcon: <Trash2 className="w-10 h-10 text-red-500" />,
+    accent: '#EF4444',
+    iconBg: '#FEF2F2',
+    iconBorder: '#FECACA',
+    confirmBg: '#DC2626',
+    confirmHover: '#B91C1C',
+    defaultIcon: <Trash2 style={{ width: 28, height: 28, color: '#EF4444' }} />,
   },
   warning: {
-    accent: 'bg-amber-500',
-    iconBg: 'bg-amber-50',
-    confirmBtn: 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20',
-    cancelBtn: 'border-2 border-[#0C1E35] text-[#0C1E35] hover:bg-slate-50',
-    defaultIcon: <AlertTriangle className="w-10 h-10 text-amber-500" />,
+    accent: '#F59E0B',
+    iconBg: '#FFFBEB',
+    iconBorder: '#FDE68A',
+    confirmBg: '#DC2626',
+    confirmHover: '#B91C1C',
+    defaultIcon: <AlertTriangle style={{ width: 28, height: 28, color: '#F59E0B' }} />,
   },
   info: {
-    accent: 'bg-blue-500',
-    iconBg: 'bg-blue-50',
-    confirmBtn: 'bg-[#0C1E35] hover:bg-[#1a3a5c] text-white shadow-slate-900/10',
-    cancelBtn: 'bg-slate-100 hover:bg-slate-200 text-slate-600',
-    defaultIcon: <AlertTriangle className="w-10 h-10 text-blue-500" />,
+    accent: '#3B82F6',
+    iconBg: '#EFF6FF',
+    iconBorder: '#BFDBFE',
+    confirmBg: '#0C1E35',
+    confirmHover: '#152d4f',
+    defaultIcon: <AlertTriangle style={{ width: 28, height: 28, color: '#3B82F6' }} />,
   },
 };
 
@@ -49,43 +54,106 @@ export default function ConfirmModal({
   variant = 'danger',
   icon,
 }: ConfirmModalProps) {
-  const styles = variantStyles[variant];
+  const config = variantConfig[variant];
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}>
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onCancel}
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            style={{
+              position: 'absolute', inset: 0,
+              backgroundColor: 'rgba(15,23,42,0.6)',
+              backdropFilter: 'blur(8px)',
+            }}
           />
+
+          {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-md bg-white rounded-3xl p-10 shadow-2xl border border-slate-100 overflow-hidden"
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: 'relative', width: '100%', maxWidth: 400,
+              backgroundColor: '#fff', borderRadius: 20, padding: 36,
+              boxShadow: '0 25px 50px rgba(0,0,0,0.15)',
+              overflow: 'hidden', textAlign: 'center',
+              fontFamily: FONT,
+            }}
           >
-            <div className={`absolute top-0 left-0 w-full h-2 ${styles.accent}`} />
-            <div className={`w-20 h-20 ${styles.iconBg} rounded-3xl flex items-center justify-center mb-8 mx-auto`}>
-              {icon || styles.defaultIcon}
+            {/* Accent bar */}
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+              backgroundColor: config.accent,
+            }} />
+
+            {/* Icon */}
+            <div style={{
+              width: 56, height: 56, borderRadius: 16,
+              backgroundColor: config.iconBg,
+              border: `1px solid ${config.iconBorder}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px',
+            }}>
+              {icon || config.defaultIcon}
             </div>
-            <h3 className="text-2xl font-black text-slate-900 text-center mb-4 tracking-tight">{title}</h3>
-            <p className="text-slate-500 text-center mb-10 text-sm font-medium leading-relaxed">{message}</p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={onConfirm}
-                className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg ${styles.confirmBtn}`}
-              >
-                {confirmText}
-              </button>
+
+            {/* Title */}
+            <h3 style={{
+              fontSize: 20, fontWeight: 900, color: '#0C1E35',
+              margin: '0 0 8px', fontFamily: FONT,
+            }}>
+              {title}
+            </h3>
+
+            {/* Message */}
+            <p style={{
+              fontSize: 13, color: '#64748B', lineHeight: 1.6,
+              margin: '0 0 28px', fontFamily: FONT,
+            }}>
+              {message}
+            </p>
+
+            {/* Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <button
                 onClick={onCancel}
-                className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${styles.cancelBtn}`}
+                style={{
+                  padding: '13px 0', borderRadius: 12,
+                  backgroundColor: '#F4F6F8', color: '#475569',
+                  border: 'none', fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: FONT,
+                  transition: 'background-color 150ms',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#E8ECF1'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#F4F6F8'; }}
               >
                 {cancelText}
+              </button>
+              <button
+                onClick={onConfirm}
+                style={{
+                  padding: '13px 0', borderRadius: 12,
+                  backgroundColor: config.confirmBg, color: '#fff',
+                  border: 'none', fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: FONT,
+                  transition: 'background-color 150ms',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = config.confirmHover; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = config.confirmBg; }}
+              >
+                {confirmText}
               </button>
             </div>
           </motion.div>

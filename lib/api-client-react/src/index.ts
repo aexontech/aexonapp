@@ -1,2 +1,2 @@
-export * from "./generated/api";
-export * from "./generated/api.schemas";
+// Placeholder — generated code will be placed here by codegen
+export {};

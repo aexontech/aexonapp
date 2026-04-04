@@ -46,6 +46,9 @@ import {
   Star,
   MessageCircle,
   ExternalLink,
+  Type,
+  Minus as MinusIcon,
+  Plus as PlusIcon,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
@@ -60,6 +63,7 @@ import {
   decryptData,
 } from "../lib/storage";
 import { aexonConnect, Plan, SubscriptionStatus } from "../lib/aexonConnect";
+import DiskSpaceIndicator from './DiskSpaceIndicator';
 
 async function getCroppedImg(
   imageSrc: string,
@@ -99,7 +103,9 @@ interface SettingsProps {
   onUpdateSessions: (sessions: Session[]) => void;
   onCancelSubscription: () => void;
   onCheckout: (plan: Plan) => void;
-  plan: "subscription" | "enterprise" | null;
+  onNavigateToProfile?: () => void;
+  onNavigateToSubscription?: () => void;
+  plan: "subscription" | "enterprise" | "trial" | null;
   sessions: Session[];
   subscriptionData?: SubscriptionStatus | null;
 }
@@ -119,19 +125,26 @@ export default function Settings({
   onUpdateSessions,
   onCancelSubscription,
   onCheckout,
+  onNavigateToProfile,
+  onNavigateToSubscription,
   plan,
   sessions,
   subscriptionData,
-}: SettingsProps) {
+  initialTab,
+}: SettingsProps & { initialTab?: string }) {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<
-    "profil" | "keamanan" | "kop-surat" | "langganan" | "backup"
-  >("profil");
+    "profil" | "keamanan" | "kop-surat" | "langganan" | "backup" | "tampilan"
+  >((initialTab as any) || "keamanan");
 
   const [profileForm, setProfileForm] = useState<UserProfile>(userProfile);
   const [profileSaving, setProfileSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
+  const [fontSizePref, setFontSizePref] = useState<number>(
+    userProfile.preferences?.fontSize ?? 17
+  );
+  const [fontSizeSaving, setFontSizeSaving] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -158,6 +171,8 @@ export default function Settings({
 
   const [expandedKopIdx, setExpandedKopIdx] = useState<number | null>(0);
   const [kopSaving, setKopSaving] = useState<number | null>(null);
+  const [cooldownResetLoading, setCooldownResetLoading] = useState<string | null>(null);
+  const [cooldownResetSent, setCooldownResetSent] = useState<Set<string>>(new Set());
   const [kopToDelete, setKopToDelete] = useState<number | null>(null);
   const [kopForms, setKopForms] =
     useState<HospitalSettings[]>(hospitalSettingsList);
@@ -191,17 +206,11 @@ export default function Settings({
   const isAdmin = userProfile.role === "admin";
   const isEnterprise = plan === "enterprise";
   const isDokterInstitusi = !isAdmin && isEnterprise;
+  const isAdminEnterprise = isAdmin && isEnterprise;
   const isPersonal = !isAdmin && !isEnterprise;
+  const canEditKop = isPersonal || isAdminEnterprise;
+  const maxKopSlots = isAdminEnterprise ? 1 : 3;
 
-  useEffect(() => {
-    if (activeTab === "langganan" && isPersonal) {
-      setBillingLoading(true);
-      aexonConnect.getInvoices().then(({ data, error }) => {
-        if (!error && data) setBillingHistory(data);
-        setBillingLoading(false);
-      });
-    }
-  }, [activeTab, isPersonal, userProfile.id]);
 
   useEffect(() => {
     async function fetchPlansAndSettings() {
@@ -271,8 +280,8 @@ export default function Settings({
     reason?: string;
     unlockDate?: Date;
   } => {
-    if (kopForms.length >= 3)
-      return { allowed: false, reason: "Maksimal 3 kop surat." };
+    if (kopForms.length >= maxKopSlots)
+      return { allowed: false, reason: `Maksimal ${maxKopSlots} kop surat.` };
     const lastDel = getLastDeleteDate();
     if (lastDel) {
       const diffDays = (Date.now() - lastDel.getTime()) / (1000 * 60 * 60 * 24);
@@ -288,7 +297,7 @@ export default function Settings({
       }
     }
     return { allowed: true };
-  }, [kopForms.length, getLastDeleteDate]);
+  }, [kopForms.length, getLastDeleteDate, maxKopSlots]);
 
   const canDeleteKop = useCallback(
     (kop: HospitalSettings): { allowed: boolean; reason?: string } => {
@@ -354,9 +363,18 @@ export default function Settings({
       setCropImageSrc(reader.result as string);
       setCropKopIdx(idx);
       setCropState({ x: 0, y: 0 });
-      setCropZoom(0.8);
+      setCropZoom(1);
       setCroppedAreaPixels(null);
-      setCropModalOpen(true);
+      // Reset document zoom DULU agar react-easy-crop coordinates akurat
+      try {
+        document.documentElement.style.zoom = "1";
+      } catch {
+        // Zoom reset non-critical
+      }
+      // Tunggu reflow selesai baru buka modal, supaya Cropper mount dengan zoom=1
+      requestAnimationFrame(() => {
+        setCropModalOpen(true);
+      });
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -365,6 +383,15 @@ export default function Settings({
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
     setCroppedAreaPixels(croppedPixels);
   }, []);
+
+  const closeCropModal = () => {
+    setCropModalOpen(false);
+    setCropImageSrc(null);
+    // Restore document zoom
+    const fs = userProfile?.preferences?.fontSize;
+    const zoom = (typeof fs === "number" && fs !== 14) ? fs / 14 : 1;
+    document.documentElement.style.zoom = `${zoom}`;
+  };
 
   const handleCropConfirm = async () => {
     if (!cropImageSrc || croppedAreaPixels === null || cropKopIdx === null)
@@ -375,11 +402,32 @@ export default function Settings({
         croppedAreaPixels,
       );
       handleKopFieldChange(cropKopIdx, "logoUrl", croppedDataUrl);
-      setCropModalOpen(false);
-      setCropImageSrc(null);
+      closeCropModal();
       showToast("Logo berhasil dipotong dan diterapkan.", "success");
     } catch {
+      closeCropModal();
       showToast("Gagal memproses gambar.", "error");
+    }
+  };
+
+  const handleRequestCooldownReset = async (kopId: string, kopName: string) => {
+    setCooldownResetLoading(kopId);
+    try {
+      const { error } = await aexonConnect.requestCooldownReset(kopId);
+      if (error) {
+        showToast(error, "error");
+      } else {
+        setCooldownResetSent((prev) => new Set(prev).add(kopId));
+        showToast(
+          `Request reset cooldown untuk "${kopName}" berhasil dikirim ke tim Aexon. Anda akan dihubungi melalui email.`,
+          "success",
+          5000,
+        );
+      }
+    } catch {
+      showToast("Gagal mengirim request. Coba lagi nanti.", "error");
+    } finally {
+      setCooldownResetLoading(null);
     }
   };
 
@@ -527,9 +575,9 @@ export default function Settings({
             Math.abs(now.getTime() - lastChange.getTime()) /
               (1000 * 60 * 60 * 24),
           );
-          if (diffDays < 7) {
+          if (diffDays < 14) {
             showToast(
-              `Perubahan nama hanya dapat dilakukan sekali setiap 7 hari. Sisa waktu: ${7 - diffDays} hari.`,
+              `Perubahan nama hanya dapat dilakukan sekali setiap 14 hari. Sisa waktu: ${14 - diffDays} hari.`,
               "warning",
               6000,
             );
@@ -547,7 +595,6 @@ export default function Settings({
       if (!isDokterInstitusi) {
         updatePayload.full_name = profileForm.name;
         updatePayload.str_number = profileForm.strNumber || null;
-        updatePayload.sip_number = profileForm.sipNumber || null;
         updatePayload.phone = profileForm.phone;
       }
 
@@ -946,6 +993,39 @@ export default function Settings({
     setTimeout(() => window.location.reload(), 2000);
   };
 
+  const savedFontSize = userProfile.preferences?.fontSize ?? 17;
+  const fontSizeChanged = fontSizePref !== savedFontSize;
+
+  const previewFontSize = (size: number) => {
+    const clamped = Math.max(12, Math.min(24, size));
+    setFontSizePref(clamped);
+  };
+
+  const confirmFontSizeChange = async () => {
+    setFontSizeSaving(true);
+    try {
+      const { error } = await aexonConnect.updateProfile({
+        preferences: { fontSize: fontSizePref },
+      });
+      if (error) {
+        showToast("Gagal menyimpan preferensi font.", "error");
+        setFontSizePref(savedFontSize);
+        setFontSizeSaving(false);
+        return;
+      }
+      const updatedProfile = {
+        ...userProfile,
+        preferences: { fontSize: fontSizePref },
+      };
+      onUpdateUser(updatedProfile);
+      showToast("Ukuran font berhasil diubah.", "success");
+    } catch {
+      showToast("Gagal terhubung ke server.", "error");
+      setFontSizePref(savedFontSize);
+    }
+    setFontSizeSaving(false);
+  };
+
   const getInitials = (name: string) =>
     name
       .split(" ")
@@ -960,16 +1040,16 @@ export default function Settings({
     label: string;
     icon: React.ComponentType<any>;
   }[] = [
-    { id: "profil", label: "Profil", icon: User },
+
     { id: "keamanan", label: "Keamanan", icon: Shield },
   ];
 
-  if (!isAdmin) {
+  if (!isAdmin || isAdminEnterprise) {
     visibleTabs.push({ id: "kop-surat", label: "Kop Surat", icon: FileText });
   }
 
   if (!isDokterInstitusi) {
-    visibleTabs.push({ id: "langganan", label: "Langganan", icon: CreditCard });
+
   }
 
   visibleTabs.push({
@@ -978,89 +1058,118 @@ export default function Settings({
     icon: HardDrive,
   });
 
+  visibleTabs.push({
+    id: "tampilan",
+    label: "Tampilan",
+    icon: Type,
+  });
+
+  const FONT_BODY = "'Plus Jakarta Sans', sans-serif";
+  const FONT_HEADING = "'Plus Jakarta Sans', sans-serif";
+
   const inputBaseStyle: React.CSSProperties = {
     width: "100%",
-    paddingTop: 11,
-    paddingBottom: 11,
-    paddingLeft: 14,
-    paddingRight: 14,
-    border: "1px solid #CBD5E1",
+    padding: "11px 14px",
     borderRadius: 10,
-    backgroundColor: "#fff",
+    border: "1.5px solid #E2E8F0",
     fontSize: 14,
     color: "#0C1E35",
+    backgroundColor: "#FFFFFF",
     outline: "none",
-    transition: "box-shadow 0.15s, border-color 0.15s",
-    fontFamily: "Outfit, sans-serif",
+    fontFamily: FONT_BODY,
+    transition: "border-color 150ms, box-shadow 150ms",
+    boxSizing: "border-box",
   };
 
   const readOnlyStyle: React.CSSProperties = {
     ...inputBaseStyle,
     backgroundColor: "#F8FAFC",
-    color: "#64748B",
+    color: "#94A3B8",
     cursor: "not-allowed",
   };
 
   const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.borderColor = "#0C1E35";
-    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(12,30,53,0.08)";
+    e.currentTarget.style.borderColor = "#2563EB";
+    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.08)";
   };
 
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.borderColor = "#CBD5E1";
+    e.currentTarget.style.borderColor = "#E2E8F0";
     e.currentTarget.style.boxShadow = "none";
   };
 
-  const cardStyle: React.CSSProperties = {
-    background: "#fff",
-    border: "1px solid #E2E8F0",
+  const cardBase: React.CSSProperties = {
+    backgroundColor: "#ffffff",
     borderRadius: 16,
-    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-    padding: 32,
+    border: "1px solid #E8ECF1",
+    overflow: "hidden",
+  };
+
+  const cardStyle: React.CSSProperties = {
+    ...cardBase,
+    padding: 0,
+  };
+
+  const cardHeaderStyle: React.CSSProperties = {
+    padding: "14px 20px",
+    borderBottom: "none",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    background: "linear-gradient(135deg, #0C1E35 0%, #152d4f 60%, #1a3a5f 100%)",
+    borderRadius: "16px 16px 0 0",
+  };
+
+  const cardBodyStyle: React.CSSProperties = {
+    padding: 24,
   };
 
   const sectionHeadingStyle: React.CSSProperties = {
     fontSize: 18,
     fontWeight: 800,
     color: "#0C1E35",
-    fontFamily: "Outfit, sans-serif",
+    fontFamily: FONT_HEADING,
   };
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#475569",
-    marginLeft: 2,
     display: "block",
+    fontSize: 11,
+    fontWeight: 600,
+    color: "#64748B",
     marginBottom: 6,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    fontFamily: FONT_BODY,
   };
 
   const mutedTextStyle: React.CSSProperties = {
     fontSize: 14,
     color: "#64748B",
+    fontFamily: FONT_BODY,
   };
 
   const btnPrimaryStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     gap: 8,
-    padding: "12px 24px",
-    backgroundColor: "#0C1E35",
+    padding: "11px 28px",
+    background: "linear-gradient(135deg, #0C1E35 0%, #152d4f 60%, #1a3a5f 100%)",
     color: "#fff",
     fontWeight: 700,
     borderRadius: 12,
     border: "none",
     cursor: "pointer",
     fontSize: 14,
-    fontFamily: "Outfit, sans-serif",
-    transition: "background-color 0.15s",
+    fontFamily: FONT_HEADING,
+    transition: "all 200ms",
+    boxShadow: "0 2px 8px rgba(12,30,53,0.15)",
   };
 
   const dividerStyle: React.CSSProperties = {
     height: 1,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: "#F1F5F9",
     border: "none",
-    margin: "24px 0",
+    margin: "20px 0",
   };
 
   const iconBoxStyle = (bg: string): React.CSSProperties => ({
@@ -1076,51 +1185,62 @@ export default function Settings({
 
   return (
     <div
-      className="custom-scrollbar"
       style={{
-        flex: 1,
-        padding: 32,
-        maxWidth: 1024,
-        margin: "0 auto",
-        width: "100%",
-        fontFamily: "Outfit, sans-serif",
-        color: "#0C1E35",
-        overflowY: "auto",
         height: "100%",
-        position: "relative",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#F4F6F8",
+        overflow: "hidden",
       }}
     >
-      <div className="orb-tr" />
-      <div className="orb-bl" />
-
-      <div style={{ marginBottom: 32 }}>
-        <h2
-          className="font-aexon"
-          style={{
-            fontSize: 26,
-            fontWeight: 800,
-            color: "#0C1E35",
-            letterSpacing: "-0.01em",
-            marginBottom: 4,
-          }}
-        >
-          Pengaturan
-        </h2>
-        <p style={{ ...mutedTextStyle, fontSize: 14 }}>
-          Kelola profil, keamanan, dan preferensi akun Anda.
-        </p>
+      {/* ── Header ── */}
+      <div style={{ backgroundColor: "#fff", borderBottom: "1px solid #E8ECF1", padding: "14px 28px", display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+        <span style={{ fontSize: 16, fontWeight: 800, color: "#0C1E35", fontFamily: FONT_HEADING }}>Pengaturan</span>
       </div>
 
-      <div
-        style={{
-          backgroundColor: "#F1F5F9",
-          borderRadius: 16,
-          padding: 4,
-          display: "inline-flex",
-          gap: 4,
-          marginBottom: 24,
-        }}
-      >
+      <div className="custom-scrollbar" style={{ flex: 1, overflowY: "auto", padding: "28px 28px 80px" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+
+          {/* ── Hero banner ── */}
+          <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            style={{
+              ...cardBase, marginBottom: 24, padding: 0, position: "relative",
+              background: "linear-gradient(135deg, #0C1E35 0%, #152d4f 60%, #1a3a5f 100%)",
+              border: "none",
+            }}>
+            <div style={{ position: "absolute", inset: 0, opacity: 0.04, backgroundImage: "radial-gradient(circle at 20% 50%, #fff 1px, transparent 1px), radial-gradient(circle at 80% 20%, #fff 1px, transparent 1px)", backgroundSize: "60px 60px, 40px 40px" }} />
+            <div style={{ position: "relative", padding: "28px 32px", display: "flex", alignItems: "center", gap: 20 }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 16, flexShrink: 0,
+                background: "linear-gradient(135deg, #60A5FA, #2563EB)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 4px 20px rgba(37,99,235,0.3)",
+              }}>
+                <Shield style={{ width: 26, height: 26, color: "#fff" }} />
+              </div>
+              <div>
+                <h1 style={{ fontSize: 22, fontWeight: 800, color: "#FFFFFF", margin: "0 0 4px", fontFamily: FONT_HEADING, lineHeight: 1.2 }}>
+                  Pengaturan
+                </h1>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", margin: 0, fontFamily: FONT_BODY }}>
+                  Kelola keamanan, preferensi, dan data akun Anda.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ── Tab bar ── */}
+          <div
+            style={{
+              backgroundColor: "#F1F5F9",
+              borderRadius: 14,
+              padding: 4,
+              display: "inline-flex",
+              gap: 4,
+              marginBottom: 24,
+            }}
+          >
         {visibleTabs.map((tab) => (
           <button
             key={tab.id}
@@ -1135,7 +1255,7 @@ export default function Settings({
               border: "none",
               cursor: "pointer",
               transition: "all 0.15s",
-              fontFamily: "Outfit, sans-serif",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
               fontWeight: activeTab === tab.id ? 600 : 400,
               backgroundColor: activeTab === tab.id ? "#fff" : "transparent",
               color: activeTab === tab.id ? "#0C1E35" : "#64748B",
@@ -1169,7 +1289,7 @@ export default function Settings({
               alignItems: "center",
               boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
               zIndex: 50,
-              fontFamily: "Outfit, sans-serif",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
             }}
           >
             <CheckCircle2 style={{ width: 16, height: 16, marginRight: 8 }} />
@@ -1180,238 +1300,19 @@ export default function Settings({
 
       {/* ═══════════════ TAB: PROFIL ═══════════════ */}
       {activeTab === "profil" && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                marginBottom: 32,
-              }}
-            >
-              <div
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: "50%",
-                  backgroundColor: "#0C1E35",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 12,
-                }}
-              >
-                <span style={{ color: "#fff", fontWeight: 900, fontSize: 18 }}>
-                  {getInitials(profileForm.name)}
-                </span>
-              </div>
-              <h3
-                style={{
-                  fontSize: 20,
-                  fontWeight: 800,
-                  color: "#0C1E35",
-                  fontFamily: "Outfit, sans-serif",
-                }}
-              >
-                {profileForm.name}
-              </h3>
-              <p style={mutedTextStyle}>{profileForm.specialization}</p>
-              {isDokterInstitusi && (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                    marginTop: 6,
-                    padding: "2px 10px",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    borderRadius: 20,
-                    backgroundColor: "#F0FDFA",
-                    color: "#0F766E",
-                  }}
-                >
-                  Dokter Institusi
-                </span>
-              )}
-            </div>
-
-            {isDokterInstitusi && (
-              <div
-                style={{
-                  padding: 16,
-                  backgroundColor: "#EFF6FF",
-                  border: "1px solid #DBEAFE",
-                  borderRadius: 12,
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  marginBottom: 24,
-                }}
-              >
-                <Info
-                  style={{
-                    width: 16,
-                    height: 16,
-                    color: "#3B82F6",
-                    flexShrink: 0,
-                    marginTop: 2,
-                  }}
-                />
-                <p style={{ fontSize: 12, color: "#1D4ED8", lineHeight: 1.6 }}>
-                  Nama dan email dikelola oleh Admin Institusi Anda. Anda hanya
-                  dapat mengubah spesialisasi.
-                </p>
-              </div>
-            )}
-
-            <div style={{ ...dividerStyle, marginBottom: 32 }} />
-
-            <form onSubmit={handleSaveProfile}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                  gap: 24,
-                }}
-              >
-                <div>
-                  <label style={labelStyle}>Nama Lengkap & Gelar</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={profileForm.name}
-                    onChange={handleProfileChange}
-                    readOnly={isDokterInstitusi}
-                    style={isDokterInstitusi ? readOnlyStyle : inputBaseStyle}
-                    onFocus={isDokterInstitusi ? undefined : handleInputFocus}
-                    onBlur={isDokterInstitusi ? undefined : handleInputBlur}
-                  />
-                  {!isDokterInstitusi && (
-                    <p
-                      style={{
-                        fontSize: 10,
-                        color: "#94A3B8",
-                        marginLeft: 2,
-                        fontStyle: "italic",
-                        marginTop: 4,
-                      }}
-                    >
-                      Dapat diubah sekali setiap 7 hari.
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label style={labelStyle}>Email</label>
-                  <input
-                    type="email"
-                    value={profileForm.email}
-                    readOnly
-                    style={readOnlyStyle}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Spesialisasi</label>
-                  <input
-                    type="text"
-                    name="specialization"
-                    value={profileForm.specialization}
-                    onChange={handleProfileChange}
-                    style={inputBaseStyle}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
-                  />
-                </div>
-
-                {!isDokterInstitusi && (
-                  <>
-                    <div>
-                      <label style={labelStyle}>Nomor WhatsApp</label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={profileForm.phone}
-                        onChange={handleProfileChange}
-                        style={inputBaseStyle}
-                        onFocus={handleInputFocus}
-                        onBlur={handleInputBlur}
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>
-                        No. STR (Surat Tanda Registrasi)
-                      </label>
-                      <input
-                        type="text"
-                        name="strNumber"
-                        value={profileForm.strNumber || ""}
-                        onChange={handleProfileChange}
-                        placeholder="16 digit nomor STR"
-                        style={inputBaseStyle}
-                        onFocus={handleInputFocus}
-                        onBlur={handleInputBlur}
-                      />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>
-                        No. SIP (Surat Izin Praktik)
-                      </label>
-                      <input
-                        type="text"
-                        name="sipNumber"
-                        value={profileForm.sipNumber || ""}
-                        onChange={handleProfileChange}
-                        placeholder="Nomor SIP aktif"
-                        style={inputBaseStyle}
-                        onFocus={handleInputFocus}
-                        onBlur={handleInputBlur}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-              <div
-                style={{
-                  paddingTop: 20,
-                  display: "flex",
-                  justifyContent: "flex-end",
-                }}
-              >
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  type="submit"
-                  disabled={profileSaving}
-                  style={{
-                    ...btnPrimaryStyle,
-                    opacity: profileSaving ? 0.5 : 1,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#1a3a5c";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#0C1E35";
-                  }}
-                >
-                  {profileSaving ? (
-                    <Loader2
-                      className="animate-spin"
-                      style={{ width: 16, height: 16 }}
-                    />
-                  ) : (
-                    <Save style={{ width: 16, height: 16 }} />
-                  )}
-                  {profileSaving ? "Menyimpan..." : "Simpan Perubahan"}
-                </motion.button>
-              </div>
-            </form>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"60px 24px",textAlign:"center" }}>
+          <div style={{ width:60,height:60,borderRadius:16,backgroundColor:"#EFF6FF",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px" }}>
+            <User style={{ width:26,height:26,color:"#3B82F6" }} />
           </div>
+          <h3 style={{ fontSize:17,fontWeight:800,color:"#0C1E35",marginBottom:8,fontFamily:"'Plus Jakarta Sans', sans-serif" }}>Edit Profil</h3>
+          <p style={{ fontSize:13,color:"#64748B",lineHeight:1.6,marginBottom:22,maxWidth:300 }}>Kelola nama, spesialisasi, dan STR Anda.</p>
+          <button onClick={() => onNavigateToProfile?.()} style={{ padding:"11px 26px",backgroundColor:"#0C1E35",color:"#fff",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Plus Jakarta Sans', sans-serif" }}
+            onMouseEnter={(e)=>(e.currentTarget.style.backgroundColor="#1a3a5c")} onMouseLeave={(e)=>(e.currentTarget.style.backgroundColor="#0C1E35")}>
+            Buka Halaman Profil
+          </button>
         </motion.div>
       )}
-
       {/* ═══════════════ TAB: KEAMANAN ═══════════════ */}
       {activeTab === "keamanan" && (
         <motion.div
@@ -1420,25 +1321,12 @@ export default function Settings({
           style={{ display: "flex", flexDirection: "column", gap: 24 }}
         >
           <div style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 24,
-              }}
-            >
-              <div style={iconBoxStyle("#F8FAFC")}>
-                <Key style={{ width: 20, height: 20, color: "#0C1E35" }} />
-              </div>
-              <div>
-                <h3 style={sectionHeadingStyle}>Ganti Password</h3>
-                <p style={mutedTextStyle}>Perbarui password akun Anda.</p>
-              </div>
+            <div style={cardHeaderStyle}>
+              <Key style={{ width: 14, height: 14, color: "#ffffff" }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>Ganti Password</span>
             </div>
 
-            <div style={dividerStyle} />
-
+            <div style={cardBodyStyle}>
             <form
               onSubmit={handleChangePassword}
               style={{
@@ -1579,13 +1467,16 @@ export default function Settings({
                 {passwordSaving ? "Mengubah..." : "Update Password"}
               </motion.button>
             </form>
+            </div>
           </div>
 
           {!isAdmin && (
             <div style={cardStyle}>
-              <h3 style={{ ...sectionHeadingStyle, marginBottom: 24 }}>
-                Manajemen Data
-              </h3>
+              <div style={cardHeaderStyle}>
+                <Database style={{ width: 14, height: 14, color: "#ffffff" }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>Manajemen Data</span>
+              </div>
+              <div style={cardBodyStyle}>
               <div
                 style={{
                   display: "flex",
@@ -1628,7 +1519,7 @@ export default function Settings({
                     cursor: "pointer",
                     fontSize: 14,
                     transition: "background-color 0.15s",
-                    fontFamily: "Outfit, sans-serif",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = "#FEF3C7";
@@ -1640,13 +1531,14 @@ export default function Settings({
                   Hapus
                 </button>
               </div>
+              </div>
             </div>
           )}
         </motion.div>
       )}
 
       {/* ═══════════════ TAB: KOP SURAT ═══════════════ */}
-      {activeTab === "kop-surat" && !isAdmin && (
+      {activeTab === "kop-surat" && (!isAdmin || isAdminEnterprise) && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1682,29 +1574,13 @@ export default function Settings({
 
               {hospitalSettingsList.length > 0 ? (
                 <div style={cardStyle}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      marginBottom: 24,
-                    }}
-                  >
-                    <div style={iconBoxStyle("#EEF2FF")}>
-                      <FileText
-                        style={{ width: 20, height: 20, color: "#4F46E5" }}
-                      />
-                    </div>
-                    <div>
-                      <h3 style={sectionHeadingStyle}>
-                        {hospitalSettingsList[0].name || "Kop Surat Institusi"}
-                      </h3>
-                      <p style={mutedTextStyle}>
-                        Kop surat yang ditetapkan oleh institusi Anda.
-                      </p>
-                    </div>
+                  <div style={cardHeaderStyle}>
+                    <FileText style={{ width: 14, height: 14, color: "#ffffff" }} />
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>
+                      {hospitalSettingsList[0].name || "Kop Surat Institusi"}
+                    </span>
                   </div>
-                  <div style={dividerStyle} />
+                  <div style={cardBodyStyle}>
                   <div
                     style={{
                       display: "grid",
@@ -1778,9 +1654,10 @@ export default function Settings({
                       />
                     </div>
                   )}
+                  </div>
                 </div>
               ) : (
-                <div style={{ ...cardStyle, textAlign: "center" }}>
+                  <div style={{ ...cardStyle, textAlign: "center", padding: "48px 24px" }}>
                   <FileText
                     style={{
                       width: 48,
@@ -1799,7 +1676,7 @@ export default function Settings({
             </>
           )}
 
-          {isPersonal &&
+          {canEditKop &&
             (() => {
               const addCheck = canAddNewKop();
               return (
@@ -1853,7 +1730,7 @@ export default function Settings({
                           color: "#475569",
                         }}
                       >
-                        {kopForms.length}/3 slot
+                        {kopForms.length}/{maxKopSlots} slot
                       </span>
                     </div>
                   </div>
@@ -1866,12 +1743,12 @@ export default function Settings({
                     }}
                   >
                     <div>
-                      <h3 style={sectionHeadingStyle}>Kop Surat Praktik</h3>
+                      <h3 style={sectionHeadingStyle}>{isAdminEnterprise ? 'Kop Surat Institusi' : 'Kop Surat Praktik'}</h3>
                       <p style={mutedTextStyle}>
-                        Kelola kop surat tempat praktik Anda (maks. 3).
+                        Kelola kop surat {isAdminEnterprise ? 'institusi Anda' : 'tempat praktik Anda'} (maks. {maxKopSlots}).
                       </p>
                     </div>
-                    {kopForms.length < 3 && (
+                    {kopForms.length < maxKopSlots && (
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={handleAddKop}
@@ -1991,7 +1868,7 @@ export default function Settings({
                             border: "none",
                             cursor: "pointer",
                             transition: "background-color 0.15s",
-                            fontFamily: "Outfit, sans-serif",
+                            fontFamily: "'Plus Jakarta Sans', sans-serif",
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = "#F8FAFC";
@@ -2093,35 +1970,73 @@ export default function Settings({
                                       backgroundColor: "#FFFBEB",
                                       border: "1px solid #FDE68A",
                                       borderRadius: 12,
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 8,
                                     }}
                                   >
-                                    <CalendarClock
-                                      style={{
-                                        width: 16,
-                                        height: 16,
-                                        color: "#F59E0B",
-                                        flexShrink: 0,
-                                      }}
-                                    />
-                                    <p
-                                      style={{ fontSize: 12, color: "#92400E" }}
-                                    >
-                                      Nama dan logo dapat diubah kembali pada{" "}
-                                      <strong>
-                                        {cooldownKop.unlockDate!.toLocaleDateString(
-                                          "id-ID",
-                                          {
-                                            day: "numeric",
-                                            month: "long",
-                                            year: "numeric",
-                                          },
-                                        )}
-                                      </strong>
-                                      .
-                                    </p>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                      <CalendarClock
+                                        style={{
+                                          width: 16,
+                                          height: 16,
+                                          color: "#F59E0B",
+                                          flexShrink: 0,
+                                        }}
+                                      />
+                                      <p
+                                        style={{ fontSize: 12, color: "#92400E", flex: 1, margin: 0 }}
+                                      >
+                                        Nama dan logo dapat diubah kembali pada{" "}
+                                        <strong>
+                                          {cooldownKop.unlockDate!.toLocaleDateString(
+                                            "id-ID",
+                                            {
+                                              day: "numeric",
+                                              month: "long",
+                                              year: "numeric",
+                                            },
+                                          )}
+                                        </strong>
+                                        .
+                                      </p>
+                                    </div>
+                                    {isAdminEnterprise && kop.id && (
+                                      <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                                        <button
+                                          onClick={() => handleRequestCooldownReset(kop.id, kop.name)}
+                                          disabled={
+                                            cooldownResetLoading === kop.id ||
+                                            cooldownResetSent.has(kop.id)
+                                          }
+                                          style={{
+                                            padding: "6px 14px",
+                                            borderRadius: 8,
+                                            fontSize: 12,
+                                            fontWeight: 700,
+                                            border: "none",
+                                            cursor:
+                                              cooldownResetLoading === kop.id || cooldownResetSent.has(kop.id)
+                                                ? "not-allowed"
+                                                : "pointer",
+                                            backgroundColor: cooldownResetSent.has(kop.id)
+                                              ? "#D1FAE5"
+                                              : "#0C1E35",
+                                            color: cooldownResetSent.has(kop.id)
+                                              ? "#065F46"
+                                              : "#ffffff",
+                                            opacity:
+                                              cooldownResetLoading === kop.id ? 0.6 : 1,
+                                            fontFamily:
+                                              "'Plus Jakarta Sans', sans-serif",
+                                            transition: "all 150ms",
+                                          }}
+                                        >
+                                          {cooldownResetSent.has(kop.id)
+                                            ? "Request Terkirim ✓"
+                                            : cooldownResetLoading === kop.id
+                                            ? "Mengirim..."
+                                            : "Minta Reset Cooldown"}
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
 
@@ -2286,7 +2201,7 @@ export default function Settings({
                                           cursor: cooldownKop.locked
                                             ? "not-allowed"
                                             : "pointer",
-                                          fontFamily: "Outfit, sans-serif",
+                                          fontFamily: "'Plus Jakarta Sans', sans-serif",
                                           ...(cooldownKop.locked
                                             ? {
                                                 backgroundColor: "#F1F5F9",
@@ -2571,7 +2486,7 @@ export default function Settings({
                                         ? "pointer"
                                         : "not-allowed",
                                       transition: "background-color 0.15s",
-                                      fontFamily: "Outfit, sans-serif",
+                                      fontFamily: "'Plus Jakarta Sans', sans-serif",
                                     }}
                                     onMouseEnter={(e) => {
                                       if (deleteCheckKop.allowed)
@@ -2634,979 +2549,20 @@ export default function Settings({
 
       {/* ═══════════════ TAB: LANGGANAN ═══════════════ */}
       {activeTab === "langganan" && !isDokterInstitusi && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          {isAdmin && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              <div style={cardStyle}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    marginBottom: 24,
-                  }}
-                >
-                  <div style={iconBoxStyle("#FAF5FF")}>
-                    <CreditCard
-                      style={{ width: 20, height: 20, color: "#9333EA" }}
-                    />
-                  </div>
-                  <div>
-                    <h3 style={sectionHeadingStyle}>Paket Enterprise</h3>
-                    <p style={mutedTextStyle}>
-                      Kelola paket enterprise institusi Anda.
-                    </p>
-                  </div>
-                </div>
-
-                <div style={dividerStyle} />
-
-                <div
-                  style={{
-                    padding: 24,
-                    backgroundColor: "#0C1E35",
-                    borderRadius: 16,
-                    color: "#fff",
-                    marginBottom: 24,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: 24,
-                    }}
-                  >
-                    <div>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: "#93C5FD",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          display: "block",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Paket Aktif
-                      </span>
-                      <h4 style={{ fontSize: 24, fontWeight: 900 }}>
-                        Enterprise Access
-                      </h4>
-                    </div>
-                    <span
-                      style={{
-                        padding: "4px 12px",
-                        backgroundColor: "rgba(16,185,129,0.2)",
-                        color: "#6EE7B7",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        borderRadius: 20,
-                      }}
-                    >
-                      Aktif
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(3, 1fr)",
-                      gap: 24,
-                    }}
-                  >
-                    <div>
-                      <p
-                        style={{
-                          fontSize: 10,
-                          color: "#94A3B8",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Berlaku Hingga
-                      </p>
-                      <p style={{ fontSize: 18, fontWeight: 900 }}>
-                        12 Des 2026
-                      </p>
-                    </div>
-                    <div>
-                      <p
-                        style={{
-                          fontSize: 10,
-                          color: "#94A3B8",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Admin
-                      </p>
-                      <p style={{ fontSize: 18, fontWeight: 900 }}>
-                        {userProfile.name}
-                      </p>
-                    </div>
-                    <div>
-                      <p
-                        style={{
-                          fontSize: 10,
-                          color: "#94A3B8",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Enterprise ID
-                      </p>
-                      <p
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 700,
-                          fontFamily: "monospace",
-                        }}
-                      >
-                        {userProfile.enterprise_id || "-"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() =>
-                    showToast(
-                      "Hubungi tim sales Aexon untuk perpanjangan enterprise.",
-                      "info",
-                    )
-                  }
-                  style={{ ...btnPrimaryStyle, fontSize: 14 }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#1a3a5c";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#0C1E35";
-                  }}
-                >
-                  Perpanjang Enterprise
-                </button>
-              </div>
-
-              <div style={cardStyle}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    marginBottom: 24,
-                  }}
-                >
-                  <div style={iconBoxStyle("#EEF2FF")}>
-                    <Users
-                      style={{ width: 20, height: 20, color: "#4F46E5" }}
-                    />
-                  </div>
-                  <div>
-                    <h3 style={sectionHeadingStyle}>Seat Dokter</h3>
-                    <p style={mutedTextStyle}>
-                      Kelola jumlah seat dokter di institusi Anda.
-                    </p>
-                  </div>
-                </div>
-
-                <div style={dividerStyle} />
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: 16,
-                    marginBottom: 24,
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: 20,
-                      backgroundColor: "#F8FAFC",
-                      borderRadius: 12,
-                      textAlign: "center",
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 24,
-                        fontWeight: 900,
-                        color: "#0C1E35",
-                      }}
-                    >
-                      10
-                    </p>
-                    <p
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 500,
-                        color: "#64748B",
-                        marginTop: 4,
-                      }}
-                    >
-                      Total Seat
-                    </p>
-                  </div>
-                  <div
-                    style={{
-                      padding: 20,
-                      backgroundColor: "#ECFDF5",
-                      borderRadius: 12,
-                      textAlign: "center",
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 24,
-                        fontWeight: 900,
-                        color: "#059669",
-                      }}
-                    >
-                      7
-                    </p>
-                    <p
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 500,
-                        color: "#64748B",
-                        marginTop: 4,
-                      }}
-                    >
-                      Terpakai
-                    </p>
-                  </div>
-                  <div
-                    style={{
-                      padding: 20,
-                      backgroundColor: "#EFF6FF",
-                      borderRadius: 12,
-                      textAlign: "center",
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 24,
-                        fontWeight: 900,
-                        color: "#2563EB",
-                      }}
-                    >
-                      3
-                    </p>
-                    <p
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 500,
-                        color: "#64748B",
-                        marginTop: 4,
-                      }}
-                    >
-                      Tersedia
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 24 }}>
-                  <h4
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: "#0C1E35",
-                      marginBottom: 12,
-                    }}
-                  >
-                    Dokter Terdaftar
-                  </h4>
-                  <div
-                    style={{
-                      borderRadius: 12,
-                      border: "1px solid #E2E8F0",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <table
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        fontSize: 14,
-                        borderCollapse: "collapse",
-                      }}
-                    >
-                      <thead style={{ backgroundColor: "#F8FAFC" }}>
-                        <tr>
-                          <th
-                            style={{
-                              padding: "12px 20px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#475569",
-                            }}
-                          >
-                            Nama
-                          </th>
-                          <th
-                            style={{
-                              padding: "12px 20px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#475569",
-                            }}
-                          >
-                            Spesialisasi
-                          </th>
-                          <th
-                            style={{
-                              padding: "12px 20px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#475569",
-                            }}
-                          >
-                            Status
-                          </th>
-                          <th
-                            style={{
-                              padding: "12px 20px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#475569",
-                              textAlign: "right",
-                            }}
-                          >
-                            Aksi
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[
-                          {
-                            name: "Dr. Budi Santoso, Sp.PD",
-                            spec: "Penyakit Dalam",
-                            status: "active",
-                          },
-                          {
-                            name: "Dr. Rina Wijaya, Sp.B",
-                            spec: "Bedah Umum",
-                            status: "active",
-                          },
-                          {
-                            name: "Dr. Ahmad Fauzi, Sp.OG",
-                            spec: "Obstetri & Ginekologi",
-                            status: "active",
-                          },
-                          {
-                            name: "Dr. Maya Sari, Sp.A",
-                            spec: "Anak",
-                            status: "active",
-                          },
-                          {
-                            name: "Dr. Hendra Pratama, Sp.JP",
-                            spec: "Jantung & Pembuluh Darah",
-                            status: "active",
-                          },
-                          {
-                            name: "Dr. Siti Nurhaliza, Sp.M",
-                            spec: "Mata",
-                            status: "inactive",
-                          },
-                          {
-                            name: "Dr. Dedi Kurniawan, Sp.THT",
-                            spec: "THT-KL",
-                            status: "active",
-                          },
-                        ].map((doc, i) => (
-                          <tr
-                            key={i}
-                            style={{ borderTop: "1px solid #F1F5F9" }}
-                          >
-                            <td
-                              style={{
-                                padding: "12px 20px",
-                                fontWeight: 700,
-                                color: "#0C1E35",
-                              }}
-                            >
-                              {doc.name}
-                            </td>
-                            <td
-                              style={{ padding: "12px 20px", color: "#475569" }}
-                            >
-                              {doc.spec}
-                            </td>
-                            <td style={{ padding: "12px 20px" }}>
-                              <span
-                                style={{
-                                  padding: "4px 10px",
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  borderRadius: 20,
-                                  backgroundColor:
-                                    doc.status === "active"
-                                      ? "#ECFDF5"
-                                      : "#F1F5F9",
-                                  color:
-                                    doc.status === "active"
-                                      ? "#059669"
-                                      : "#64748B",
-                                }}
-                              >
-                                {doc.status === "active" ? "Aktif" : "Nonaktif"}
-                              </span>
-                            </td>
-                            <td
-                              style={{
-                                padding: "12px 20px",
-                                textAlign: "right",
-                              }}
-                            >
-                              <button
-                                onClick={() =>
-                                  showToast(
-                                    "Fitur kelola seat akan tersedia segera.",
-                                    "info",
-                                  )
-                                }
-                                style={{
-                                  fontSize: 12,
-                                  color: "#EF4444",
-                                  fontWeight: 700,
-                                  background: "none",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  transition: "color 0.15s",
-                                  fontFamily: "Outfit, sans-serif",
-                                }}
-                              >
-                                Hapus
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() =>
-                    showToast("Fitur tambah seat akan tersedia segera.", "info")
-                  }
-                  style={{
-                    ...btnPrimaryStyle,
-                    padding: "10px 20px",
-                    fontSize: 12,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#1a3a5c";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#0C1E35";
-                  }}
-                >
-                  + Tambah Seat Dokter
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isPersonal && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              <div style={cardStyle}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    marginBottom: 24,
-                  }}
-                >
-                  <div style={iconBoxStyle("#F8FAFC")}>
-                    <CreditCard
-                      style={{ width: 20, height: 20, color: "#0C1E35" }}
-                    />
-                  </div>
-                  <div>
-                    <h3 style={sectionHeadingStyle}>Langganan & Pembayaran</h3>
-                    <p style={mutedTextStyle}>
-                      Kelola paket aktif dan riwayat transaksi.
-                    </p>
-                  </div>
-                </div>
-
-                <div style={dividerStyle} />
-
-                <div
-                  style={{
-                    padding: 24,
-                    backgroundColor: "#0C1E35",
-                    borderRadius: 16,
-                    color: "#fff",
-                    marginBottom: 32,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: 24,
-                    }}
-                  >
-                    <div>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: "#93C5FD",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          display: "block",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Paket Saat Ini
-                      </span>
-                      <h4 style={{ fontSize: 24, fontWeight: 900 }}>
-                        {subscriptionData?.plan_name ||
-                          (plan === "subscription"
-                            ? "Aexon Subscription"
-                            : plan === "enterprise"
-                              ? "Enterprise"
-                              : "Trial Period")}
-                      </h4>
-                    </div>
-                    {(() => {
-                      const st =
-                        subscriptionData?.status || (plan ? "active" : "none");
-                      const statusConfig: Record<
-                        string,
-                        { label: string; bg: string; color: string }
-                      > = {
-                        active: {
-                          label: "Aktif",
-                          bg: "rgba(16,185,129,0.2)",
-                          color: "#6EE7B7",
-                        },
-                        trial: {
-                          label: "Trial",
-                          bg: "rgba(234,179,8,0.2)",
-                          color: "#FDE047",
-                        },
-                        pending: {
-                          label: "Menunggu",
-                          bg: "rgba(234,179,8,0.2)",
-                          color: "#FDE047",
-                        },
-                        expired: {
-                          label: "Kedaluwarsa",
-                          bg: "rgba(239,68,68,0.2)",
-                          color: "#FCA5A5",
-                        },
-                        cancelled: {
-                          label: "Dibatalkan",
-                          bg: "rgba(239,68,68,0.2)",
-                          color: "#FCA5A5",
-                        },
-                        none: {
-                          label: "Tidak Aktif",
-                          bg: "rgba(148,163,184,0.2)",
-                          color: "#94A3B8",
-                        },
-                      };
-                      const cfg = statusConfig[st] || statusConfig["none"];
-                      return (
-                        <span
-                          style={{
-                            padding: "4px 12px",
-                            fontSize: 12,
-                            fontWeight: 700,
-                            borderRadius: 20,
-                            backgroundColor: cfg.bg,
-                            color: cfg.color,
-                          }}
-                        >
-                          {cfg.label}
-                        </span>
-                      );
-                    })()}
-                  </div>
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(3, 1fr)",
-                      gap: 24,
-                    }}
-                  >
-                    <div>
-                      <p
-                        style={{
-                          fontSize: 10,
-                          color: "#94A3B8",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Terdaftar
-                      </p>
-                      <p style={{ fontSize: 14, fontWeight: 700 }}>
-                        {subscriptionData?.created_at ||
-                        subscriptionData?.current_period_start
-                          ? new Date(
-                              subscriptionData.created_at ||
-                                subscriptionData.current_period_start,
-                            ).toLocaleDateString("id-ID", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p
-                        style={{
-                          fontSize: 10,
-                          color: "#94A3B8",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Berlaku Hingga
-                      </p>
-                      <p style={{ fontSize: 14, fontWeight: 700 }}>
-                        {subscriptionData?.expires_at
-                          ? new Date(
-                              subscriptionData.expires_at,
-                            ).toLocaleDateString("id-ID", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p
-                        style={{
-                          fontSize: 10,
-                          color: "#94A3B8",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          marginBottom: 4,
-                        }}
-                      >
-                        Siklus
-                      </p>
-                      <p style={{ fontSize: 14, fontWeight: 700 }}>
-                        {subscriptionData?.billing_cycle === "annual"
-                          ? "Tahunan"
-                          : subscriptionData?.billing_cycle === "monthly"
-                            ? "Bulanan"
-                            : "-"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    padding: 20,
-                    backgroundColor: "#EFF6FF",
-                    borderRadius: 12,
-                    border: "1px solid #DBEAFE",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <div>
-                    <h4
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "#0C1E35",
-                      }}
-                    >
-                      Perpanjang Langganan
-                    </h4>
-                    <p style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                      Jangan sampai akses Anda terputus.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedPlanId(null);
-                      setShowPlanModal(true);
-                    }}
-                    style={{
-                      ...btnPrimaryStyle,
-                      padding: "10px 20px",
-                      fontSize: 12,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#1a3a5c";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#0C1E35";
-                    }}
-                  >
-                    Perpanjang Sekarang
-                  </button>
-                </div>
-              </div>
-
-              <div style={cardStyle}>
-                <h4
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#475569",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    marginBottom: 16,
-                  }}
-                >
-                  Riwayat Pembayaran
-                </h4>
-                {billingLoading ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "48px 0",
-                    }}
-                  >
-                    <Loader2
-                      className="animate-spin"
-                      style={{ width: 24, height: 24, color: "#CBD5E1" }}
-                    />
-                  </div>
-                ) : billingHistory.length === 0 ? (
-                  <div style={{ padding: "48px 0", textAlign: "center" }}>
-                    <CreditCard
-                      style={{
-                        width: 40,
-                        height: 40,
-                        color: "#E2E8F0",
-                        margin: "0 auto 12px",
-                      }}
-                    />
-                    <p
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 500,
-                        color: "#94A3B8",
-                      }}
-                    >
-                      Belum ada riwayat pembayaran
-                    </p>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      borderRadius: 12,
-                      border: "1px solid #E2E8F0",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <table
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        fontSize: 14,
-                        borderCollapse: "collapse",
-                      }}
-                    >
-                      <thead style={{ backgroundColor: "#F8FAFC" }}>
-                        <tr>
-                          <th
-                            style={{
-                              padding: "12px 20px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#475569",
-                            }}
-                          >
-                            Tanggal
-                          </th>
-                          <th
-                            style={{
-                              padding: "12px 20px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#475569",
-                            }}
-                          >
-                            Paket
-                          </th>
-                          <th
-                            style={{
-                              padding: "12px 20px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#475569",
-                            }}
-                          >
-                            Jumlah
-                          </th>
-                          <th
-                            style={{
-                              padding: "12px 20px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#475569",
-                            }}
-                          >
-                            Status
-                          </th>
-                          <th
-                            style={{
-                              padding: "12px 20px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#475569",
-                              textAlign: "right",
-                            }}
-                          >
-                            Aksi
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {billingHistory.map((row: any, i: number) => {
-                          const statusMap: Record<
-                            string,
-                            { label: string; bg: string; color: string }
-                          > = {
-                            paid: {
-                              label: "Lunas",
-                              bg: "#ECFDF5",
-                              color: "#059669",
-                            },
-                            pending: {
-                              label: "Pending",
-                              bg: "#FFFBEB",
-                              color: "#D97706",
-                            },
-                            failed: {
-                              label: "Gagal",
-                              bg: "#FEF2F2",
-                              color: "#DC2626",
-                            },
-                          };
-                          const st =
-                            statusMap[row.status] || statusMap["pending"];
-                          return (
-                            <tr
-                              key={row.id || i}
-                              style={{ borderTop: "1px solid #F1F5F9" }}
-                            >
-                              <td
-                                style={{
-                                  padding: "12px 20px",
-                                  fontWeight: 500,
-                                  color: "#475569",
-                                }}
-                              >
-                                {new Date(row.created_at).toLocaleDateString(
-                                  "id-ID",
-                                  {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  },
-                                )}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "12px 20px",
-                                  fontWeight: 700,
-                                  color: "#0C1E35",
-                                }}
-                              >
-                                {row.plan_name || row.package || "-"}
-                              </td>
-                              <td
-                                style={{
-                                  padding: "12px 20px",
-                                  fontWeight: 700,
-                                  color: "#0C1E35",
-                                }}
-                              >
-                                {row.amount
-                                  ? `Rp ${Number(row.amount).toLocaleString("id-ID")}`
-                                  : "-"}
-                              </td>
-                              <td style={{ padding: "12px 20px" }}>
-                                <span
-                                  style={{
-                                    padding: "4px 10px",
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    borderRadius: 20,
-                                    backgroundColor: st.bg,
-                                    color: st.color,
-                                  }}
-                                >
-                                  {st.label}
-                                </span>
-                              </td>
-                              <td
-                                style={{
-                                  padding: "12px 20px",
-                                  textAlign: "right",
-                                }}
-                              >
-                                <button
-                                  onClick={() =>
-                                    showToast(
-                                      "Fitur invoice segera hadir",
-                                      "info",
-                                    )
-                                  }
-                                  style={{
-                                    fontSize: 12,
-                                    color: "#0C1E35",
-                                    fontWeight: 700,
-                                    background: "none",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    transition: "color 0.15s",
-                                    fontFamily: "Outfit, sans-serif",
-                                  }}
-                                >
-                                  Unduh Invoice
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          style={{ display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"60px 24px",textAlign:"center" }}>
+          <div style={{ width:60,height:60,borderRadius:16,backgroundColor:"#EFF6FF",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px" }}>
+            <CreditCard style={{ width:26,height:26,color:"#3B82F6" }} />
+          </div>
+          <h3 style={{ fontSize:17,fontWeight:800,color:"#0C1E35",marginBottom:8,fontFamily:"'Plus Jakarta Sans', sans-serif" }}>Kelola Langganan</h3>
+          <p style={{ fontSize:13,color:"#64748B",lineHeight:1.6,marginBottom:22,maxWidth:300 }}>Lihat status, riwayat pembayaran, dan kelola perpanjangan otomatis.</p>
+          <button onClick={() => onNavigateToSubscription?.()} style={{ padding:"11px 26px",backgroundColor:"#0C1E35",color:"#fff",border:"none",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Plus Jakarta Sans', sans-serif" }}
+            onMouseEnter={(e)=>(e.currentTarget.style.backgroundColor="#1a3a5c")} onMouseLeave={(e)=>(e.currentTarget.style.backgroundColor="#0C1E35")}>
+            Buka Halaman Langganan
+          </button>
         </motion.div>
       )}
+
 
       {/* ═══════════════ TAB: BACKUP ═══════════════ */}
       {activeTab === "backup" && (
@@ -3644,24 +2600,11 @@ export default function Settings({
           )}
 
           <div style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 24,
-              }}
-            >
-              <div style={iconBoxStyle("#ECFDF5")}>
-                <Download style={{ width: 20, height: 20, color: "#059669" }} />
-              </div>
-              <div>
-                <h3 style={sectionHeadingStyle}>Ekspor Backup</h3>
-                <p style={mutedTextStyle}>Unduh data sesi dalam format ZIP.</p>
-              </div>
+            <div style={cardHeaderStyle}>
+              <Download style={{ width: 14, height: 14, color: "#ffffff" }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>Ekspor Backup</span>
             </div>
-
-            <div style={dividerStyle} />
+            <div style={cardBodyStyle}>
 
             <p
               style={{
@@ -3736,31 +2679,15 @@ export default function Settings({
                 Unduh Backup
               </motion.button>
             </div>
+            </div>
           </div>
 
           <div style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 24,
-              }}
-            >
-              <div style={iconBoxStyle("#EFF6FF")}>
-                <RefreshCw
-                  style={{ width: 20, height: 20, color: "#2563EB" }}
-                />
-              </div>
-              <div>
-                <h3 style={sectionHeadingStyle}>Restore dari Backup</h3>
-                <p style={mutedTextStyle}>
-                  Impor file backup yang sebelumnya diekspor.
-                </p>
-              </div>
+            <div style={cardHeaderStyle}>
+              <RefreshCw style={{ width: 14, height: 14, color: "#ffffff" }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>Restore dari Backup</span>
             </div>
-
-            <div style={dividerStyle} />
+            <div style={cardBodyStyle}>
 
             <div
               style={{
@@ -3817,6 +2744,165 @@ export default function Settings({
               )}
               {restoreLoading ? "Memproses..." : "Pilih File Backup (.zip)"}
             </motion.button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ═══════════════ TAB: TAMPILAN ═══════════════ */}
+      {activeTab === "tampilan" && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ display: "flex", flexDirection: "column", gap: 24 }}
+        >
+          <div style={cardStyle}>
+            <div style={cardHeaderStyle}>
+              <Type style={{ width: 14, height: 14, color: "#ffffff" }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>Ukuran Font</span>
+            </div>
+            <div style={cardBodyStyle}>
+              <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6, marginBottom: 24, fontFamily: FONT_BODY }}>
+                Sesuaikan ukuran teks yang ditampilkan di seluruh aplikasi. Pengaturan ini tersimpan di akun Anda dan akan mengikuti ke perangkat manapun.
+              </p>
+
+              {/* Preview */}
+              <div style={{
+                padding: "20px 24px", borderRadius: 12, border: "1.5px solid #E2E8F0",
+                backgroundColor: "#FAFBFC", marginBottom: 24,
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10, fontFamily: FONT_BODY }}>
+                  Preview
+                </p>
+                <p style={{ fontSize: fontSizePref, color: "#0C1E35", margin: 0, lineHeight: 1.6, fontFamily: FONT_BODY, transition: "font-size 150ms" }}>
+                  Ini adalah contoh tampilan teks pada ukuran font yang dipilih.
+                </p>
+                <p style={{ fontSize: Math.max(fontSizePref - 2, 11), color: "#64748B", margin: "6px 0 0", lineHeight: 1.5, fontFamily: FONT_BODY, transition: "font-size 150ms" }}>
+                  Semakin besar ukuran font, semakin mudah dibaca. Sesuaikan dengan kenyamanan Anda.
+                </p>
+              </div>
+
+              {/* Slider */}
+              <div style={{ maxWidth: 480 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 12 }}>
+                  <button
+                    onClick={() => previewFontSize(fontSizePref - 1)}
+                    disabled={fontSizePref <= 12 || fontSizeSaving}
+                    style={{
+                      width: 36, height: 36, borderRadius: 10, border: "1.5px solid #E2E8F0",
+                      backgroundColor: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: fontSizePref <= 12 || fontSizeSaving ? "not-allowed" : "pointer",
+                      opacity: fontSizePref <= 12 ? 0.3 : 1, transition: "all 150ms", flexShrink: 0,
+                    }}
+                  >
+                    <MinusIcon style={{ width: 16, height: 16, color: "#0C1E35" }} />
+                  </button>
+                  <input
+                    type="range"
+                    min={12}
+                    max={24}
+                    step={1}
+                    value={fontSizePref}
+                    onChange={(e) => previewFontSize(Number(e.target.value))}
+                    disabled={fontSizeSaving}
+                    style={{ flex: 1, accentColor: "#0C1E35", height: 6, cursor: fontSizeSaving ? "wait" : "pointer" }}
+                  />
+                  <button
+                    onClick={() => previewFontSize(fontSizePref + 1)}
+                    disabled={fontSizePref >= 24 || fontSizeSaving}
+                    style={{
+                      width: 36, height: 36, borderRadius: 10, border: "1.5px solid #E2E8F0",
+                      backgroundColor: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: fontSizePref >= 24 || fontSizeSaving ? "not-allowed" : "pointer",
+                      opacity: fontSizePref >= 24 ? 0.3 : 1, transition: "all 150ms", flexShrink: 0,
+                    }}
+                  >
+                    <PlusIcon style={{ width: 16, height: 16, color: "#0C1E35" }} />
+                  </button>
+                </div>
+
+                {/* Labels */}
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "0 52px" }}>
+                  <span style={{ fontSize: 10, color: "#CBD5E1", fontFamily: FONT_BODY }}>12px</span>
+                  <span style={{ fontSize: 10, color: "#CBD5E1", fontFamily: FONT_BODY }}>24px</span>
+                </div>
+
+                {/* Current value badge + actions */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginTop: 16, gap: 8 }}>
+                  <div style={{
+                    padding: "8px 20px", borderRadius: 10,
+                    background: "linear-gradient(135deg, #0C1E35 0%, #152d4f 60%, #1a3a5f 100%)",
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                  }}>
+                    <span style={{ fontSize: 22, fontWeight: 800, color: "#fff", fontFamily: FONT_HEADING }}>{fontSizePref}</span>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: FONT_BODY }}>px</span>
+                  </div>
+                  {fontSizePref !== 14 && !fontSizeChanged && (
+                    <button
+                      onClick={() => previewFontSize(17)}
+                      disabled={fontSizeSaving}
+                      style={{
+                        padding: "8px 14px", borderRadius: 10, border: "1.5px solid #E2E8F0",
+                        backgroundColor: "#fff", fontSize: 11, fontWeight: 600, color: "#64748B",
+                        cursor: "pointer", fontFamily: FONT_BODY, transition: "all 150ms",
+                      }}
+                    >
+                      Reset ke 17px
+                    </button>
+                  )}
+                </div>
+
+                {/* CTA: Simpan perubahan */}
+                {fontSizeChanged && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 20 }}>
+                    <button
+                      onClick={() => setFontSizePref(savedFontSize)}
+                      disabled={fontSizeSaving}
+                      style={{
+                        padding: "10px 20px", borderRadius: 10, border: "1.5px solid #E2E8F0",
+                        backgroundColor: "#fff", fontSize: 12, fontWeight: 600, color: "#64748B",
+                        cursor: "pointer", fontFamily: FONT_BODY, transition: "all 150ms",
+                      }}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      onClick={confirmFontSizeChange}
+                      disabled={fontSizeSaving}
+                      style={{
+                        padding: "10px 24px", borderRadius: 10, border: "none",
+                        background: "linear-gradient(135deg, #0C1E35 0%, #152d4f 100%)",
+                        fontSize: 12, fontWeight: 700, color: "#fff",
+                        cursor: fontSizeSaving ? "wait" : "pointer", fontFamily: FONT_BODY,
+                        display: "flex", alignItems: "center", gap: 6,
+                        boxShadow: "0 2px 8px rgba(12,30,53,0.2)",
+                        opacity: fontSizeSaving ? 0.6 : 1,
+                      }}
+                    >
+                      {fontSizeSaving ? (
+                        <><Loader2 className="animate-spin" style={{ width: 14, height: 14 }} /> Menyimpan...</>
+                      ) : (
+                        <>Simpan Ukuran Font</>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {fontSizeSaving && !fontSizeChanged && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
+                  <Loader2 className="animate-spin" style={{ width: 14, height: 14, color: "#94A3B8" }} />
+                  <span style={{ fontSize: 12, color: "#94A3B8", fontFamily: FONT_BODY }}>Menyimpan...</span>
+                </div>
+              )}
+
+              <div style={{ marginTop: 20, padding: 14, backgroundColor: "#F8FAFC", borderRadius: 12, border: "1px solid #E8ECF1", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <Info style={{ width: 14, height: 14, color: "#94A3B8", flexShrink: 0, marginTop: 2 }} />
+                <p style={{ fontSize: 12, color: "#64748B", lineHeight: 1.6, margin: 0, fontFamily: FONT_BODY }}>
+                  Pengaturan ini tersimpan di server dan terhubung ke akun Anda. Jika Anda berpindah komputer atau login dari perangkat lain, ukuran font akan tetap mengikuti preferensi akun.
+                </p>
+              </div>
+            </div>
           </div>
         </motion.div>
       )}
@@ -4037,7 +3123,7 @@ export default function Settings({
                     border: "1px solid #E2E8F0",
                     borderRadius: 12,
                     cursor: "pointer",
-                    fontFamily: "Outfit, sans-serif",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
                     transition: "background-color 0.15s",
                   }}
                   onMouseEnter={(e) => {
@@ -4346,7 +3432,7 @@ export default function Settings({
                     border: "none",
                     cursor: "pointer",
                     transition: "background-color 0.15s",
-                    fontFamily: "Outfit, sans-serif",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = "#E2E8F0";
@@ -4397,7 +3483,7 @@ export default function Settings({
               zIndex: 9999,
               padding: 16,
             }}
-            onClick={() => setCropModalOpen(false)}
+            onClick={() => closeCropModal()}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -4442,7 +3528,7 @@ export default function Settings({
                   </div>
                 </div>
                 <button
-                  onClick={() => setCropModalOpen(false)}
+                  onClick={() => closeCropModal()}
                   style={{
                     padding: 8,
                     borderRadius: 8,
@@ -4463,6 +3549,7 @@ export default function Settings({
                   width: "100%",
                   height: 480,
                   backgroundColor: "#0F172A",
+                  touchAction: "none",
                 }}
               >
                 <Cropper
@@ -4476,8 +3563,9 @@ export default function Settings({
                   onCropComplete={onCropComplete}
                   showGrid={true}
                   objectFit="contain"
+                  restrictPosition={false}
                   style={{
-                    containerStyle: { background: "#0f172a" },
+                    containerStyle: { background: "#0f172a", touchAction: "none" },
                     cropAreaStyle: { border: "2px solid #0C1E35" },
                   }}
                 />
@@ -4532,7 +3620,7 @@ export default function Settings({
 
                 <div style={{ display: "flex", gap: 12 }}>
                   <button
-                    onClick={() => setCropModalOpen(false)}
+                    onClick={() => closeCropModal()}
                     style={{
                       flex: 1,
                       padding: "12px 16px",
@@ -4544,7 +3632,7 @@ export default function Settings({
                       border: "none",
                       cursor: "pointer",
                       transition: "background-color 0.15s",
-                      fontFamily: "Outfit, sans-serif",
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = "#E2E8F0";
@@ -4924,7 +4012,7 @@ export default function Settings({
                         cursor: "pointer",
                         boxShadow: "0 4px 20px rgba(12,30,53,0.25)",
                         transition: "background-color 150ms",
-                        fontFamily: "Outfit, sans-serif",
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
                       }}
                       onMouseEnter={(e) =>
                         (e.currentTarget.style.backgroundColor = "#1a3a5c")
@@ -4935,16 +4023,7 @@ export default function Settings({
                     >
                       Lanjutkan Pembayaran
                     </button>
-                    <p
-                      style={{
-                        textAlign: "center",
-                        fontSize: 12,
-                        color: "#94A3B8",
-                        marginTop: 10,
-                      }}
-                    >
-                      Pembayaran otomatis segera hadir
-                    </p>
+
                   </div>
                 )}
               </div>
@@ -4952,6 +4031,8 @@ export default function Settings({
           </motion.div>
         )}
       </AnimatePresence>
+        </div>
+      </div>
     </div>
   );
 }

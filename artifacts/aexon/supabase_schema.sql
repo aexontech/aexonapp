@@ -1,5 +1,5 @@
 -- ============================================================
--- AEXON ENDOSCOPY — Supabase SQL Schema
+-- AEXON — Supabase SQL Schema
 -- Jalankan di Supabase SQL Editor (Dashboard → SQL Editor → New Query)
 -- ============================================================
 

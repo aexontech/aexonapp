@@ -19,7 +19,10 @@ export interface Capture {
   type: 'image' | 'video';
   url: string;
   originalUrl?: string; // Store original for re-editing
+  thumbnail?: string; // Video thumbnail (data URL, ~320px)
+  dataUrl?: string; // Base64 data URL for persistence
   shapes?: any[]; // Store Konva shapes for re-editing
+  flipped?: boolean; // Video direkam saat flip aktif
   timestamp: Date;
   caption?: string;
 }
@@ -67,6 +70,6 @@ export interface UserProfile {
   lastNameChangeDate?: string;
   enterprise_id?: string | null;
   preferences?: {
-    fontSize: 'normal' | 'large' | 'extra-large';
+  fontSize: number;
   };
 }

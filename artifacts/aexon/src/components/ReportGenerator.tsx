@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, Printer, CheckCircle2, FileImage, ShieldAlert, ArrowLeft, Mail, MessageCircle, Info, AlertTriangle, Download, Video, Camera, Layout, Columns, Grid, Plus, Trash2, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
+import { FileText, Printer, CheckCircle2, FileImage, ShieldAlert, ArrowLeft, Mail, MessageCircle, Info, AlertTriangle, Download, Video, Camera, Layout, Columns, Grid, Plus, Trash2, ChevronRight, ChevronLeft, Loader2, Save } from 'lucide-react';
 import { Session, Capture, HospitalSettings, UserProfile } from '../types';
 import ImageEditor from './ImageEditor';
+import SessionFlowNav from './SessionFlowNav';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -20,15 +21,24 @@ interface ReportPage {
   clinicalNotes: string;
 }
 
+interface SavedReport {
+  id: string;
+  savedAt: string;
+  pdfDataUrl: string;
+  pageConfig: ReportPage[];
+  hospitalName: string | null;
+}
+
 interface ReportGeneratorProps {
   session: Session;
   onBack: () => void;
   hospitalSettingsList: HospitalSettings[];
   userProfile: UserProfile;
-  plan: 'subscription' | 'enterprise' | null;
+  plan: 'subscription' | 'enterprise' | 'trial' | null;
+  onUpdateSession?: (session: Session) => void;
 }
 
-export default function ReportGenerator({ session, onBack, hospitalSettingsList, userProfile, plan }: ReportGeneratorProps) {
+export default function ReportGenerator({ session, onBack, hospitalSettingsList, userProfile, plan, onUpdateSession }: ReportGeneratorProps) {
   const [pages, setPages] = useState<ReportPage[]>([
     {
       id: 'page-1',
@@ -48,6 +58,8 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
   const [editingPhoto, setEditingPhoto] = useState<Capture | null>(null);
   const [pageToDelete, setPageToDelete] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewZoom, setPreviewZoom] = useState(0.6);
+  const [mediaFilter, setMediaFilter] = useState<'all' | 'photos' | 'videos'>('all');
   const printAreaRef = useRef<HTMLDivElement>(null);
 
   const activePage = pages.find(p => p.id === activePageId) || pages[0];
@@ -150,8 +162,8 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
     }
 
     return isLandscape 
-      ? { width: height, minHeight: width } 
-      : { width: width, minHeight: height };
+      ? { width: height, height: width } 
+      : { width, height };
   };
 
   const handlePhotoSelect = (capture: Capture) => {
@@ -183,16 +195,28 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
   };
 
   const handlePrint = () => {
-    window.print();
+    handleSavePDF();
   };
 
   const handleSavePDF = async () => {
     if (!printAreaRef.current || isSaving) return;
     setIsSaving(true);
+
+    // Reset document zoom agar html2canvas akurat
+    const savedZoom = document.documentElement.style.zoom;
+    document.documentElement.style.zoom = '1';
+
+    // Tunggu reflow selesai
+    await new Promise(r => setTimeout(r, 100));
+
     try {
       const wrapperEls = printAreaRef.current.querySelectorAll('.print-page-wrapper') as NodeListOf<HTMLElement>;
       const containerEls = printAreaRef.current.querySelectorAll('.print-container') as NodeListOf<HTMLElement>;
-      if (containerEls.length === 0) return;
+      if (containerEls.length === 0) {
+        document.documentElement.style.zoom = savedZoom;
+        setIsSaving(false);
+        return;
+      }
 
       const savedWrapperStyles: string[] = [];
       wrapperEls.forEach((el) => {
@@ -224,6 +248,8 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             useCORS: true,
             backgroundColor: '#ffffff',
             logging: false,
+            windowWidth: el.scrollWidth,
+            windowHeight: el.scrollHeight,
           });
 
           const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -258,10 +284,48 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
 
           pdf!.addImage(imgData, 'JPEG', imgX, imgY, imgW, imgH);
         }
+        
+        // Electron: simpan PDF + config ke encrypted disk storage
+        if (window.aexonStorage && pdf) {
+          try {
+            const reportId = `rpt_${Date.now()}`;
+            const pdfData = new Uint8Array(pdf.output('arraybuffer'));
+            const configJson = JSON.stringify({ pages, selectedHospital });
+            await window.aexonStorage.saveReport(session.id, reportId, pdfData, configJson);
+            console.log(`[Electron] Report ${reportId} saved`);
+          } catch (err) {
+            console.warn('[Electron] Failed to save report:', err);
+          }
+        }
 
-        const examLabel = activePage.examType === 'mikroskop' ? 'Mikroskop' : 'Endoskopi';
-        const fileName = `Laporan_${examLabel}_${session.patient.name.replace(/\s+/g, '_')}_${session.date.toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`;
-        pdf!.save(fileName);
+        // Filename confidential (tanpa nama pasien)
+        const rndCode = (Math.random().toString(36).substring(2, 8) + Math.random().toString(36).substring(2, 4)).toUpperCase();
+        const fileName = `RPT-${rndCode}.pdf`;
+
+        // Coba Electron save dialog
+        try {
+          const electron = (window as any).require?.('electron');
+          if (electron?.remote?.dialog || (window as any).electronAPI) {
+            const dialog = electron?.remote?.dialog;
+            if (dialog) {
+              const result = await dialog.showSaveDialog({
+                defaultPath: fileName,
+                filters: [{ name: 'PDF', extensions: ['pdf'] }],
+              });
+              if (!result.canceled && result.filePath) {
+                const fs = electron.remote.require('fs');
+                const pdfOutput = pdf!.output('arraybuffer');
+                fs.writeFileSync(result.filePath, Buffer.from(pdfOutput));
+              }
+            } else {
+              pdf!.save(fileName);
+            }
+          } else {
+            pdf!.save(fileName);
+          }
+        } catch {
+          pdf!.save(fileName);
+        }
       } finally {
         wrapperEls.forEach((el, i) => {
           el.style.cssText = savedWrapperStyles[i];
@@ -273,57 +337,226 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
     } catch (err) {
       console.error('PDF save error:', err);
     } finally {
+      // Restore document zoom
+      document.documentElement.style.zoom = savedZoom;
       setIsSaving(false);
     }
   };
 
-  const handleEmail = () => {
-    const examLabel = activePage.examType === 'mikroskop' ? 'Mikroskop' : 'Endoskopi';
-    const subject = encodeURIComponent(`Laporan ${examLabel} - ${session.patient.name} - ${session.date.toLocaleDateString('id-ID')}`);
-    const procedures = session.patient.procedures?.join(', ') || '-';
-    const diagnosis = session.patient.diagnosis || '-';
-    const body = encodeURIComponent(
-      `Yth. Sejawat,\n\n` +
-      `Berikut ringkasan laporan ${examLabel.toLowerCase()}:\n\n` +
-      `INFORMASI PASIEN\n` +
-      `Nama Pasien  : ${session.patient.name}\n` +
-      `No. RM       : ${session.patient.rmNumber}\n` +
-      `Tanggal      : ${session.date.toLocaleDateString('id-ID')}\n` +
-      `Operator     : ${session.patient.operator}\n` +
-      `Perujuk      : ${session.patient.referringDoctor || '-'}\n\n` +
-      `HASIL PEMERIKSAAN\n` +
-      `Prosedur     : ${procedures}\n` +
-      `Diagnosis    : ${diagnosis}\n` +
-      `Jumlah Foto  : ${session.captures.filter(c => c.type === 'image').length}\n` +
-      `Jumlah Video : ${session.captures.filter(c => c.type === 'video').length}\n\n` +
-      `Laporan lengkap beserta dokumentasi foto terlampir.\n\n` +
-      `Salam,\n${userProfile.name}`
-    );
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  const handleEmail = async () => {
+    if (!printAreaRef.current) return;
+    setIsSaving(true);
+    const savedZoom = document.documentElement.style.zoom;
+    document.documentElement.style.zoom = '1';
+    await new Promise(r => setTimeout(r, 100));
+
+    try {
+      const wrapperEls = printAreaRef.current.querySelectorAll('.print-page-wrapper') as NodeListOf<HTMLElement>;
+      const containerEls = printAreaRef.current.querySelectorAll('.print-container') as NodeListOf<HTMLElement>;
+      if (containerEls.length === 0) return;
+
+      const savedWrapperStyles: string[] = [];
+      wrapperEls.forEach((el) => { savedWrapperStyles.push(el.style.cssText); el.style.opacity = '1'; el.style.filter = 'none'; el.style.transform = 'none'; });
+      const savedContainerStyles: string[] = [];
+      containerEls.forEach((el) => { savedContainerStyles.push(el.style.cssText); el.style.boxShadow = 'none'; el.style.borderRadius = '0'; (el as any).style.outline = 'none'; });
+
+      let pdf: jsPDF | null = null;
+      try {
+        for (let i = 0; i < containerEls.length; i++) {
+          const el = containerEls[i];
+          const page = pages[i];
+          const isLandscape = page.orientation === 'landscape';
+          const format = page.pageSize === 'F4' ? [215, 330] as [number, number] : page.pageSize === 'Letter' ? 'letter' as const : 'a4' as const;
+          const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowWidth: el.scrollWidth, windowHeight: el.scrollHeight });
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          if (i === 0) { pdf = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format }); }
+          else { pdf!.addPage(format, isLandscape ? 'landscape' : 'portrait'); }
+          const pdfW = pdf!.internal.pageSize.getWidth();
+          const pdfH = pdf!.internal.pageSize.getHeight();
+          const cA = canvas.width / canvas.height;
+          const pA = pdfW / pdfH;
+          let iW = pdfW, iH = pdfH, iX = 0, iY = 0;
+          if (cA > pA) { iH = pdfW / cA; } else { iW = pdfH * cA; iX = (pdfW - iW) / 2; }
+          pdf!.addImage(imgData, 'JPEG', iX, iY, iW, iH);
+        }
+
+        const rndCode = (Math.random().toString(36).substring(2, 8) + Math.random().toString(36).substring(2, 4)).toUpperCase();
+        const fileName = `RPT-${rndCode}.pdf`;
+        const pdfBlob = pdf!.output('blob');
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+        // Coba Web Share API (kirim file langsung ke email app)
+        if (navigator.canShare?.({ files: [pdfFile] })) {
+          await navigator.share({
+            files: [pdfFile],
+            title: `Laporan ${activePage.examType === 'mikroskop' ? 'Mikroskop' : 'Endoskopi'}`,
+          });
+        } else {
+          // Fallback: download PDF lalu buka email
+          pdf!.save(fileName);
+          const examLabel = activePage.examType === 'mikroskop' ? 'Mikroskop' : 'Endoskopi';
+          const subject = encodeURIComponent(`Laporan ${examLabel} - ${session.date.toLocaleDateString('id-ID')}`);
+          const body = encodeURIComponent(`Yth. Sejawat,\n\nTerlampir laporan ${examLabel.toLowerCase()}.\n\nSalam,\n${userProfile.name}`);
+          window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        }
+      } finally {
+        wrapperEls.forEach((el, i) => { el.style.cssText = savedWrapperStyles[i]; });
+        containerEls.forEach((el, i) => { el.style.cssText = savedContainerStyles[i]; });
+      }
+    } catch (err) {
+      console.error('Email share error:', err);
+    } finally {
+      document.documentElement.style.zoom = savedZoom;
+      setIsSaving(false);
+    }
   };
 
-  const handleWhatsApp = () => {
-    const examLabel = activePage.examType === 'mikroskop' ? 'Mikroskop' : 'Endoskopi';
-    const procedures = session.patient.procedures?.join(', ') || '-';
-    const diagnosis = session.patient.diagnosis || '-';
-    const text = encodeURIComponent(
-      `Yth. Sejawat,\n\n` +
-      `Berikut ringkasan laporan ${examLabel.toLowerCase()}:\n\n` +
-      `*INFORMASI PASIEN*\n` +
-      `Nama Pasien : *${session.patient.name}*\n` +
-      `No. RM : ${session.patient.rmNumber}\n` +
-      `Tanggal : ${session.date.toLocaleDateString('id-ID')}\n` +
-      `Operator : ${session.patient.operator}\n` +
-      `Perujuk : ${session.patient.referringDoctor || '-'}\n\n` +
-      `*HASIL PEMERIKSAAN*\n` +
-      `Prosedur : ${procedures}\n` +
-      `Diagnosis : ${diagnosis}\n` +
-      `Jumlah Foto : ${session.captures.filter(c => c.type === 'image').length}\n` +
-      `Jumlah Video : ${session.captures.filter(c => c.type === 'video').length}\n\n` +
-      `Laporan lengkap beserta dokumentasi foto terlampir.\n\n` +
-      `Salam,\n${userProfile.name}`
-    );
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+  const handleWhatsApp = async () => {
+    if (!printAreaRef.current) return;
+
+    // Generate PDF dulu
+    setIsSaving(true);
+    const savedZoom = document.documentElement.style.zoom;
+    document.documentElement.style.zoom = '1';
+    await new Promise(r => setTimeout(r, 100));
+
+    try {
+      const wrapperEls = printAreaRef.current.querySelectorAll('.print-page-wrapper') as NodeListOf<HTMLElement>;
+      const containerEls = printAreaRef.current.querySelectorAll('.print-container') as NodeListOf<HTMLElement>;
+      if (containerEls.length === 0) return;
+
+      const savedWrapperStyles: string[] = [];
+      wrapperEls.forEach((el) => {
+        savedWrapperStyles.push(el.style.cssText);
+        el.style.opacity = '1';
+        el.style.filter = 'none';
+        el.style.transform = 'none';
+      });
+      const savedContainerStyles: string[] = [];
+      containerEls.forEach((el) => {
+        savedContainerStyles.push(el.style.cssText);
+        el.style.boxShadow = 'none';
+        el.style.borderRadius = '0';
+        (el as any).style.outline = 'none';
+      });
+
+      let pdf: jsPDF | null = null;
+      try {
+        for (let i = 0; i < containerEls.length; i++) {
+          const el = containerEls[i];
+          const page = pages[i];
+          const isLandscape = page.orientation === 'landscape';
+          const format = page.pageSize === 'F4' ? [215, 330] as [number, number] : page.pageSize === 'Letter' ? 'letter' as const : 'a4' as const;
+          const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowWidth: el.scrollWidth, windowHeight: el.scrollHeight });
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          if (i === 0) { pdf = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format }); }
+          else { pdf!.addPage(format, isLandscape ? 'landscape' : 'portrait'); }
+          const pdfW = pdf!.internal.pageSize.getWidth();
+          const pdfH = pdf!.internal.pageSize.getHeight();
+          const cA = canvas.width / canvas.height;
+          const pA = pdfW / pdfH;
+          let iW = pdfW, iH = pdfH, iX = 0, iY = 0;
+          if (cA > pA) { iH = pdfW / cA; } else { iW = pdfH * cA; iX = (pdfW - iW) / 2; }
+          pdf!.addImage(imgData, 'JPEG', iX, iY, iW, iH);
+        }
+
+        const rndCode = (Math.random().toString(36).substring(2, 8) + Math.random().toString(36).substring(2, 4)).toUpperCase();
+        const fileName = `RPT-${rndCode}.pdf`;
+
+        // Buat File object dari PDF
+        const pdfBlob = pdf!.output('blob');
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+        // Coba Web Share API (kirim file langsung ke WhatsApp)
+        if (navigator.canShare?.({ files: [pdfFile] })) {
+          await navigator.share({ files: [pdfFile] });
+        } else {
+          // Fallback: simpan PDF lalu buka WhatsApp
+          pdf!.save(fileName);
+          window.open('https://web.whatsapp.com/', '_blank');
+        }
+      } finally {
+        wrapperEls.forEach((el, i) => { el.style.cssText = savedWrapperStyles[i]; });
+        containerEls.forEach((el, i) => { el.style.cssText = savedContainerStyles[i]; });
+      }
+    } catch (err) {
+      console.error('WhatsApp share error:', err);
+    } finally {
+      document.documentElement.style.zoom = savedZoom;
+      setIsSaving(false);
+    }
+  };
+
+  const [savingReport, setSavingReport] = useState(false);
+
+  const handleSaveReportSnapshot = async () => {
+    if (!printAreaRef.current || savingReport) return;
+    setSavingReport(true);
+
+    const savedZoom = document.documentElement.style.zoom;
+    document.documentElement.style.zoom = '1';
+    await new Promise(r => setTimeout(r, 100));
+
+    try {
+      const containerEls = printAreaRef.current.querySelectorAll('.print-container') as NodeListOf<HTMLElement>;
+      const wrapperEls = printAreaRef.current.querySelectorAll('.print-page-wrapper') as NodeListOf<HTMLElement>;
+      if (containerEls.length === 0) return;
+
+      const savedWrapperStyles: string[] = [];
+      wrapperEls.forEach((el) => { savedWrapperStyles.push(el.style.cssText); el.style.opacity = '1'; el.style.filter = 'none'; el.style.transform = 'none'; });
+      const savedContainerStyles: string[] = [];
+      containerEls.forEach((el) => { savedContainerStyles.push(el.style.cssText); el.style.boxShadow = 'none'; el.style.borderRadius = '0'; (el as any).style.outline = 'none'; });
+
+      let pdf: jsPDF | null = null;
+      try {
+        for (let i = 0; i < containerEls.length; i++) {
+          const el = containerEls[i];
+          const page = pages[i];
+          const isLandscape = page.orientation === 'landscape';
+          const format = page.pageSize === 'F4' ? [215, 330] as [number, number] : page.pageSize === 'Letter' ? 'letter' as const : 'a4' as const;
+          const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowWidth: el.scrollWidth, windowHeight: el.scrollHeight });
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          if (i === 0) { pdf = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format }); }
+          else { pdf!.addPage(format, isLandscape ? 'landscape' : 'portrait'); }
+          const pdfW = pdf!.internal.pageSize.getWidth();
+          const pdfH = pdf!.internal.pageSize.getHeight();
+          const cA = canvas.width / canvas.height;
+          const pA = pdfW / pdfH;
+          let iW = pdfW, iH = pdfH, iX = 0, iY = 0;
+          if (cA > pA) { iH = pdfW / cA; } else { iW = pdfH * cA; iX = (pdfW - iW) / 2; }
+          pdf!.addImage(imgData, 'JPEG', iX, iY, iW, iH);
+        }
+
+        if (pdf) {
+          const pdfDataUrl = pdf.output('datauristring');
+          const reportSnapshot: SavedReport = {
+            id: `rpt_${Date.now()}`,
+            savedAt: new Date().toISOString(),
+            pdfDataUrl,
+            pageConfig: pages.map(p => ({ ...p })),
+            hospitalName: selectedHospital?.name || null,
+          };
+
+          // Tambahkan ke session.savedReports (append, bukan replace — history versioning)
+          const existingReports: SavedReport[] = (session as any).savedReports || [];
+          const updatedSession = {
+            ...session,
+            savedReports: [...existingReports, reportSnapshot],
+          };
+          onUpdateSession?.(updatedSession as Session);
+          // Navigate ke profil pasien setelah simpan
+          onBack();
+        }
+      } finally {
+        wrapperEls.forEach((el, i) => { el.style.cssText = savedWrapperStyles[i]; });
+        containerEls.forEach((el, i) => { el.style.cssText = savedContainerStyles[i]; });
+      }
+    } catch (err) {
+      console.error('Save report snapshot error:', err);
+    } finally {
+      document.documentElement.style.zoom = savedZoom;
+      setSavingReport(false);
+    }
   };
 
   const images = session.captures.filter(c => c.type === 'image');
@@ -362,6 +595,9 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
           margin: 0;
         }
         @media print {
+          html {
+            zoom: 1 !important;
+          }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
@@ -374,7 +610,13 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          #root, #root > *, #root > * > * {
+          #root > * > * > aside,
+          header,
+          .print-hide,
+          nav {
+            display: none !important;
+          }
+          #root, #root > *, #root > * > *, #root > * > * > * {
             overflow: visible !important;
             height: auto !important;
             display: block !important;
@@ -382,9 +624,9 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             background: transparent !important;
             padding: 0 !important;
             margin: 0 !important;
-          }
-          .print-hide {
-            display: none !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: none !important;
           }
           #print-area-wrapper {
             display: block !important;
@@ -405,110 +647,57 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             display: block !important;
             margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
           }
-          .print-container { 
+          .print-container {
             width: 100% !important;
             max-width: 100% !important;
             height: 100vh !important;
-            box-shadow: none !important; 
+            max-height: 100vh !important;
+            box-shadow: none !important;
             border-radius: 0 !important;
-            margin: 0 !important; 
-            padding: 10mm !important; 
+            margin: 0 !important;
+            padding: 0 !important;
             page-break-after: always;
             page-break-inside: avoid;
+            break-inside: avoid;
             background: white !important;
             color: black !important;
-            opacity: 1 !important;
-            filter: none !important;
-            transform: none !important;
-            overflow: visible !important;
             display: flex !important;
             flex-direction: column !important;
             box-sizing: border-box !important;
+            overflow: hidden !important;
+          }
+          .print-photo-card {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          .print-grid {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
           .print-container:last-child {
             page-break-after: auto;
-          }
-          .print-container * {
-            line-height: 1.2 !important;
           }
           .print-header {
             margin-bottom: 3mm !important;
             padding-bottom: 2mm !important;
           }
-          .print-section-title {
-            font-size: 12pt !important;
-            margin-bottom: 2mm !important;
+          .print-section {
+            break-inside: avoid;
           }
           .print-grid {
             gap: 2mm !important;
           }
-          .print-patient-info {
-            margin-bottom: 4mm !important;
-            padding: 3mm !important;
-          }
-          .print-grid img {
-            max-width: 100% !important;
-            height: auto !important;
-          }
-          .print-photo-card img {
-            break-inside: avoid;
-          }
-          .print-section {
-            break-inside: avoid;
-          }
         }
       `}} />
 
-      {/* Header */}
-      <header className="print:hidden print-hide" style={{
-        backgroundColor: '#ffffff', borderBottom: '1px solid #E2E8F0',
-        padding: '0 24px', height: 64, display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', flexShrink: 0, position: 'relative', zIndex: 50,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button
-            onClick={onBack}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', border: '1px solid #E2E8F0', borderRadius: 10,
-              backgroundColor: '#ffffff', color: '#0C1E35', cursor: 'pointer',
-              fontSize: 12, fontWeight: 700, transition: 'all 150ms',
-              fontFamily: 'Outfit, sans-serif',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.borderColor = '#0C1E35'; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
-          >
-            <ChevronLeft style={{ width: 16, height: 16 }} />
-            Kembali
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontWeight: 700, fontSize: 15, color: '#0C1E35' }}>{session.patient.name}</span>
-            <span style={{
-              padding: '3px 10px', backgroundColor: '#F1F5F9', borderRadius: 6,
-              fontSize: 11, fontWeight: 600, color: '#64748B',
-            }}>
-              {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </span>
-          </div>
-        </div>
-
-        <button
-          onClick={handlePrint}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 20px', backgroundColor: '#0C1E35', color: '#ffffff',
-            border: 'none', borderRadius: 12, fontSize: 13, fontWeight: 700,
-            cursor: 'pointer', transition: 'background-color 150ms',
-            fontFamily: 'Outfit, sans-serif',
-          }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a3a5c'}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0C1E35'}
-        >
-          <Printer style={{ width: 16, height: 16 }} />
-          Cetak / PDF
-        </button>
-      </header>
+      {/* Session Flow Navigation */}
+      <SessionFlowNav
+        currentStep="report-generator"
+        onBack={onBack}
+        backLabel="Kembali"
+      />
 
       {/* Page Tabs */}
       <div className="print:hidden print-hide" style={{
@@ -559,275 +748,243 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
 
       {/* Main layout */}
       <div className="print:overflow-visible print:block" style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 10 }}>
-        {/* Left Settings Panel */}
+        {/* Left Settings Panel — Redesigned */}
         <div className="print:hidden print-hide custom-scrollbar" style={{
-          width: 288, backgroundColor: '#ffffff', borderRight: '1px solid #E2E8F0',
-          padding: 20, overflowY: 'auto', flexShrink: 0,
-          display: 'flex', flexDirection: 'column', gap: 20,
+          width: 300, backgroundColor: '#ffffff', borderRight: '1px solid #E8ECF1',
+          overflowY: 'auto', flexShrink: 0,
+          display: 'flex', flexDirection: 'column',
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}>
-          {/* Page Name */}
-          <div>
-            <div style={sectionLabelStyle}>Nama Halaman</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-              <input
-                type="text"
-                value={activePage.name}
-                onChange={(e) => updateActivePage({ name: e.target.value })}
-                style={{
-                  flex: 1, minWidth: 0, padding: '10px 14px', backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13,
-                  color: '#0C1E35', outline: 'none',
-                  fontFamily: 'Plus Jakarta Sans, sans-serif',
-                  transition: 'border-color 150ms',
-                }}
-                onFocus={e => e.currentTarget.style.borderColor = '#0C1E35'}
-                onBlur={e => e.currentTarget.style.borderColor = '#E2E8F0'}
-              />
-              {pages.length > 1 && (
-                <button
-                  onClick={() => handleDeletePage(activePageId)}
-                  style={{
-                    padding: '0 12px', backgroundColor: '#FEF2F2', color: '#DC2626',
-                    border: '1px solid #FECACA', borderRadius: 12, fontSize: 11,
-                    fontWeight: 700, cursor: 'pointer', transition: 'all 150ms',
-                    fontFamily: 'Outfit, sans-serif',
-                    flexShrink: 0, whiteSpace: 'nowrap',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#EF4444'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; }}
-                >
-                  <Trash2 style={{ width: 14, height: 14 }} />
-                </button>
+
+          {/* ① PENGATURAN DOKUMEN */}
+          <div style={{ padding: '16px 18px', borderBottom: '1px solid #F1F5F9' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Pengaturan Dokumen</p>
+
+            {/* Kop Surat */}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 4, display: 'block' }}>Kop Surat</label>
+              {isEnterprise ? (
+                selectedHospital ? (
+                  <div style={{ padding: '8px 12px', backgroundColor: '#F4F6F8', borderRadius: 10, border: '1px solid #E8ECF1' }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: '#0C1E35', margin: 0 }}>{selectedHospital.name}</p>
+                  </div>
+                ) : (
+                  <div style={{ padding: '8px 12px', backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <AlertTriangle style={{ width: 12, height: 12, color: '#F59E0B' }} />
+                    <p style={{ fontSize: 11, color: '#92400E', margin: 0 }}>Belum dikonfigurasi</p>
+                  </div>
+                )
+              ) : hospitalSettingsList.length > 0 ? (
+                <div style={{ position: 'relative' }}>
+                  <select
+                    value={selectedHospital?.id || ''}
+                    onChange={(e) => { const h = hospitalSettingsList.find(h => h.id === e.target.value); if (h) setSelectedHospital(h); }}
+                    style={{ width: '100%', padding: '8px 12px', backgroundColor: '#F4F6F8', border: '1px solid #E8ECF1', borderRadius: 10, fontSize: 12, fontWeight: 600, color: '#0C1E35', outline: 'none', cursor: 'pointer', appearance: 'none' as const, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  >
+                    {hospitalSettingsList.map(h => (
+                      <option key={h.id} value={h.id}>{h.name || 'Kop Surat'}</option>
+                    ))}
+                  </select>
+                  <ChevronRight style={{ width: 12, height: 12, color: '#94A3B8', position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%) rotate(90deg)', pointerEvents: 'none' }} />
+                </div>
+              ) : (
+                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic' }}>Belum ada kop surat</p>
               )}
             </div>
-          </div>
 
-          {/* Report Type */}
-          <div>
-            <div style={sectionLabelStyle}>Jenis Laporan</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['clinical', 'academic'] as const).map(t => (
-                <button key={t} onClick={() => updateActivePage({ reportType: t })} style={pillBtn(activePage.reportType === t)}>
-                  {t === 'clinical' ? 'Klinis' : 'Akademik'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Layout */}
-          <div>
-            <div style={sectionLabelStyle}>Layout</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {(['standard', 'beforeAfter', 'rightLeft'] as const).map(l => (
-                <button key={l} onClick={() => updateActivePage({ reportLayout: l })} style={{
-                  ...pillBtn(activePage.reportLayout === l),
-                  flex: 'none', display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '10px 14px', textAlign: 'left' as const,
-                }}>
-                  {l === 'standard' && <Grid style={{ width: 14, height: 14 }} />}
-                  {l === 'beforeAfter' && <Columns style={{ width: 14, height: 14 }} />}
-                  {l === 'rightLeft' && <Layout style={{ width: 14, height: 14 }} />}
-                  {l === 'standard' ? 'Standar' : l === 'beforeAfter' ? 'Before-After' : 'Kiri-Kanan'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Exam Type */}
-          <div>
-            <div style={sectionLabelStyle}>Jenis Pemeriksaan</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['endoskopi', 'mikroskop'] as const).map(t => (
-                <button key={t} onClick={() => updateActivePage({ examType: t })} style={pillBtn(activePage.examType === t)}>
-                  {t === 'endoskopi' ? 'Endoskopi' : 'Mikroskop'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Paper Size */}
-          <div>
-            <div style={sectionLabelStyle}>Ukuran Kertas</div>
-            <div style={{ position: 'relative' }}>
-              <select
-                value={activePage.pageSize}
-                onChange={(e) => updateActivePage({ pageSize: e.target.value as 'A4' | 'F4' | 'Letter' })}
-                style={{
-                  width: '100%', padding: '10px 14px', backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13,
-                  fontWeight: 600, color: '#0C1E35', outline: 'none', cursor: 'pointer',
-                  appearance: 'none' as const,
-                  fontFamily: 'Plus Jakarta Sans, sans-serif',
-                }}
-              >
-                <option value="A4">A4 (210 x 297 mm)</option>
-                <option value="F4">F4 / Folio (215 x 330 mm)</option>
-                <option value="Letter">Letter (216 x 279 mm)</option>
-              </select>
-              <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-                <ChevronRight style={{ width: 14, height: 14, color: '#94A3B8', transform: 'rotate(90deg)' }} />
+            {/* Kertas + Orientasi — 1 baris */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 4, display: 'block' }}>Kertas</label>
+                <select
+                  value={activePage.pageSize}
+                  onChange={(e) => updateActivePage({ pageSize: e.target.value as 'A4' | 'F4' | 'Letter' })}
+                  style={{ width: '100%', padding: '8px 10px', backgroundColor: '#F4F6F8', border: '1px solid #E8ECF1', borderRadius: 10, fontSize: 11, fontWeight: 600, color: '#0C1E35', outline: 'none', cursor: 'pointer', appearance: 'none' as const, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  <option value="A4">A4</option>
+                  <option value="F4">F4 / Folio</option>
+                  <option value="Letter">Letter</option>
+                    </select>
+                    <ChevronRight style={{ width: 12, height: 12, color: '#94A3B8', position: 'absolute', right: 10, bottom: 11, transform: 'rotate(90deg)', pointerEvents: 'none' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 4, display: 'block' }}>Orientasi</label>
+                <div style={{ display: 'flex', borderRadius: 10, border: '1px solid #E8ECF1', overflow: 'hidden' }}>
+                  {(['portrait', 'landscape'] as const).map(o => (
+                    <button key={o} onClick={() => updateActivePage({ orientation: o })} style={{
+                      flex: 1, padding: '7px 0', fontSize: 10, fontWeight: 700, border: 'none', cursor: 'pointer',
+                      backgroundColor: activePage.orientation === o ? '#0C1E35' : '#F4F6F8',
+                      color: activePage.orientation === o ? '#fff' : '#64748B',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif", transition: 'all 150ms',
+                    }}>
+                      {o === 'portrait' ? 'Portrait' : 'Landscape'}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Orientation */}
-          <div>
-            <div style={sectionLabelStyle}>Orientasi</div>
+            {/* Jenis Laporan + Layout — 1 baris */}
             <div style={{ display: 'flex', gap: 8 }}>
-              {(['portrait', 'landscape'] as const).map(o => (
-                <button key={o} onClick={() => updateActivePage({ orientation: o })} style={pillBtn(activePage.orientation === o)}>
-                  {o === 'portrait' ? 'Portrait' : 'Landscape'}
-                </button>
-              ))}
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 4, display: 'block' }}>Jenis</label>
+                <div style={{ display: 'flex', borderRadius: 10, border: '1px solid #E8ECF1', overflow: 'hidden' }}>
+                  {(['clinical', 'academic'] as const).map(t => (
+                    <button key={t} onClick={() => updateActivePage({ reportType: t })} style={{
+                      flex: 1, padding: '7px 0', fontSize: 10, fontWeight: 700, border: 'none', cursor: 'pointer',
+                      backgroundColor: activePage.reportType === t ? '#0C1E35' : '#F4F6F8',
+                      color: activePage.reportType === t ? '#fff' : '#64748B',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif", transition: 'all 150ms',
+                    }}>
+                      {t === 'clinical' ? 'Klinis' : 'Akademik'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 4, display: 'block' }}>Layout</label>
+                <select
+                  value={activePage.reportLayout}
+                  onChange={(e) => updateActivePage({ reportLayout: e.target.value as any })}
+                  style={{ width: '100%', padding: '8px 10px', backgroundColor: '#F4F6F8', border: '1px solid #E8ECF1', borderRadius: 10, fontSize: 11, fontWeight: 600, color: '#0C1E35', outline: 'none', cursor: 'pointer', appearance: 'none' as const, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
+                  <option value="standard">Standar</option>
+                  <option value="beforeAfter">Before-After</option>
+                  <option value="rightLeft">Kiri-Kanan</option>
+                      </select>
+                      <ChevronRight style={{ width: 12, height: 12, color: '#94A3B8', position: 'absolute', right: 10, bottom: 11, transform: 'rotate(90deg)', pointerEvents: 'none' }} />
+                    </div>
+                  </div>
+
+                  {/* Jenis Pemeriksaan */}
+            <div style={{ marginTop: 12, position: 'relative' }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 4, display: 'block' }}>Pemeriksaan / Tindakan</label>
+              <select
+                value={activePage.examType}
+                onChange={(e) => updateActivePage({ examType: e.target.value as 'endoskopi' | 'mikroskop' })}
+                style={{ width: '100%', padding: '8px 10px', backgroundColor: '#F4F6F8', border: '1px solid #E8ECF1', borderRadius: 10, fontSize: 11, fontWeight: 600, color: '#0C1E35', outline: 'none', cursor: 'pointer', appearance: 'none' as const, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              >
+                <option value="endoskopi">Endoskopi</option>
+                <option value="mikroskop">Mikroskop</option>
+              </select>
+              <ChevronRight style={{ width: 12, height: 12, color: '#94A3B8', position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%) rotate(90deg)', pointerEvents: 'none', marginTop: 10 }} />
             </div>
           </div>
 
-          {/* Kop Surat */}
-          <div>
-            <div style={sectionLabelStyle}>Kop Surat</div>
-            {isEnterprise ? (
-              <>
-                {selectedHospital ? (
-                  <div style={{ padding: 14, backgroundColor: '#F8FAFC', borderRadius: 12, border: '1px solid #E2E8F0' }}>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35' }}>{selectedHospital.name}</p>
-                    {selectedHospital.address && <p style={{ fontSize: 11, color: '#64748B', marginTop: 4 }}>{selectedHospital.address}</p>}
-                  </div>
-                ) : (
-                  <div style={{ padding: 14, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <AlertTriangle style={{ width: 14, height: 14, color: '#F59E0B', flexShrink: 0 }} />
-                    <p style={{ fontSize: 12, color: '#92400E' }}>Kop surat belum dikonfigurasi oleh Admin Institusi.</p>
-                  </div>
-                )}
-                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginTop: 8 }}>Kop surat dikunci oleh institusi Anda.</p>
-              </>
-            ) : (
-              <>
-                {hospitalSettingsList.length > 0 ? (
-                  <div style={{ position: 'relative' }}>
-                    <select
-                      value={selectedHospital?.id || ''}
-                      onChange={(e) => {
-                        const hospital = hospitalSettingsList.find(h => h.id === e.target.value);
-                        if (hospital) setSelectedHospital(hospital);
-                      }}
-                      style={{
-                        width: '100%', padding: '10px 14px', backgroundColor: '#F8FAFC',
-                        border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13,
-                        color: '#0C1E35', outline: 'none', cursor: 'pointer',
-                        appearance: 'none' as const,
-                      }}
-                    >
-                      {hospitalSettingsList.map(h => (
-                        <option key={h.id} value={h.id}>{h.name || 'Kop Surat'}</option>
-                      ))}
-                    </select>
-                    <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-                      <ChevronRight style={{ width: 14, height: 14, color: '#94A3B8', transform: 'rotate(90deg)' }} />
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ padding: 14, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <AlertTriangle style={{ width: 14, height: 14, color: '#F59E0B', flexShrink: 0 }} />
-                    <p style={{ fontSize: 12, color: '#92400E' }}>Belum ada kop surat. Tambahkan di Settings → Kop Surat.</p>
-                  </div>
-                )}
-                <p style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic', marginTop: 8 }}>Pilih kop surat untuk laporan.</p>
-              </>
-            )}
-          </div>
+          {/* ② FOTO & VIDEO */}
+          <div style={{ padding: '16px 18px', borderBottom: '1px solid #F1F5F9' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Foto & Video</p>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#0D9488' }}>{activePage.selectedPhotos.length}/9</span>
+            </div>
 
-          {/* Photos */}
-          <div>
-            <div style={sectionLabelStyle}>Foto <span style={{ color: '#3B82F6', marginLeft: 4 }}>({activePage.selectedPhotos.length}/9)</span></div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-              {images.map(img => {
-                const isSelected = !!activePage.selectedPhotos.find(p => p.id === img.id);
+            {/* Filter tabs */}
+            <div style={{ display: 'flex', borderBottom: '1.5px solid #E8ECF1', marginBottom: 10 }}>
+              {([
+                { key: 'all' as const, label: 'Semua', count: images.length + videos.length },
+                { key: 'photos' as const, label: 'Foto', count: images.length },
+                { key: 'videos' as const, label: 'Video', count: videos.length },
+              ]).map(f => (
+                <button key={f.key} onClick={() => setMediaFilter(f.key)} style={{
+                  flex: 1, padding: '6px 0', fontSize: 10, fontWeight: mediaFilter === f.key ? 700 : 500,
+                  border: 'none', borderBottom: mediaFilter === f.key ? '2px solid #0D9488' : '2px solid transparent',
+                  cursor: 'pointer', backgroundColor: 'transparent', marginBottom: '-1.5px',
+                  color: mediaFilter === f.key ? '#0C1E35' : '#94A3B8', fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}>
+                  {f.label} <span style={{ fontSize: 9, marginLeft: 2 }}>{f.count}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Media grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+              {(mediaFilter === 'videos' ? videos : mediaFilter === 'photos' ? images : [...images, ...videos]).map(item => {
+                const isPhoto = item.type === 'image';
+                const isSelected = isPhoto
+                  ? !!activePage.selectedPhotos.find(p => p.id === item.id)
+                  : !!activePage.selectedVideos.find(p => p.id === item.id);
                 return (
                   <div
-                    key={img.id}
-                    onClick={() => handlePhotoSelect(img)}
+                    key={item.id}
+                    onClick={() => isPhoto ? handlePhotoSelect(item) : handleVideoSelect(item)}
                     style={{
-                      position: 'relative', aspectRatio: '16/9', borderRadius: 8,
+                      position: 'relative', aspectRatio: '1', borderRadius: 8,
                       overflow: 'hidden', cursor: 'pointer',
-                      border: isSelected ? '2px solid #0C1E35' : '2px solid transparent',
+                      border: isSelected ? '2px solid #0D9488' : '2px solid transparent',
                       transition: 'border-color 150ms',
                     }}
-                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderColor = '#94A3B8'; }}
-                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderColor = 'transparent'; }}
                   >
-                    <img src={img.url} alt="Capture" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    {isSelected && (
-                      <div style={{
-                        position: 'absolute', top: 4, right: 4,
-                        width: 20, height: 20, borderRadius: '50%',
-                        backgroundColor: '#0C1E35', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <CheckCircle2 style={{ width: 14, height: 14, color: '#ffffff' }} />
+                    {isPhoto ? (
+                      <img src={item.dataUrl || item.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : item.thumbnail ? (
+                      <img src={item.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #0f1623, #1a2a3f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Video style={{ width: 16, height: 16, color: 'rgba(255,255,255,0.4)' }} />
+                      </div>
+                    )}
+                    {isSelected && (() => {
+                      const orderIndex = isPhoto
+                        ? activePage.selectedPhotos.findIndex(p => p.id === item.id) + 1
+                        : activePage.selectedVideos.findIndex(p => p.id === item.id) + 1;
+                      return (
+                        <div style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', backgroundColor: '#0D9488', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: '#fff', lineHeight: 1 }}>{orderIndex}</span>
+                        </div>
+                      );
+                    })()}
+                    {!isPhoto && (
+                      <div style={{ position: 'absolute', bottom: 2, left: 2, padding: '1px 4px', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 3 }}>
+                        <span style={{ fontSize: 8, color: '#fff', fontWeight: 600 }}>VID</span>
                       </div>
                     )}
                   </div>
                 );
               })}
-              {images.length === 0 && (
-                <div style={{
-                  gridColumn: 'span 3', padding: 24, textAlign: 'center',
-                  backgroundColor: '#F8FAFC', borderRadius: 12,
-                  border: '1px dashed #CBD5E1',
-                }}>
-                  <FileImage style={{ width: 24, height: 24, margin: '0 auto 8px', color: '#CBD5E1' }} />
-                  <p style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Tidak ada foto di sesi ini</p>
+              {images.length === 0 && videos.length === 0 && (
+                <div style={{ gridColumn: 'span 3', padding: 20, textAlign: 'center', backgroundColor: '#F4F6F8', borderRadius: 10, border: '1px dashed #CBD5E1' }}>
+                  <Camera style={{ width: 20, height: 20, margin: '0 auto 6px', color: '#CBD5E1', display: 'block' }} />
+                  <p style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Tidak ada media</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Photo Captions */}
+          {/* ③ KETERANGAN FOTO */}
           {activePage.selectedPhotos.length > 0 && (
-            <div>
-              <div style={sectionLabelStyle}>Keterangan Foto</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid #F1F5F9' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Keterangan Foto</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {activePage.selectedPhotos.map((photo, idx) => (
                   <div key={photo.id}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 6, overflow: 'hidden', border: '1px solid #E2E8F0' }}>
-                          <img src={photo.url} alt="Thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 6, overflow: 'hidden', border: '1px solid #E8ECF1', flexShrink: 0 }}>
+                          <img src={photo.dataUrl || photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#0C1E35' }}>Foto #{idx + 1}</span>
                       </div>
-                      <button
-                        onClick={() => setEditingPhoto(photo)}
-                        style={{
-                          fontSize: 11, fontWeight: 700, color: '#3B82F6',
-                          backgroundColor: '#EFF6FF', border: '1px solid #DBEAFE',
-                          borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          transition: 'all 150ms',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#0C1E35'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#0C1E35'; }}
-                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#EFF6FF'; e.currentTarget.style.color = '#3B82F6'; e.currentTarget.style.borderColor = '#DBEAFE'; }}
-                      >
-                        <Plus style={{ width: 12, height: 12 }} /> Marker
+                      <button onClick={() => setEditingPhoto(photo)} style={{
+                        fontSize: 10, fontWeight: 700, color: '#0D9488', backgroundColor: '#E6F7F5',
+                        border: '1px solid #B2DFDB', borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 3, fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      }}>
+                        <Plus style={{ width: 10, height: 10 }} /> Marker
                       </button>
                     </div>
                     <textarea
                       value={activePage.photoCaptions[photo.id] || ''}
-                      onChange={(e) => {
-                        const newCaptions = { ...activePage.photoCaptions, [photo.id]: e.target.value };
-                        updateActivePage({ photoCaptions: newCaptions });
-                      }}
+                      onChange={(e) => updateActivePage({ photoCaptions: { ...activePage.photoCaptions, [photo.id]: e.target.value } })}
                       placeholder="Keterangan foto..."
+                      rows={2}
                       style={{
-                        width: '100%', padding: 10, backgroundColor: '#F8FAFC',
-                        border: '1px solid #E2E8F0', borderRadius: 10, fontSize: 12,
+                        width: '100%', padding: '8px 10px', backgroundColor: '#F4F6F8',
+                        border: '1px solid #E8ECF1', borderRadius: 8, fontSize: 11,
                         color: '#0C1E35', outline: 'none', resize: 'vertical' as const,
-                        minHeight: 60, fontFamily: 'Plus Jakarta Sans, sans-serif',
-                        transition: 'border-color 150ms',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif", transition: 'border-color 150ms',
                       }}
-                      onFocus={e => e.currentTarget.style.borderColor = '#0C1E35'}
-                      onBlur={e => e.currentTarget.style.borderColor = '#E2E8F0'}
+                      onFocus={e => e.currentTarget.style.borderColor = '#0D9488'}
+                      onBlur={e => e.currentTarget.style.borderColor = '#E8ECF1'}
                     />
                   </div>
                 ))}
@@ -835,120 +992,112 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
             </div>
           )}
 
-          {/* Clinical Notes */}
-          <div>
-            <div style={sectionLabelStyle}>Catatan Klinis</div>
+          {/* ④ CATATAN KLINIS */}
+          <div style={{ padding: '16px 18px', borderBottom: '1px solid #F1F5F9', flex: 1 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Kesimpulan</p>
             <textarea
               value={activePage.clinicalNotes}
               onChange={(e) => updateActivePage({ clinicalNotes: e.target.value })}
-              placeholder="Tambahkan catatan klinis..."
+              placeholder="Tambahkan kesimpulan..."
               style={{
-                width: '100%', padding: 12, backgroundColor: '#F8FAFC',
-                border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13,
+                width: '100%', padding: 10, backgroundColor: '#F4F6F8',
+                border: '1px solid #E8ECF1', borderRadius: 10, fontSize: 12,
                 color: '#0C1E35', outline: 'none', resize: 'vertical' as const,
-                minHeight: 100, fontFamily: 'Plus Jakarta Sans, sans-serif',
+                minHeight: 80, fontFamily: "'Plus Jakarta Sans', sans-serif",
                 transition: 'border-color 150ms',
               }}
-              onFocus={e => e.currentTarget.style.borderColor = '#0C1E35'}
-              onBlur={e => e.currentTarget.style.borderColor = '#E2E8F0'}
+              onFocus={e => e.currentTarget.style.borderColor = '#0D9488'}
+              onBlur={e => e.currentTarget.style.borderColor = '#E8ECF1'}
             />
           </div>
 
-          {/* Action Buttons */}
-          <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <button
-                onClick={handlePrint}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '12px 0', backgroundColor: '#0C1E35', color: '#ffffff',
-                  border: 'none', borderRadius: 12, fontSize: 12, fontWeight: 700,
-                  cursor: 'pointer', transition: 'background-color 150ms',
-                  fontFamily: 'Outfit, sans-serif',
-                }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1a3a5c'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#0C1E35'}
-              >
-                <Printer style={{ width: 14, height: 14 }} /> Cetak
-              </button>
-              <button
-                onClick={handleSavePDF}
-                disabled={isSaving}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '12px 0', backgroundColor: '#6366F1', color: '#ffffff',
-                  border: 'none', borderRadius: 12, fontSize: 12, fontWeight: 700,
-                  cursor: isSaving ? 'not-allowed' : 'pointer', transition: 'background-color 150ms',
-                  opacity: isSaving ? 0.6 : 1, fontFamily: 'Outfit, sans-serif',
-                }}
-                onMouseEnter={e => { if (!isSaving) e.currentTarget.style.backgroundColor = '#4F46E5'; }}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#6366F1'}
-              >
-                {isSaving ? (
-                  <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} />
-                ) : (
-                  <Download style={{ width: 14, height: 14 }} />
-                )}
-                {isSaving ? 'Menyimpan...' : 'Simpan PDF'}
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <button
-                onClick={handleEmail}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '12px 0', backgroundColor: '#F8FAFC', color: '#475569',
-                  border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 12, fontWeight: 700,
-                  cursor: 'pointer', transition: 'all 150ms',
-                  fontFamily: 'Plus Jakarta Sans, sans-serif',
-                }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
-              >
-                <Mail style={{ width: 14, height: 14, color: '#3B82F6' }} /> Email
-              </button>
-              <button
-                onClick={handleWhatsApp}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '12px 0', backgroundColor: '#F8FAFC', color: '#475569',
-                  border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 12, fontWeight: 700,
-                  cursor: 'pointer', transition: 'all 150ms',
-                  fontFamily: 'Plus Jakarta Sans, sans-serif',
-                }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
-              >
-                <MessageCircle style={{ width: 14, height: 14, color: '#10B981' }} /> WhatsApp
-              </button>
-            </div>
-
-            <div style={{
-              padding: 12, backgroundColor: '#FFFBEB', border: '1px solid #FDE68A',
-              borderRadius: 12, marginTop: 4,
+          {/* AKSI */}
+          <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button onClick={handleSaveReportSnapshot} disabled={savingReport} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '13px 0', background: 'linear-gradient(135deg, #0C1E35, #1a3a5c)', color: '#ffffff',
+              border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700,
+              cursor: savingReport ? 'not-allowed' : 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
+              boxShadow: '0 2px 8px rgba(12,30,53,0.25)', opacity: savingReport ? 0.7 : 1,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <AlertTriangle style={{ width: 12, height: 12, color: '#F59E0B' }} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#92400E' }}>Privacy Disclaimer</span>
-              </div>
-              <p style={{ fontSize: 10, color: '#B45309', lineHeight: 1.5 }}>
-                Segala bentuk kebocoran data atau penyalahgunaan informasi medis yang terjadi di luar sistem Aexon adalah sepenuhnya di luar tanggung jawab Aexon.
-              </p>
+              {savingReport ? <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} /> : <Save style={{ width: 15, height: 15 }} />}
+              {savingReport ? 'Menyimpan...' : 'Simpan PDF'}
+            </button>
+            <button onClick={handlePrint} disabled={isSaving} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '12px 0', backgroundColor: '#F4F6F8', color: '#0C1E35',
+              border: '1px solid #E8ECF1', borderRadius: 10, fontSize: 12, fontWeight: 700,
+              cursor: isSaving ? 'not-allowed' : 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
+              opacity: isSaving ? 0.7 : 1,
+            }}>
+              {isSaving ? <Loader2 style={{ width: 15, height: 15, animation: 'spin 1s linear infinite' }} /> : <Printer style={{ width: 15, height: 15 }} />}
+              {isSaving ? 'Mencetak...' : 'Cetak'}
+            </button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <button onClick={handleEmail} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                padding: '10px 0', backgroundColor: '#F4F6F8', color: '#475569',
+                border: '1px solid #E8ECF1', borderRadius: 10, fontSize: 11, fontWeight: 700,
+                cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
+              }}>
+                <Mail style={{ width: 13, height: 13, color: '#3B82F6' }} /> Email
+              </button>
+              <button onClick={handleWhatsApp} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                padding: '10px 0', backgroundColor: '#F4F6F8', color: '#475569',
+                border: '1px solid #E8ECF1', borderRadius: 10, fontSize: 11, fontWeight: 700,
+                cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
+              }}>
+                <MessageCircle style={{ width: 13, height: 13, color: '#10B981' }} /> WhatsApp
+              </button>
             </div>
           </div>
         </div>
 
         {/* Right Preview Panel */}
-        <div
-          id="print-area-wrapper"
-          ref={printAreaRef}
-          className="print:p-0 print:bg-white print:block print:overflow-visible custom-scrollbar"
-          style={{
-            flex: 1, backgroundColor: '#E8ECF1', overflowY: 'auto',
-            padding: 40, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', gap: 48,
-          }}
-        >
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Zoom slider bar */}
+          <div className="print-hide" style={{
+            backgroundColor: '#fff', borderBottom: '1px solid #E8ECF1',
+            padding: '8px 24px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>Zoom</span>
+            <button
+              onClick={() => setPreviewZoom(Math.max(0.3, previewZoom - 0.1))}
+              style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4F6F8', border: '1px solid #E8ECF1', borderRadius: 8, cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#475569', fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+            >
+              −
+            </button>
+            <input
+              type="range" min={0.3} max={1.2} step={0.05} value={previewZoom}
+              onChange={(e) => setPreviewZoom(Number(e.target.value))}
+              style={{ width: 100, accentColor: '#0C1E35', height: 4 }}
+            />
+            <button
+              onClick={() => setPreviewZoom(Math.min(1.2, previewZoom + 0.1))}
+              style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4F6F8', border: '1px solid #E8ECF1', borderRadius: 8, cursor: 'pointer', fontSize: 16, fontWeight: 700, color: '#475569', fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+            >
+              +
+            </button>
+            <span style={{ fontSize: 11, color: '#0C1E35', fontWeight: 700, width: 36, fontFamily: 'Plus Jakarta Sans, sans-serif' }}>{Math.round(previewZoom * 100)}%</span>
+            <button
+              onClick={() => setPreviewZoom(0.6)}
+              style={{ fontSize: 10, color: '#94A3B8', background: 'none', border: '1px solid #E8ECF1', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+            >
+              Reset
+            </button>
+          </div>
+
+          <div
+            id="print-area-wrapper"
+            ref={printAreaRef}
+            className="print:p-0 print:bg-white print:block print:overflow-visible custom-scrollbar"
+            style={{
+              flex: 1, backgroundColor: '#E8ECF1', overflowY: 'auto',
+              padding: 40, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: 48,
+            }}
+          >
           {pages.map((page) => {
             const isActive = activePageId === page.id;
             const pageIdx = pages.indexOf(page);
@@ -961,7 +1110,8 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                 transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
                 opacity: isActive ? 1 : 0.25,
                 filter: isActive ? 'none' : 'grayscale(1)',
-                transform: isActive ? 'scale(1)' : 'scale(0.93)',
+                transform: `scale(${isActive ? previewZoom : previewZoom * 0.93})`,
+                transformOrigin: 'top center',
                 cursor: isActive ? 'default' : 'pointer',
               }}
               onClick={() => { if (!isActive) setActivePageId(page.id); }}
@@ -974,205 +1124,192 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                   boxShadow: isActive
                     ? '0 25px 60px rgba(12,30,53,0.18), 0 8px 20px rgba(12,30,53,0.08), 0 0 0 1px rgba(12,30,53,0.04)'
                     : '0 4px 16px rgba(0,0,0,0.06)',
-                  padding: '48px 52px 40px',
                   position: 'relative',
                   display: 'flex',
                   flexDirection: 'column',
-                  overflow: 'hidden',
                   width: getPageDimensions(page).width,
-                  minHeight: getPageDimensions(page).minHeight,
+                  height: getPageDimensions(page).height,
+                  overflow: 'hidden',
                 }}
               >
-                {/* Top accent bar */}
+                {/* Top line accent */}
                 <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, height: 5,
-                  background: 'linear-gradient(90deg, #0C1E35 0%, #1a3a5c 40%, #0C1E35 100%)',
+                  height: 3, flexShrink: 0,
+                  background: '#0C1E35',
+                  borderRadius: '2px 2px 0 0',
                 }} />
 
-                {/* Report Header */}
+                {/* Content area with print-safe margins */}
+                <div style={{ padding: '36px 40px 28px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+                {/* Hospital Header */}
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                  paddingBottom: 16, marginBottom: 16, marginTop: 4,
-                  borderBottom: '2.5px solid #0C1E35',
+                  marginBottom: 16,
                 }} className="print-header">
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {page.reportType === 'clinical' && selectedHospital?.logoUrl && (
-                      <img src={selectedHospital.logoUrl} alt="Hospital Logo" style={{
-                        height: 72, width: 'auto', marginRight: 20, objectFit: 'contain',
-                      }} />
+                <img src={selectedHospital.logoUrl} alt="" style={{
+                  height: 72, width: 'auto', objectFit: 'contain', borderRadius: 6,
+                }} />
                     )}
                     <div>
-                      <div style={{
-                        fontSize: 9, fontWeight: 800, color: 'rgba(12,30,53,0.4)',
-                        textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: 4,
-                      }}>
-                        {page.reportType === 'clinical' ? 'Laporan Medis' : 'Academic Report'}
-                      </div>
-                      <h1 style={{
-                        fontSize: 22, fontWeight: 900, color: '#0C1E35',
-                        letterSpacing: '-0.02em', marginBottom: 6, lineHeight: 1.1,
-                        textTransform: 'uppercase',
-                      }}>
-                        {page.reportType === 'clinical' ? (page.examType === 'mikroskop' ? 'Laporan Mikroskop' : 'Laporan Endoskopi') : 'Academic Case Report'}
-                      </h1>
                       {page.reportType === 'clinical' && selectedHospital ? (
-                        <div>
-                          <p style={{ color: '#0C1E35', fontWeight: 800, fontSize: 14, lineHeight: 1.2 }}>{selectedHospital.name}</p>
-                          <p style={{ color: '#475569', fontSize: 11, marginTop: 3, maxWidth: 340, lineHeight: 1.5 }}>{selectedHospital.address}</p>
-                          <div style={{
-                            display: 'flex', flexWrap: 'wrap', gap: '0 14px',
-                            color: 'rgba(12,30,53,0.5)', fontSize: 8.5, marginTop: 6,
-                            fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
-                          }}>
-                            {selectedHospital.phone && <span>Telp: {selectedHospital.phone}</span>}
-                            {selectedHospital.fax && <span>Fax: {selectedHospital.fax}</span>}
-                            {selectedHospital.website && <span>Web: {selectedHospital.website}</span>}
-                            {selectedHospital.email && <span>Email: {selectedHospital.email}</span>}
+                        <>
+                          <p style={{ fontSize: 12, fontWeight: 800, color: '#0C1E35', margin: 0 }}>{selectedHospital.name}</p>
+                          <p style={{ fontSize: 8, color: '#64748B', margin: '2px 0 0', maxWidth: 300, lineHeight: 1.4 }}>{selectedHospital.address}</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '0 8px', marginTop: 3 }}>
+                            {selectedHospital.phone && <span style={{ fontSize: 7, color: '#94A3B8' }}>Telp: {selectedHospital.phone}</span>}
+                            {selectedHospital.fax && <span style={{ fontSize: 7, color: '#94A3B8' }}>Fax: {selectedHospital.fax}</span>}
+                            {selectedHospital.email && <span style={{ fontSize: 7, color: '#94A3B8' }}>Email: {selectedHospital.email}</span>}
+                            {selectedHospital.website && <span style={{ fontSize: 7, color: '#94A3B8' }}>Web: {selectedHospital.website}</span>}
                           </div>
-                        </div>
+                        </>
                       ) : page.reportType === 'clinical' ? (
-                        <p style={{ color: '#94A3B8', fontSize: 10, marginTop: 2, fontStyle: 'italic' }}>Kop surat belum dikonfigurasi.</p>
+                        <p style={{ fontSize: 10, color: '#94A3B8', fontStyle: 'italic', margin: 0 }}>Kop surat belum dikonfigurasi</p>
                       ) : (
-                        <p style={{ color: 'rgba(12,30,53,0.5)', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.15em' }}>Aexon Medical Documentation</p>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: '#0C1E35', textTransform: 'uppercase' as const, letterSpacing: '0.15em', margin: 0 }}>Aexon Medical Documentation</p>
                       )}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, paddingTop: 2 }}>
-                    <div style={{
-                      backgroundColor: 'rgba(12,30,53,0.04)', borderRadius: 8,
-                      padding: '10px 14px', border: '1px solid rgba(12,30,53,0.06)',
-                    }}>
-                      <p style={{ fontSize: 8, fontWeight: 800, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 4 }}>Waktu Tindakan</p>
-                      <p style={{ fontSize: 12, fontWeight: 800, color: '#0C1E35' }}>
-                        {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                    <p style={{ fontSize: 7, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 2px' }}>
+                      {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    {page.reportType === 'clinical' && (
+                      <p style={{ fontSize: 8, color: '#64748B', margin: 0 }}>
+                        Pukul {session.date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
                       </p>
-                      {page.reportType === 'clinical' && (
-                        <p style={{ fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.6)', marginTop: 2 }}>
-                          Pukul {session.date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
-                        </p>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Patient Data / Redacted Data */}
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(12,30,53,0.025) 0%, rgba(12,30,53,0.04) 100%)',
-                  border: '1px solid rgba(12,30,53,0.08)',
-                  borderRadius: 8, padding: 16, marginBottom: 20,
-                }} className="print-patient-info">
+                {/* Title + Patient Card */}
+                <div style={{ border: '1px solid #E8ECF1', borderRadius: 8, overflow: 'hidden', marginBottom: 14 }} className="print-patient-info">
+                  <div style={{ background: '#0C1E35', padding: '8px 14px' }}>
+                    <p style={{ fontSize: 12, fontWeight: 800, color: '#ffffff', margin: 0, textTransform: 'uppercase' as const }}>
+                      {page.reportType === 'clinical'
+                        ? (page.examType === 'mikroskop' ? 'Laporan Mikroskop' : 'Laporan Endoskopi')
+                        : 'Academic Case Report'}
+                    </p>
+                  </div>
+
                   {page.reportType === 'clinical' ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 20px', fontSize: 12 }}>
-                      {[
-                        { label: 'Nama Pasien', value: session.patient.name },
-                        { label: 'No. Rekam Medis', value: session.patient.rmNumber },
-                        { label: 'Jenis Kelamin', value: session.patient.gender },
-                        { label: 'Tanggal Lahir', value: session.patient.dob },
-                        { label: 'Usia Pasien', value: calculateAge(session.patient.dob) },
-                        { label: 'Kategori / Lokasi', value: session.patient.category },
-                      ].map((item, i) => (
-                        <div key={i}>
-                          <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>{item.label}</span>
-                          <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 13 }}>{item.value}</span>
-                        </div>
-                      ))}
-                      <div style={{ gridColumn: 'span 3', borderTop: '1px solid rgba(12,30,53,0.08)', marginTop: 4, paddingTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <div>
-                          <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Dokter Operator</span>
-                          <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 13 }}>{session.patient.operator}</span>
-                        </div>
-                        <div>
-                          <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Tindakan</span>
-                          <ul style={{ listStyleType: 'disc', paddingLeft: 14, margin: 0, fontWeight: 700, color: '#0C1E35', fontSize: 12 }}>
-                            {session.patient.procedures.filter(p => p).map((p, i) => (
-                              <li key={i}>{p}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div style={{ gridColumn: 'span 2', borderTop: '1px solid rgba(12,30,53,0.06)', paddingTop: 10 }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                            <div>
-                              <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Diagnosis Utama</span>
-                              <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 12 }}>{session.patient.diagnosis || '-'}</span>
+                    <>
+                      <div style={{ padding: '10px 14px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px 14px', fontSize: 10 }}>
+                          {[
+                            { label: 'Nama', value: session.patient.name },
+                            { label: 'No. RM', value: session.patient.rmNumber },
+                            { label: 'JK / Usia', value: `${session.patient.gender === 'Laki-laki' ? 'L' : 'P'} / ${calculateAge(session.patient.dob)}` },
+                          ].map((item, i) => (
+                            <div key={i}>
+                              <span style={{ display: 'block', fontSize: 7, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const, marginBottom: 1 }}>{item.label}</span>
+                              <span style={{ fontWeight: 700, color: '#0C1E35' }}>{item.value}</span>
                             </div>
-                            <div>
-                              <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'rgba(12,30,53,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Diagnosis Banding</span>
-                              <span style={{ fontWeight: 700, color: '#0C1E35', fontSize: 12 }}>{session.patient.differentialDiagnosis || '-'}</span>
-                            </div>
+                          ))}
+                        </div>
+                        <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 8, paddingTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 14px', fontSize: 10 }}>
+                          <div>
+                            <span style={{ display: 'block', fontSize: 7, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const, marginBottom: 1 }}>Operator</span>
+                            <span style={{ fontWeight: 700, color: '#0C1E35' }}>{session.patient.operator}</span>
+                          </div>
+                          <div>
+                            <span style={{ display: 'block', fontSize: 7, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const, marginBottom: 1 }}>Tindakan</span>
+                            <span style={{ fontWeight: 700, color: '#0C1E35' }}>
+                              {session.patient.procedures.filter(p => p).join(', ') || '-'}
+                            </span>
                           </div>
                         </div>
                       </div>
-                    </div>
+                      <div style={{ borderTop: '1px solid #E8ECF1', display: 'flex' }}>
+                        <div style={{ flex: 1, padding: '8px 14px', background: 'rgba(12,30,53,0.03)', borderRight: '1px solid #E8ECF1' }}>
+                          <span style={{ fontSize: 7, fontWeight: 700, color: '#0C1E35', textTransform: 'uppercase' as const }}>Dx. utama</span>
+                          <p style={{ fontSize: 10, fontWeight: 700, margin: '1px 0 0', color: '#0C1E35' }}>{session.patient.diagnosis || '-'}</p>
+                        </div>
+                        <div style={{ flex: 1, padding: '8px 14px' }}>
+                          <span style={{ fontSize: 7, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const }}>Dx. banding</span>
+                          <p style={{ fontSize: 10, fontWeight: 700, margin: '1px 0 0', color: '#0C1E35' }}>{session.patient.differentialDiagnosis || '-'}</p>
+                        </div>
+                      </div>
+                    </>
                   ) : (
-                    <div>
-                      <div style={{
-                        display: 'flex', alignItems: 'center', color: '#92400E',
-                        backgroundColor: '#FFFBEB', padding: '6px 10px', borderRadius: 6,
-                        border: '1px solid #FDE68A', marginBottom: 10,
-                      }}>
-                        <ShieldAlert style={{ width: 13, height: 13, marginRight: 8, flexShrink: 0 }} />
-                        <span style={{ fontSize: 9, fontWeight: 600 }}>PII Redacted for Academic Use (Gender Preserved)</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 20px', fontSize: 10 }}>
-                        <div>
-                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Case ID</span>
-                          <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 11, fontFamily: 'monospace' }}>{caseId}</span>
+                    <>
+                      <div style={{ padding: '10px 14px' }}>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', color: '#92400E',
+                          backgroundColor: '#FFFBEB', padding: '6px 10px', borderRadius: 6,
+                          border: '1px solid #FDE68A', marginBottom: 10,
+                        }}>
+                          <ShieldAlert style={{ width: 13, height: 13, marginRight: 8, flexShrink: 0 }} />
+                          <span style={{ fontSize: 9, fontWeight: 600 }}>PII Redacted for Academic Use (Gender Preserved)</span>
                         </div>
-                        <div>
-                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Jenis Kelamin</span>
-                          <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 11 }}>{session.patient.gender === 'Laki-laki' ? 'M' : 'F'}</span>
-                        </div>
-                        <div style={{ gridColumn: 'span 3', borderTop: '1px solid #E2E8F0', marginTop: 4, paddingTop: 8 }}>
-                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Prosedur Utama</span>
-                          <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 11 }}>{session.patient.procedures[0] || '-'}</span>
-                        </div>
-                        <div style={{ gridColumn: 'span 3', borderTop: '1px solid #F1F5F9', paddingTop: 8 }}>
-                          <span style={{ display: 'block', fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Diagnosis Akademik</span>
-                          <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 11 }}>{session.patient.diagnosis || '-'}</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px 14px', fontSize: 10 }}>
+                          <div>
+                            <span style={{ display: 'block', fontSize: 7, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const, marginBottom: 1 }}>Case ID</span>
+                            <span style={{ fontWeight: 700, color: '#0C1E35', fontFamily: 'monospace' }}>{caseId}</span>
+                          </div>
+                          <div>
+                            <span style={{ display: 'block', fontSize: 7, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const, marginBottom: 1 }}>Jenis Kelamin</span>
+                            <span style={{ fontWeight: 700, color: '#0C1E35' }}>{session.patient.gender === 'Laki-laki' ? 'M' : 'F'}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                      <div style={{ borderTop: '1px solid #E8ECF1', display: 'flex' }}>
+                        <div style={{ flex: 1, padding: '8px 14px', borderRight: '1px solid #E8ECF1' }}>
+                          <span style={{ fontSize: 7, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const }}>Prosedur utama</span>
+                          <p style={{ fontSize: 10, fontWeight: 700, margin: '1px 0 0', color: '#0C1E35' }}>{session.patient.procedures[0] || '-'}</p>
+                        </div>
+                        <div style={{ flex: 1, padding: '8px 14px' }}>
+                          <span style={{ fontSize: 7, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const }}>Diagnosis akademik</span>
+                          <p style={{ fontSize: 10, fontWeight: 700, margin: '1px 0 0', color: '#0C1E35' }}>{session.patient.diagnosis || '-'}</p>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
 
+                {/* Photo Grid + Kesimpulan + Signature — semua dalam flex:1 agar fit 1 halaman */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
                 {/* Photo Grid */}
-                <div style={{ marginBottom: 18 }} className="print-section">
-                  <h3 style={{
-                    fontSize: 14, fontWeight: 800, color: '#0C1E35',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    paddingBottom: 6, marginBottom: 12,
-                    borderBottom: '2px solid rgba(12,30,53,0.12)',
-                  }} className="print-section-title">
-                    <span style={{ width: 3, height: 16, backgroundColor: '#0C1E35', borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
-                    {page.reportLayout === 'beforeAfter' ? 'Dokumentasi Before / After Surgery' :
-                     page.reportLayout === 'rightLeft' ? 'Dokumentasi Perbandingan Kanan / Kiri' :
-                     'Dokumentasi Visual'}
-                  </h3>
+                <div style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', flexShrink: 1, minHeight: 0 }} className="print-section">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexShrink: 0 }}>
+                    <div style={{ width: 3, height: 12, backgroundColor: '#0C1E35', borderRadius: 1, flexShrink: 0, display: 'inline-block' }} />
+                    <h3 style={{ fontSize: 11, fontWeight: 800, color: '#0C1E35', margin: 0 }} className="print-section-title">
+                      {page.reportLayout === 'beforeAfter' ? 'Dokumentasi Before / After Surgery' :
+                       page.reportLayout === 'rightLeft' ? 'Dokumentasi Perbandingan Kanan / Kiri' :
+                       'Dokumentasi visual'}
+                    </h3>
+                    <div style={{ flex: 1, height: 1, backgroundColor: '#E8ECF1' }} />
+                  </div>
                   {page.selectedPhotos.length > 0 ? (() => {
                     const count = page.selectedPhotos.length;
                     const isCompare = page.reportLayout !== 'standard';
-                    const cols = isCompare ? 2 : count <= 1 ? 1 : count <= 2 ? 2 : count <= 4 ? 2 : 3;
+                    const cols = isCompare ? 2 : count <= 2 ? 2 : 3;
+                    const photoGap = count <= 4 ? 8 : 4;
                     return (
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                      gap: count <= 2 ? 14 : 10,
+                      gap: photoGap,
+                      flex: 1,
+                      minHeight: 0,
                     }} className="print-grid">
                       {page.selectedPhotos.map((photo, index) => (
-                        <div key={photo.id} className="print-photo-card">
+                        <div key={photo.id} className="print-photo-card" style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                           <div style={{
-                            position: 'relative', aspectRatio: '16/9',
-                            backgroundColor: '#F1F5F9', borderRadius: 6,
-                            overflow: 'hidden', border: '1px solid rgba(12,30,53,0.1)',
+                            position: 'relative', flex: 1, minHeight: 0,
+                            backgroundColor: '#F1F5F9', borderRadius: 4,
+                            overflow: 'hidden', border: '1px solid rgba(12,30,53,0.08)',
                           }}>
-                            <img src={photo.url} alt={`Capture ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={photo.dataUrl || photo.url} alt={`Capture ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                             {isCompare && (
                               <div style={{
                                 position: 'absolute', top: 6, left: 6,
                                 padding: '3px 8px', backgroundColor: 'rgba(12,30,53,0.85)',
                                 backdropFilter: 'blur(4px)', borderRadius: 4,
                                 fontSize: 8, fontWeight: 900, color: '#ffffff',
-                                textTransform: 'uppercase', letterSpacing: '0.15em',
+                                textTransform: 'uppercase' as const, letterSpacing: '0.15em',
                               }}>
                                 {page.reportLayout === 'beforeAfter'
                                   ? (index % 2 === 0 ? 'Before' : 'After')
@@ -1191,9 +1328,9 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                             <div style={{
                               backgroundColor: 'rgba(12,30,53,0.025)',
                               border: '1px solid rgba(12,30,53,0.06)',
-                              borderRadius: 4, padding: '5px 8px', marginTop: 5,
+                              borderRadius: 4, padding: '4px 8px', marginTop: 3, flexShrink: 0,
                             }}>
-                              <p style={{ fontSize: 9, lineHeight: 1.5, fontWeight: 500, color: '#475569', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
+                              <p style={{ fontSize: 8, lineHeight: 1.4, fontWeight: 500, color: '#475569', whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const, margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
                                 {page.photoCaptions[photo.id]}
                               </p>
                             </div>
@@ -1214,22 +1351,20 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
 
                 {/* Video Documentation Section */}
                 {page.selectedVideos.length > 0 && (
-                  <div style={{ marginBottom: 18 }} className="print-section">
-                    <h3 style={{
-                      fontSize: 14, fontWeight: 800, color: '#0C1E35',
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      paddingBottom: 6, marginBottom: 12,
-                      borderBottom: '2px solid rgba(12,30,53,0.12)',
-                    }} className="print-section-title">
-                      <span style={{ width: 3, height: 16, backgroundColor: '#0C1E35', borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
-                      Dokumentasi Video
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }} className="print-grid">
+                  <div style={{ marginBottom: 8, flexShrink: 0 }} className="print-section">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <div style={{ width: 3, height: 12, backgroundColor: '#0C1E35', borderRadius: 1, flexShrink: 0, display: 'inline-block' }} />
+                      <h3 style={{ fontSize: 11, fontWeight: 800, color: '#0C1E35', margin: 0 }} className="print-section-title">
+                        Dokumentasi Video
+                      </h3>
+                      <div style={{ flex: 1, height: 1, backgroundColor: '#E8ECF1' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }} className="print-grid">
                       {page.selectedVideos.map((video, index) => (
                         <div key={video.id} className="print-photo-card">
                           <div style={{
-                            position: 'relative', aspectRatio: '16/9',
-                            backgroundColor: '#F1F5F9', borderRadius: 6,
+                            position: 'relative', aspectRatio: '4/3',
+                            backgroundColor: '#F1F5F9', borderRadius: 4,
                             overflow: 'hidden', border: '1px solid #E2E8F0',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
@@ -1239,16 +1374,16 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                               flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                               backgroundColor: 'rgba(15,23,42,0.03)',
                             }}>
-                              <span style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Video {index + 1}</span>
+                              <span style={{ fontSize: 9, fontWeight: 800, color: '#475569', textTransform: 'uppercase' as const, letterSpacing: '0.15em' }}>Video {index + 1}</span>
                               <span style={{ fontSize: 7.5, color: '#94A3B8', marginTop: 3 }}>{video.timestamp.toLocaleTimeString()}</span>
                             </div>
                           </div>
                           <div style={{
                             backgroundColor: '#F8FAFC', border: '1px solid #F1F5F9',
-                            borderRadius: 4, padding: '4px 8px', textAlign: 'center', marginTop: 5,
+                            borderRadius: 4, padding: '3px 8px', textAlign: 'center' as const, marginTop: 3,
                           }}>
-                            <p style={{ fontSize: 7.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
-                              Tersedia dalam format digital (H.265 HEVC)
+                            <p style={{ fontSize: 7, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' as const, letterSpacing: '0.05em', margin: 0 }}>
+                              Tersedia dalam format digital
                             </p>
                           </div>
                         </div>
@@ -1257,62 +1392,59 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                   </div>
                 )}
 
-                {/* Clinical Notes */}
-                <div style={{ marginBottom: 18 }} className="print-section">
-                  <h3 style={{
-                    fontSize: 14, fontWeight: 800, color: '#0C1E35',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    paddingBottom: 6, marginBottom: 12,
-                    borderBottom: '2px solid rgba(12,30,53,0.12)',
-                  }} className="print-section-title">
-                    <span style={{ width: 3, height: 16, backgroundColor: '#0C1E35', borderRadius: 2, flexShrink: 0, display: 'inline-block' }} />
-                    Catatan Klinis
-                  </h3>
-                  <div style={{ fontSize: 12 }}>
-                    {page.clinicalNotes ? (
-                      <p style={{ whiteSpace: 'pre-wrap', color: '#475569', lineHeight: 1.7, margin: 0 }}>{page.clinicalNotes}</p>
-                    ) : (
-                      <p style={{ color: '#94A3B8', fontStyle: 'italic', margin: 0 }}>Tidak ada catatan klinis.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Spacer to push footer to bottom */}
-                <div style={{ flex: 1 }} />
-
-                {/* Signature Area */}
-                {page.reportType === 'clinical' && (
-                  <div style={{ paddingTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-                    <div style={{ textAlign: 'center', width: 200 }}>
-                      <p style={{ fontSize: 11, color: 'rgba(12,30,53,0.5)', marginBottom: 52 }}>Dokter Pemeriksa,</p>
-                      <div style={{ borderBottom: '2px solid rgba(12,30,53,0.25)', marginBottom: 6 }} />
-                      <p style={{ fontWeight: 800, color: '#0C1E35', fontSize: 13, margin: 0 }}>{session.patient.operator}</p>
+                  {/* Kesimpulan */}
+                  <div className="print-section" style={{ flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <div style={{ width: 3, height: 12, backgroundColor: '#0C1E35', borderRadius: 1, flexShrink: 0, display: 'inline-block' }} />
+                      <h3 style={{ fontSize: 11, fontWeight: 800, color: '#0C1E35', margin: 0 }} className="print-section-title">
+                        Kesimpulan
+                      </h3>
+                      <div style={{ flex: 1, height: 1, backgroundColor: '#E8ECF1' }} />
+                    </div>
+                    <div style={{ fontSize: 10 }}>
+                      {page.clinicalNotes ? (
+                        <p style={{ whiteSpace: 'pre-wrap' as const, color: '#475569', lineHeight: 1.6, margin: 0 }}>{page.clinicalNotes}</p>
+                      ) : (
+                        <p style={{ color: '#94A3B8', fontStyle: 'italic', margin: 0 }}>Tidak ada kesimpulan.</p>
+                      )}
                     </div>
                   </div>
-                )}
+
+                  {/* Spacer — mendorong signature ke bawah */}
+                  <div style={{ flex: 1 }} />
+
+                  {/* Signature Area — selalu di pojok kanan bawah */}
+                  {page.reportType === 'clinical' && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, flexShrink: 0 }}>
+                      <div style={{ textAlign: 'center' as const, width: 170 }}>
+                        <p style={{ fontSize: 9, color: '#94A3B8', marginBottom: 30 }}>Dokter Pemeriksa,</p>
+                        <div style={{ borderBottom: '1.5px solid #CBD5E1', marginBottom: 4 }} />
+                        <p style={{ fontWeight: 800, color: '#0C1E35', fontSize: 10, margin: 0 }}>{session.patient.operator}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Footer */}
                 <div style={{
-                  marginTop: 20, paddingTop: 12,
-                  borderTop: '1.5px solid rgba(12,30,53,0.1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  borderTop: '1px solid #E8ECF1', paddingTop: 5, flexShrink: 0,
                 }}>
-                  <span style={{ width: 20, height: 1.5, backgroundColor: 'rgba(12,30,53,0.15)', display: 'inline-block' }} />
-                  <p style={{ fontSize: 9, color: 'rgba(12,30,53,0.35)', fontWeight: 600, margin: 0 }}>
-                    Dihasilkan oleh <span className="font-aexon" style={{ color: 'rgba(12,30,53,0.55)' }}>Aexon</span> &bull; {new Date().toLocaleString('id-ID')} &bull; Halaman {pageIdx + 1} dari {pages.length}
+                  <p style={{ fontSize: 8, color: '#94A3B8', margin: 0 }}>
+                    <span className="font-aexon" style={{ color: '#0C1E35', fontWeight: 700 }}>Aexon</span> &middot; Medical documentation
                   </p>
-                  <span style={{ width: 20, height: 1.5, backgroundColor: 'rgba(12,30,53,0.15)', display: 'inline-block' }} />
+                  <p style={{ fontSize: 8, color: '#94A3B8', fontWeight: 600, margin: 0 }}>
+                    Hal {pageIdx + 1}/{pages.length}
+                  </p>
                 </div>
 
-                {/* Bottom accent */}
-                <div style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(12,30,53,0.2) 20%, rgba(12,30,53,0.2) 80%, transparent 100%)',
-                }} />
+                </div>{/* close content area */}
+
               </div>
             </div>
             );
           })}
+        </div>
         </div>
       </div>
 
@@ -1376,7 +1508,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                     flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14,
                     border: '1px solid #E2E8F0', backgroundColor: '#ffffff', color: '#64748B',
                     cursor: 'pointer', transition: 'background-color 150ms',
-                    fontFamily: 'Outfit, sans-serif',
+                    fontFamily: 'Plus Jakarta Sans, sans-serif',
                   }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ffffff'}
@@ -1389,7 +1521,7 @@ export default function ReportGenerator({ session, onBack, hospitalSettingsList,
                     flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 700, fontSize: 14,
                     border: 'none', backgroundColor: '#EF4444', color: '#ffffff',
                     cursor: 'pointer', transition: 'background-color 150ms',
-                    fontFamily: 'Outfit, sans-serif',
+                    fontFamily: 'Plus Jakarta Sans, sans-serif',
                   }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = '#DC2626'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = '#EF4444'}

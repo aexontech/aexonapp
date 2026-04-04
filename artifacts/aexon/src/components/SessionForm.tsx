@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Activity, ArrowRight, ChevronLeft, Stethoscope, ClipboardList, Building2, Plus, X } from 'lucide-react';
+import { User, Activity, ArrowRight, Stethoscope, ClipboardList, Building2, Plus, X } from 'lucide-react';
 import { PatientData, UserProfile } from '../types';
 import ICD10Autocomplete from './ICD10Autocomplete';
 import ICD9Autocomplete from './ICD9Autocomplete';
+import SessionFlowNav from './SessionFlowNav';
 
 interface SessionFormProps {
   onSubmit: (data: PatientData) => void;
@@ -26,6 +27,7 @@ function calculateAge(dob: string): number | null {
 export default function SessionForm({ onSubmit, onCancel, userProfile }: SessionFormProps) {
   const sessionId = useMemo(() => Math.random().toString(36).substr(2, 9).toUpperCase(), []);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [formData, setFormData] = useState<PatientData>({
     name: '',
     rmNumber: '',
@@ -95,7 +97,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.category === 'Kamar Operasi' && !formData.diagnosis_icd10) {
       setValidationError('Diagnosis Utama wajib diisi untuk kategori Kamar Operasi (OK).');
       return;
@@ -104,6 +106,28 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
     setValidationError(null);
     if (formData.name && formData.rmNumber && formData.procedures_icd9[0]) {
       onSubmit(formData);
+    }
+  };
+
+  // Enter = pindah ke input berikutnya, bukan submit form
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key !== 'Enter') return;
+    const target = e.target as HTMLElement;
+    // Kalau di tombol submit, biarkan submit
+    if (target.tagName === 'BUTTON' && (target as HTMLButtonElement).type === 'submit') return;
+    // Kalau di textarea, biarkan newline
+    if (target.tagName === 'TEXTAREA') return;
+
+    e.preventDefault();
+
+    // Cari semua elemen focusable di form
+    const form = e.currentTarget;
+    const focusable = Array.from(form.querySelectorAll<HTMLElement>(
+      'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])'
+    ));
+    const currentIndex = focusable.indexOf(target);
+    if (currentIndex >= 0 && currentIndex < focusable.length - 1) {
+      focusable[currentIndex + 1].focus();
     }
   };
 
@@ -150,7 +174,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
     color: '#0C1E35',
     outline: 'none',
     transition: 'border 150ms, box-shadow 150ms',
-    fontFamily: 'Plus Jakarta Sans, sans-serif',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
   };
 
   const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -163,7 +187,16 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
   };
 
   return (
-    <div style={{ flex: 1, backgroundColor: '#F8FAFC', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 32, overflowY: 'auto', height: '100%', position: 'relative' }} className="custom-scrollbar">
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <SessionFlowNav
+        currentStep="session-form"
+        onBack={onCancel}
+        backLabel="Batal"
+        onNext={() => formRef.current?.requestSubmit()}
+        nextLabel="Mulai sesi"
+        nextDisabled={!formData.name.trim() || !formData.rmNumber.trim() || !formData.procedures_icd9[0] || (formData.category === 'Kamar Operasi' && !formData.diagnosis_icd10)}
+      />
+    <div style={{ flex: 1, backgroundColor: '#F4F6F8', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 32, overflowY: 'auto', height: '100%', position: 'relative' }} className="custom-scrollbar">
       <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
         <div className="orb-tr" />
         <div className="orb-bl" />
@@ -176,43 +209,14 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
         style={{ maxWidth: 900, width: '100%', position: 'relative', zIndex: 10 }}
       >
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 24, backgroundColor: 'white', borderBottom: '1px solid #E2E8F0',
-          padding: '12px 24px', borderRadius: '16px 16px 0 0',
-        }}>
-          <button
-            onClick={onCancel}
-            style={{
-              display: 'flex', alignItems: 'center', padding: '8px 14px',
-              backgroundColor: 'white', border: '1px solid #E2E8F0',
-              borderRadius: 10, color: '#0C1E35', cursor: 'pointer',
-              fontSize: 12, fontWeight: 600, transition: 'all 150ms',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
-          >
-            <ChevronLeft style={{ width: 16, height: 16, marginRight: 6 }} />
-            Kembali
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#0C1E35', textTransform: 'uppercase' }}>Sesi Baru</span>
-              <span style={{ fontSize: 11, color: '#64748B' }}>ID: {sessionId}</span>
-            </div>
-            <div style={{ width: 40, height: 40, backgroundColor: '#EFF6FF', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Activity style={{ width: 20, height: 20, color: '#0C1E35' }} />
-            </div>
-          </div>
-        </div>
-
-        <div style={{
-          backgroundColor: 'white', borderRadius: '0 0 16px 16px', padding: 40,
+          backgroundColor: 'white', borderRadius: 16, padding: 40,
           boxShadow: '0 8px 40px rgba(12,30,53,0.08)',
           position: 'relative', overflow: 'visible',
         }}>
           <div style={{
             height: 4, position: 'absolute', top: 0, left: 0, right: 0,
             background: 'linear-gradient(90deg, #0C1E35 0%, #1E3A5F 60%, #0C1E35 100%)',
+            borderRadius: '16px 16px 0 0',
           }} />
 
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 40 }}>
@@ -220,12 +224,12 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
               <ClipboardList style={{ width: 28, height: 28, color: '#0C1E35' }} />
             </div>
             <div>
-              <h2 className="font-aexon" style={{ fontSize: 36, color: '#0C1E35', marginBottom: 4 }}>Registrasi Sesi</h2>
+              <h2 style={{ fontSize: 36, fontWeight: 900, color: '#0C1E35', marginBottom: 4, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Registrasi Sesi</h2>
               <p style={{ fontSize: 14, color: '#64748B' }}>Lengkapi data klinis pasien untuk memulai prosedur endoskopi.</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+          <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
 
             <div style={sectionCardStyle}>
               <div style={sectionHeaderBarStyle}>
@@ -517,6 +521,7 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
           <option value="K92.2 - Gastrointestinal hemorrhage, unspecified" />
         </datalist>
       </motion.div>
+    </div>
     </div>
   );
 }
