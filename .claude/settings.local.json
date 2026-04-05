@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(npx tsc:*)",
-      "Bash(PORT=5000 BASE_PATH=/ pnpm build)"
-    ]
-  }
-}

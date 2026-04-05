@@ -1,0 +1,3 @@
+# Aexon App
+
+Download aplikasi Aexon terbaru di tab [Releases](https://github.com/aexontech/aexonapp/releases).
