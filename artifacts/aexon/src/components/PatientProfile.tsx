@@ -17,12 +17,17 @@ import {
   Trash2,
   FolderOpen,
   Loader2,
+  Save,
+  Plus,
+  Minus,
 } from 'lucide-react';
-import { Session, Capture } from '../types';
+import { Session, Capture, PatientData } from '../types';
 import ImageEditor from './ImageEditor';
 import SessionFlowNav from './SessionFlowNav';
 import DiskSpaceIndicator from './DiskSpaceIndicator';
 import ConfirmModal from './ConfirmModal';
+import ICD10Autocomplete from './ICD10Autocomplete';
+import ICD9Autocomplete from './ICD9Autocomplete';
 import {
   isElectron,
   exportCapturesFromDisk,
@@ -35,7 +40,7 @@ type TabId = 'media' | 'reports';
 interface PatientProfileProps {
   session: Session;
   onBack: () => void;
-  onEditReport: (session: Session) => void;
+  onEditReport: (session: Session, pageConfig?: any[]) => void;
   onViewGallery: (session: Session) => void;
   onUpdateSession?: (session: Session) => void;
 }
@@ -59,6 +64,46 @@ export default function PatientProfile({
   const [isDeleting, setIsDeleting] = useState(false);
   const [fileSizes, setFileSizes] = useState<Record<string, number>>({});
   const [previewReportUrl, setPreviewReportUrl] = useState<string | null>(null);
+
+  // Edit Patient Data state
+  const [showEditPatientModal, setShowEditPatientModal] = useState(false);
+  const [patientForm, setPatientForm] = useState({
+    name: '',
+    rmNumber: '',
+    diagnosis: '',
+    diagnosis_icd10: '',
+    differentialDiagnosis: '',
+    differentialDiagnosis_icd10: '',
+    procedures_icd9: [''] as string[],
+  });
+
+  const openPatientEditor = () => {
+    setPatientForm({
+      name: session.patient.name || '',
+      rmNumber: session.patient.rmNumber || '',
+      diagnosis: session.patient.diagnosis || '',
+      diagnosis_icd10: session.patient.diagnosis_icd10 || '',
+      differentialDiagnosis: session.patient.differentialDiagnosis || '',
+      differentialDiagnosis_icd10: session.patient.differentialDiagnosis_icd10 || '',
+      procedures_icd9: session.patient.procedures_icd9?.length ? [...session.patient.procedures_icd9] : [''],
+    });
+    setShowEditPatientModal(true);
+  };
+
+  const savePatientData = () => {
+    const updatedPatient: PatientData = {
+      ...session.patient,
+      name: patientForm.name,
+      rmNumber: patientForm.rmNumber,
+      diagnosis: patientForm.diagnosis,
+      diagnosis_icd10: patientForm.diagnosis_icd10,
+      differentialDiagnosis: patientForm.differentialDiagnosis,
+      differentialDiagnosis_icd10: patientForm.differentialDiagnosis_icd10,
+      procedures_icd9: patientForm.procedures_icd9.filter(p => p.trim()),
+    };
+    onUpdateSession?.({ ...session, patient: updatedPatient });
+    setShowEditPatientModal(false);
+  };
 
   // Estimate file sizes — coba semua sumber URL
   useEffect(() => {
@@ -462,6 +507,23 @@ export default function PatientProfile({
                   </p>
                 </div>
               </div>
+
+              {/* Edit Data Pasien button */}
+              <button
+                onClick={openPatientEditor}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 16,
+                  padding: '7px 14px', backgroundColor: '#F8FAFC', border: '1.5px solid #E2E8F0',
+                  borderRadius: 8, fontSize: 12, fontWeight: 600, color: '#64748B',
+                  cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  transition: 'all 150ms',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#0C1E35'; e.currentTarget.style.color = '#0C1E35'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B'; }}
+              >
+                <Edit3 style={{ width: 13, height: 13 }} />
+                Edit Data Pasien
+              </button>
             </div>
           </div>
 
@@ -725,7 +787,7 @@ export default function PatientProfile({
         )}
 
         {activeTab === 'reports' && (() => {
-          const savedReports: { id: string; savedAt: string; pdfDataUrl: string; hospitalName: string | null }[] = (session as any).savedReports || [];
+          const savedReports: { id: string; savedAt: string; pdfDataUrl: string; hospitalName: string | null; pageConfig?: any[] }[] = (session as any).savedReports || [];
           return (
           <div style={{ backgroundColor: '#ffffff', borderRadius: 14, border: '1px solid #E8ECF1', overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -803,6 +865,19 @@ export default function PatientProfile({
                           >
                             <Maximize style={{ width: 12, height: 12 }} />
                             Preview
+                          </button>
+                          <button
+                            onClick={() => onEditReport(session, report.pageConfig)}
+                            title="Edit & Buat Versi Baru"
+                            style={{
+                              padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4,
+                              backgroundColor: 'transparent', border: '1px solid #E8ECF1', borderRadius: 6,
+                              color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                              fontFamily: "'Plus Jakarta Sans', sans-serif",
+                            }}
+                          >
+                            <Edit3 style={{ width: 12, height: 12 }} />
+                            Edit
                           </button>
                           <button
                             onClick={() => {
@@ -888,6 +963,243 @@ export default function PatientProfile({
         variant="danger"
         icon={<Trash2 className="w-10 h-10 text-red-500" />}
       />
+
+      {/* Edit Data Pasien Modal */}
+      {showEditPatientModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 120,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(10px)',
+            padding: 32,
+          }}
+          onClick={() => setShowEditPatientModal(false)}
+        >
+          <div
+            style={{
+              position: 'relative', width: '100%', maxWidth: 600,
+              backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '16px 24px', borderBottom: '1px solid #E8ECF1',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'linear-gradient(135deg, #0C1E35 0%, #152d4f 100%)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Edit3 style={{ width: 16, height: 16, color: '#fff' }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  Edit Data Pasien
+                </span>
+              </div>
+              <button
+                onClick={() => setShowEditPatientModal(false)}
+                style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <X style={{ width: 16, height: 16 }} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18, maxHeight: '70vh', overflowY: 'auto' }} className="custom-scrollbar">
+
+              {/* Nama & No. RM */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    Nama Pasien
+                  </label>
+                  <input
+                    type="text"
+                    value={patientForm.name}
+                    onChange={e => setPatientForm({ ...patientForm, name: e.target.value })}
+                    placeholder="Nama lengkap pasien"
+                    style={{
+                      width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0',
+                      fontSize: 14, color: '#0C1E35', backgroundColor: '#fff', outline: 'none',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif", boxSizing: 'border-box',
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#2563EB'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.08)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none'; }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    No. Rekam Medis
+                  </label>
+                  <input
+                    type="text"
+                    value={patientForm.rmNumber}
+                    onChange={e => setPatientForm({ ...patientForm, rmNumber: e.target.value })}
+                    placeholder="No. RM"
+                    style={{
+                      width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0',
+                      fontSize: 14, color: '#0C1E35', backgroundColor: '#fff', outline: 'none',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif", boxSizing: 'border-box',
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#2563EB'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.08)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none'; }}
+                  />
+                </div>
+              </div>
+
+              {/* Diagnosis */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  Diagnosis
+                </label>
+                <input
+                  type="text"
+                  value={patientForm.diagnosis}
+                  onChange={e => setPatientForm({ ...patientForm, diagnosis: e.target.value })}
+                  placeholder="Diagnosis utama"
+                  style={{
+                    width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0',
+                    fontSize: 14, color: '#0C1E35', backgroundColor: '#fff', outline: 'none',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif", boxSizing: 'border-box',
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#2563EB'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.08)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              {/* ICD-10 */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  ICD-10
+                </label>
+                <ICD10Autocomplete
+                  value={patientForm.diagnosis_icd10}
+                  onChange={val => setPatientForm({ ...patientForm, diagnosis_icd10: val })}
+                  placeholder="Cari kode ICD-10..."
+                />
+              </div>
+
+              {/* Diagnosis Banding */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  Diagnosis Banding
+                </label>
+                <input
+                  type="text"
+                  value={patientForm.differentialDiagnosis}
+                  onChange={e => setPatientForm({ ...patientForm, differentialDiagnosis: e.target.value })}
+                  placeholder="Diagnosis banding (opsional)"
+                  style={{
+                    width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0',
+                    fontSize: 14, color: '#0C1E35', backgroundColor: '#fff', outline: 'none',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif", boxSizing: 'border-box',
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#2563EB'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.08)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              {/* ICD-10 Diagnosis Banding */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  ICD-10 Diagnosis Banding
+                </label>
+                <ICD10Autocomplete
+                  value={patientForm.differentialDiagnosis_icd10}
+                  onChange={val => setPatientForm({ ...patientForm, differentialDiagnosis_icd10: val })}
+                  placeholder="Cari kode ICD-10 diagnosis banding..."
+                />
+              </div>
+
+              {/* Prosedur ICD-9 */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748B', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  Prosedur (ICD-9)
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {patientForm.procedures_icd9.map((proc, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <ICD9Autocomplete
+                          value={proc}
+                          onChange={val => {
+                            const updated = [...patientForm.procedures_icd9];
+                            updated[i] = val;
+                            setPatientForm({ ...patientForm, procedures_icd9: updated });
+                          }}
+                          index={i}
+                          placeholder="Cari kode ICD-9..."
+                        />
+                      </div>
+                      {patientForm.procedures_icd9.length > 1 && (
+                        <button
+                          onClick={() => {
+                            const updated = patientForm.procedures_icd9.filter((_, j) => j !== i);
+                            setPatientForm({ ...patientForm, procedures_icd9: updated });
+                          }}
+                          style={{
+                            width: 32, height: 32, borderRadius: 8, border: '1px solid #E8ECF1',
+                            backgroundColor: '#fff', cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          }}
+                        >
+                          <Minus style={{ width: 14, height: 14, color: '#94A3B8' }} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setPatientForm({ ...patientForm, procedures_icd9: [...patientForm.procedures_icd9, ''] })}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                      backgroundColor: '#F8FAFC', border: '1.5px dashed #CBD5E1', borderRadius: 8,
+                      fontSize: 12, fontWeight: 600, color: '#64748B', cursor: 'pointer',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif", alignSelf: 'flex-start',
+                    }}
+                  >
+                    <Plus style={{ width: 13, height: 13 }} />
+                    Tambah Prosedur
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '16px 24px', borderTop: '1px solid #E8ECF1',
+              display: 'flex', justifyContent: 'flex-end', gap: 10,
+            }}>
+              <button
+                onClick={() => setShowEditPatientModal(false)}
+                style={{
+                  padding: '10px 20px', borderRadius: 10, border: '1.5px solid #E2E8F0',
+                  backgroundColor: '#fff', fontSize: 13, fontWeight: 600, color: '#64748B',
+                  cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={savePatientData}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '10px 24px', borderRadius: 10, border: 'none',
+                  background: 'linear-gradient(135deg, #0C1E35 0%, #152d4f 100%)',
+                  fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  boxShadow: '0 2px 8px rgba(12,30,53,0.2)',
+                }}
+              >
+                <Save style={{ width: 14, height: 14 }} />
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PDF Preview Modal */}
       {previewReportUrl && (

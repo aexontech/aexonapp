@@ -36,24 +36,38 @@ interface ReportGeneratorProps {
   userProfile: UserProfile;
   plan: 'subscription' | 'enterprise' | 'trial' | null;
   onUpdateSession?: (session: Session) => void;
+  initialPageConfig?: ReportPage[];
 }
 
-export default function ReportGenerator({ session, onBack, hospitalSettingsList, userProfile, plan, onUpdateSession }: ReportGeneratorProps) {
-  const [pages, setPages] = useState<ReportPage[]>([
-    {
-      id: 'page-1',
-      name: 'Halaman 1',
-      reportType: 'clinical',
-      reportLayout: 'standard',
-      pageSize: 'A4',
-      orientation: 'portrait',
-      examType: 'endoskopi',
-      selectedPhotos: [],
-      selectedVideos: [],
-      photoCaptions: {},
-      clinicalNotes: ''
+const defaultPage: ReportPage = {
+  id: 'page-1',
+  name: 'Halaman 1',
+  reportType: 'clinical',
+  reportLayout: 'standard',
+  pageSize: 'A4',
+  orientation: 'portrait',
+  examType: 'endoskopi',
+  selectedPhotos: [],
+  selectedVideos: [],
+  photoCaptions: {},
+  clinicalNotes: ''
+};
+
+export default function ReportGenerator({ session, onBack, hospitalSettingsList, userProfile, plan, onUpdateSession, initialPageConfig }: ReportGeneratorProps) {
+  const [pages, setPages] = useState<ReportPage[]>(() => {
+    if (initialPageConfig && initialPageConfig.length > 0) {
+      // Restore saved page config — re-link captures from current session data
+      return initialPageConfig.map(page => {
+        const captureMap = new Map(session.captures.map(c => [c.id, c]));
+        return {
+          ...page,
+          selectedPhotos: (page.selectedPhotos || []).map(p => captureMap.get(p.id) || p),
+          selectedVideos: (page.selectedVideos || []).map(v => captureMap.get(v.id) || v),
+        };
+      });
     }
-  ]);
+    return [defaultPage];
+  });
   const [activePageId, setActivePageId] = useState<string>('page-1');
   const [editingPhoto, setEditingPhoto] = useState<Capture | null>(null);
   const [pageToDelete, setPageToDelete] = useState<string | null>(null);

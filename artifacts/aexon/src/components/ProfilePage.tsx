@@ -8,6 +8,7 @@ import { aexonConnect } from "../lib/aexonConnect";
 import { UserProfile, HospitalSettings } from "../types";
 import { SubscriptionStatus } from "../lib/aexonConnect";
 import { useToast } from "./ToastProvider";
+import ConfirmModal from "./ConfirmModal";
 
 interface ProfilePageProps {
   userProfile: UserProfile;
@@ -19,7 +20,17 @@ interface ProfilePageProps {
   hospitalSettingsList?: HospitalSettings[];
   onNavigateToSubscription?: () => void;
   onNavigateToSettings?: () => void;
+  onNavigateToBantuan?: () => void;
 }
+
+const HeadsetIcon = ({ style }: { style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, ...style }}>
+    <path d="M4 17V12a8 8 0 0 1 16 0v5" />
+    <rect x="2" y="14" width="4" height="6" rx="1.5" />
+    <path d="M6 20v1.5a1.5 1.5 0 0 0 1.5 1.5H10" />
+    <path d="M10 23a2.5 2.5 0 0 0 2.5-2.5v0a1 1 0 0 0-1-1H10" />
+  </svg>
+);
 
 const NAME_COOLDOWN_DAYS = 14;
 const FONT_BODY = "'Plus Jakarta Sans', sans-serif";
@@ -40,64 +51,55 @@ export default function ProfilePage({
   hospitalSettingsList = [],
   onNavigateToSubscription,
   onNavigateToSettings,
+  onNavigateToBantuan,
 }: ProfilePageProps) {
   const { showToast } = useToast();
   const isDokterInstitusi = !!(userProfile.role !== "admin" && userProfile.enterprise_id);
 
-  const COOLDOWN_LS_KEY = "aexon_last_name_change";
-  const storedCooldown = (() => {
-    if (userProfile.lastNameChangeDate) return userProfile.lastNameChangeDate;
-    try { return localStorage.getItem(COOLDOWN_LS_KEY) || undefined; } catch { return undefined; }
-  })();
-
+  // Cooldown: source of truth is userProfile.lastNameChangeDate from server (doctor_accounts.last_name_change_at)
   const cooldownInfo = (() => {
     if (isDokterInstitusi) return { canEdit: false, daysLeft: 0 };
-    if (!storedCooldown) return { canEdit: true, daysLeft: 0 };
-    const lastChange = new Date(storedCooldown);
+    const serverDate = userProfile.lastNameChangeDate;
+    if (!serverDate) return { canEdit: true, daysLeft: 0 };
+    const lastChange = new Date(serverDate);
     const diffDays = Math.ceil((Date.now() - lastChange.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays < NAME_COOLDOWN_DAYS) return { canEdit: false, daysLeft: NAME_COOLDOWN_DAYS - diffDays };
     return { canEdit: true, daysLeft: 0 };
   })();
 
-  const [form, setForm] = useState<UserProfile>({ ...userProfile, lastNameChangeDate: storedCooldown });
+  const nameDisabled = isDokterInstitusi || !cooldownInfo.canEdit;
+
+  const [form, setForm] = useState<UserProfile>({ ...userProfile });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showNameConfirm, setShowNameConfirm] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Block name changes when disabled (defense in depth — input is already disabled)
+    if (e.target.name === "name" && nameDisabled) return;
     setForm({ ...form, [e.target.name]: e.target.value });
     setSaved(false);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const nameChanged = !nameDisabled && form.name !== userProfile.name;
+
+  const doSave = async () => {
     setSaving(true);
     try {
-      if (form.name !== userProfile.name && !isDokterInstitusi && storedCooldown) {
-        const lastChange = new Date(storedCooldown);
-        const diffDays = Math.ceil((Date.now() - lastChange.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays < NAME_COOLDOWN_DAYS) {
-          showToast(`Perubahan nama hanya bisa dilakukan sekali setiap ${NAME_COOLDOWN_DAYS} hari. Sisa: ${NAME_COOLDOWN_DAYS - diffDays} hari.`, "warning");
-          setSaving(false);
-          return;
-        }
-      }
       const payload: Record<string, any> = { specialty: form.specialization || null };
-      const nameChanged = form.name !== userProfile.name;
       if (!isDokterInstitusi) {
-        payload.full_name = form.name;
+        // Only send full_name if name is editable and actually changed
+        payload.full_name = nameChanged ? form.name : userProfile.name;
         payload.str_number = form.strNumber || null;
         payload.phone = form.phone;
       }
-      if (nameChanged && !isDokterInstitusi) {
+      if (nameChanged) {
         payload.last_name_change_at = new Date().toISOString();
       }
       const { error } = await aexonConnect.updateProfile(payload);
       if (error) { showToast("Gagal menyimpan: " + error, "error"); return; }
-      const newCooldown = nameChanged ? new Date().toISOString() : storedCooldown;
-      if (nameChanged && newCooldown) {
-        try { localStorage.setItem(COOLDOWN_LS_KEY, newCooldown); } catch {}
-      }
-      onUpdateUser({ ...form, lastNameChangeDate: newCooldown });
+      const newCooldown = nameChanged ? new Date().toISOString() : userProfile.lastNameChangeDate;
+      onUpdateUser({ ...form, name: nameChanged ? form.name : userProfile.name, lastNameChangeDate: newCooldown });
       setSaved(true);
       showToast("Profil berhasil disimpan.", "success");
       setTimeout(() => setSaved(false), 3000);
@@ -105,6 +107,15 @@ export default function ProfilePage({
       showToast("Gagal terhubung ke server.", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (nameChanged) {
+      setShowNameConfirm(true);
+    } else {
+      doSave();
     }
   };
 
@@ -211,10 +222,10 @@ export default function ProfilePage({
             </div>
           </motion.div>
 
-          {/* ── Grid: form (left) + side cards (right) ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 24, alignItems: "start" }}>
+          {/* ── Content: stacked cards ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-            {/* ═══ LEFT: Profile form ═══ */}
+            {/* ═══ 1. Informasi Akun ═══ */}
             <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.06 }} style={cardBase}>
               {isDokterInstitusi && (
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "14px 20px", backgroundColor: "#EFF6FF", borderBottom: "1px solid #DBEAFE" }}>
@@ -233,11 +244,11 @@ export default function ProfilePage({
                   <div>
                     <label style={labelStyle}>Nama Lengkap & Gelar</label>
                     <input type="text" name="name" value={form.name || ""} onChange={handleChange}
-                      readOnly={isDokterInstitusi || !cooldownInfo.canEdit}
-                      style={(isDokterInstitusi || !cooldownInfo.canEdit) ? readOnlyStyle : inputBase}
-                      onFocus={(e) => { if (!isDokterInstitusi && cooldownInfo.canEdit) { e.currentTarget.style.borderColor = "#2563EB"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.08)"; } }}
+                      disabled={nameDisabled}
+                      style={nameDisabled ? { ...readOnlyStyle, opacity: 0.6 } : inputBase}
+                      onFocus={(e) => { if (!nameDisabled) { e.currentTarget.style.borderColor = "#2563EB"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.08)"; } }}
                       onBlur={(e) => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.boxShadow = "none"; }} />
-                    {!isDokterInstitusi && !cooldownInfo.canEdit && (
+                    {!isDokterInstitusi && !cooldownInfo.canEdit && cooldownInfo.daysLeft > 0 && (
                       <p style={{ fontSize: 10, color: "#D97706", margin: "5px 0 0 2px", fontWeight: 600, fontFamily: FONT_BODY }}>
                         <Clock style={{ width: 10, height: 10, verticalAlign: "middle", marginRight: 3 }} />
                         Dapat diubah lagi dalam {cooldownInfo.daysLeft} hari
@@ -301,10 +312,10 @@ export default function ProfilePage({
               </form>
             </motion.div>
 
-            {/* ═══ RIGHT column ═══ */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* ═══ 2. Langganan + Kop Surat (side by side) ═══ */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
 
-              {/* ── Subscription card ── */}
+              {/* ── Langganan card ── */}
               <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.12 }} style={cardBase}>
                 <div style={cardHeaderStyle}>
                   <CreditCard style={{ width: 14, height: 14, color: "#ffffff" }} />
@@ -332,7 +343,7 @@ export default function ProfilePage({
                       {sub.billing_cycle && (
                         <div>
                           <p style={{ fontSize: 10, fontWeight: 600, color: "#94A3B8", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: FONT_BODY }}>Siklus</p>
-                          <p style={{ fontSize: 14, color: "#0C1E35", margin: 0, fontWeight: 600, fontFamily: FONT_BODY }}>{sub.billing_cycle === "monthly" ? "Bulanan" : sub.billing_cycle === "yearly" ? "Tahunan" : sub.billing_cycle}</p>
+                          <p style={{ fontSize: 14, color: "#0C1E35", margin: 0, fontWeight: 600, fontFamily: FONT_BODY }}>{sub.billing_cycle === "monthly" ? "Bulanan" : (sub.billing_cycle === "yearly" || sub.billing_cycle === "annual") ? "Tahunan" : sub.billing_cycle}</p>
                         </div>
                       )}
                       {sub.starts_at && (
@@ -416,9 +427,66 @@ export default function ProfilePage({
               </motion.div>
 
             </div>
+
+            {/* ═══ 3. CTA Butuh Bantuan (paling bawah) ═══ */}
+            {onNavigateToBantuan && (
+              <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.24 }}
+                style={{
+                  borderRadius: 16, overflow: "hidden",
+                  background: "linear-gradient(135deg, #0D9488 0%, #0F766E 100%)",
+                  transition: "transform 150ms",
+                }}
+              >
+                <button
+                  onClick={onNavigateToBantuan}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 16,
+                    padding: "18px 22px", background: "none", border: "none",
+                    cursor: "pointer", textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => {
+                    const card = e.currentTarget.parentElement;
+                    if (card) card.style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    const card = e.currentTarget.parentElement;
+                    if (card) card.style.transform = "translateY(0)";
+                  }}
+                >
+                  <div style={{
+                    width: 42, height: 42, borderRadius: 14, flexShrink: 0,
+                    backgroundColor: "rgba(255,255,255,0.2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <HeadsetIcon style={{ width: 22, height: 22, color: "#fff" }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 2px", fontFamily: FONT_HEADING }}>
+                      Butuh Bantuan?
+                    </p>
+                    <p style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", margin: 0, fontFamily: FONT_BODY }}>
+                      Kirim tiket ke tim support kami — kami siap membantu Anda.
+                    </p>
+                  </div>
+                  <ChevronRight style={{ width: 20, height: 20, color: "rgba(255,255,255,0.5)", flexShrink: 0 }} />
+                </button>
+              </motion.div>
+            )}
+
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showNameConfirm}
+        onConfirm={() => { setShowNameConfirm(false); doSave(); }}
+        onCancel={() => setShowNameConfirm(false)}
+        title="Konfirmasi Ganti Nama"
+        message={`Nama yang sudah diganti tidak dapat diubah lagi selama ${NAME_COOLDOWN_DAYS} hari. Yakin ingin menyimpan?`}
+        confirmText="Ya, Simpan"
+        cancelText="Batal"
+        variant="warning"
+      />
     </div>
   );
 }

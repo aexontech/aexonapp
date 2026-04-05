@@ -28,6 +28,7 @@ interface LauncherProps {
     plan: "subscription" | "enterprise" | "trial" | null,
     trialDaysLeft: number | null,
     enterpriseId?: string,
+    lastNameChangeDate?: string,
   ) => void;
 }
 
@@ -347,6 +348,7 @@ export default function Launcher({ onLogin }: LauncherProps) {
         plan,
         trialDaysLeft,
         user.enterprise_id ?? undefined,
+        user.last_name_change_date ?? undefined,
       );
     } catch (err: any) {
       setError(err.message ?? "Koneksi gagal. Periksa internet dan coba lagi.");

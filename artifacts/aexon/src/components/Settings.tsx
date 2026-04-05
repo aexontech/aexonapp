@@ -49,7 +49,20 @@ import {
   Type,
   Minus as MinusIcon,
   Plus as PlusIcon,
+  Send,
+  Paperclip,
+  ArrowLeft,
+  Image as ImageIcon,
 } from "lucide-react";
+
+const HeadsetIcon = ({ style }: { style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16, ...style }}>
+    <path d="M4 17V12a8 8 0 0 1 16 0v5" />
+    <rect x="2" y="14" width="4" height="6" rx="1.5" />
+    <path d="M6 20v1.5a1.5 1.5 0 0 0 1.5 1.5H10" />
+    <path d="M10 23a2.5 2.5 0 0 0 2.5-2.5v0a1 1 0 0 0-1-1H10" />
+  </svg>
+);
 import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
 import { UserProfile, HospitalSettings, Session, Capture } from "../types";
@@ -62,7 +75,15 @@ import {
   getLocalStorageUsage,
   decryptData,
 } from "../lib/storage";
-import { aexonConnect, Plan, SubscriptionStatus } from "../lib/aexonConnect";
+import {
+  aexonConnect,
+  Plan,
+  SubscriptionStatus,
+  SupportTicket,
+  SupportTicketDetail,
+  SupportCategory,
+  SupportMessage,
+} from "../lib/aexonConnect";
 import DiskSpaceIndicator from './DiskSpaceIndicator';
 
 async function getCroppedImg(
@@ -133,9 +154,17 @@ export default function Settings({
   initialTab,
 }: SettingsProps & { initialTab?: string }) {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<
-    "profil" | "keamanan" | "kop-surat" | "langganan" | "backup" | "tampilan"
-  >((initialTab as any) || "keamanan");
+  type SettingsTabId = "profil" | "keamanan" | "kop-surat" | "langganan" | "backup" | "tampilan" | "bantuan";
+  const validTabs: SettingsTabId[] = ["profil", "keamanan", "kop-surat", "langganan", "backup", "tampilan", "bantuan"];
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(
+    validTabs.includes(initialTab as SettingsTabId) ? (initialTab as SettingsTabId) : "keamanan"
+  );
+
+  useEffect(() => {
+    if (initialTab && validTabs.includes(initialTab as SettingsTabId)) {
+      setActiveTab(initialTab as SettingsTabId);
+    }
+  }, [initialTab]);
 
   const [profileForm, setProfileForm] = useState<UserProfile>(userProfile);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -198,6 +227,136 @@ export default function Settings({
   const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+
+  // ── Support / Bantuan state ──
+  const [supportView, setSupportView] = useState<"list" | "form" | "detail">("list");
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [supportDetail, setSupportDetail] = useState<SupportTicketDetail | null>(null);
+  const [supportDetailLoading, setSupportDetailLoading] = useState(false);
+  const [supportUnread, setSupportUnread] = useState(0);
+  const [supportSubject, setSupportSubject] = useState("");
+  const [supportCategory, setSupportCategory] = useState<SupportCategory>("bug");
+  const [supportMessage, setSupportMessage] = useState("");
+  const [supportScreenshot, setSupportScreenshot] = useState<File | null>(null);
+  const [supportScreenshotPreview, setSupportScreenshotPreview] = useState<string | null>(null);
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
+  const [supportReply, setSupportReply] = useState("");
+  const [supportReplying, setSupportReplying] = useState(false);
+  const supportFileRef = useRef<HTMLInputElement>(null);
+  const supportChatEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch unread count on mount + every 5 minutes (silent — no toast on error)
+  useEffect(() => {
+    let mounted = true;
+    const fetchUnread = async () => {
+      try {
+        const { data, error } = await aexonConnect.getSupportUnreadCount();
+        if (mounted && data) setSupportUnread(data.unread_count);
+      } catch {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 5 * 60 * 1000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
+
+  // Fetch tickets when switching to bantuan tab
+  useEffect(() => {
+    if (activeTab === "bantuan" && supportView === "list") {
+      loadSupportTickets();
+    }
+  }, [activeTab, supportView]);
+
+  // Scroll chat to bottom when detail loads or reply sent
+  useEffect(() => {
+    if (supportDetail?.messages) {
+      setTimeout(() => supportChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    }
+  }, [supportDetail?.messages?.length]);
+
+  const loadSupportTickets = async () => {
+    setSupportLoading(true);
+    try {
+      const { data, error } = await aexonConnect.getSupportTickets({ limit: 50 });
+      if (data) setSupportTickets(data);
+    } catch {}
+    finally { setSupportLoading(false); }
+  };
+
+  const openTicketDetail = async (ticketId: string) => {
+    setSupportDetailLoading(true);
+    setSupportView("detail");
+    try {
+      const { data, error } = await aexonConnect.getSupportTicketDetail(ticketId);
+      if (data) {
+        setSupportDetail(data);
+        // Refresh unread count silently since viewing auto-marks as read
+        try {
+          const { data: uc } = await aexonConnect.getSupportUnreadCount();
+          if (uc) setSupportUnread(uc.unread_count);
+        } catch {}
+      }
+      if (error) showToast(error, "error");
+    } catch { showToast("Gagal memuat detail tiket.", "error"); }
+    finally { setSupportDetailLoading(false); }
+  };
+
+  const handleSubmitTicket = async () => {
+    if (!supportSubject.trim() || !supportMessage.trim()) {
+      showToast("Subject dan pesan wajib diisi.", "error");
+      return;
+    }
+    setSupportSubmitting(true);
+    try {
+      let attachmentUrl: string | undefined;
+      if (supportScreenshot) {
+        const { data: uploadData, error: uploadErr } =
+          await aexonConnect.uploadSupportAttachment(supportScreenshot);
+        if (uploadErr) { showToast("Gagal upload screenshot: " + uploadErr, "error"); setSupportSubmitting(false); return; }
+        attachmentUrl = uploadData?.url;
+      }
+      const { error } = await aexonConnect.createSupportTicket({
+        subject: supportSubject.trim(),
+        message: supportMessage.trim(),
+        category: supportCategory,
+        priority: "normal",
+        attachment_url: attachmentUrl,
+      });
+      if (error) { showToast(error, "error"); }
+      else {
+        showToast("Tiket berhasil dikirim!", "success");
+        setSupportSubject(""); setSupportMessage(""); setSupportCategory("bug");
+        setSupportScreenshot(null); setSupportScreenshotPreview(null);
+        setSupportView("list");
+      }
+    } catch { showToast("Gagal mengirim tiket.", "error"); }
+    finally { setSupportSubmitting(false); }
+  };
+
+  const handleSupportReply = async () => {
+    if (!supportReply.trim() || !supportDetail) return;
+    setSupportReplying(true);
+    try {
+      const { data, error } = await aexonConnect.replySupportTicket(supportDetail.id, supportReply.trim());
+      if (error) { showToast(error, "error"); }
+      else if (data) {
+        setSupportDetail(prev => prev ? { ...prev, messages: [...prev.messages, data] } : prev);
+        setSupportReply("");
+      }
+    } catch { showToast("Gagal mengirim balasan.", "error"); }
+    finally { setSupportReplying(false); }
+  };
+
+  const handleScreenshotSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast("Ukuran file maksimal 5 MB.", "error"); return; }
+    if (!file.type.startsWith("image/")) { showToast("Hanya file gambar yang diperbolehkan.", "error"); return; }
+    setSupportScreenshot(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setSupportScreenshotPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     setKopForms(hospitalSettingsList);
@@ -558,7 +717,20 @@ export default function Settings({
     if (expandedKopIdx === kopToDelete) setExpandedKopIdx(null);
   };
 
+  // Name cooldown: source of truth is server (userProfile.lastNameChangeDate from doctor_accounts.last_name_change_at)
+  const settingsNameCooldown = (() => {
+    if (isDokterInstitusi) return { canEdit: false, daysLeft: 0 };
+    const serverDate = userProfile.lastNameChangeDate;
+    if (!serverDate) return { canEdit: true, daysLeft: 0 };
+    const lastChange = new Date(serverDate);
+    const diffDays = Math.ceil((Date.now() - lastChange.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 14) return { canEdit: false, daysLeft: 14 - diffDays };
+    return { canEdit: true, daysLeft: 0 };
+  })();
+  const settingsNameDisabled = isDokterInstitusi || !settingsNameCooldown.canEdit;
+
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.name === "name" && settingsNameDisabled) return;
     setProfileForm({ ...profileForm, [e.target.name]: e.target.value });
   };
 
@@ -567,35 +739,20 @@ export default function Settings({
     setProfileSaving(true);
 
     try {
-      if (profileForm.name !== userProfile.name && !isDokterInstitusi) {
-        const now = new Date();
-        if (userProfile.lastNameChangeDate) {
-          const lastChange = new Date(userProfile.lastNameChangeDate);
-          const diffDays = Math.ceil(
-            Math.abs(now.getTime() - lastChange.getTime()) /
-              (1000 * 60 * 60 * 24),
-          );
-          if (diffDays < 14) {
-            showToast(
-              `Perubahan nama hanya dapat dilakukan sekali setiap 14 hari. Sisa waktu: ${14 - diffDays} hari.`,
-              "warning",
-              6000,
-            );
-            setProfileSaving(false);
-            return;
-          }
-        }
-        profileForm.lastNameChangeDate = now.toISOString();
-      }
+      const nameActuallyChanged = !settingsNameDisabled && profileForm.name !== userProfile.name;
 
       const updatePayload: Record<string, any> = {
         specialization: profileForm.specialization,
       };
 
       if (!isDokterInstitusi) {
-        updatePayload.full_name = profileForm.name;
+        updatePayload.full_name = nameActuallyChanged ? profileForm.name : userProfile.name;
         updatePayload.str_number = profileForm.strNumber || null;
         updatePayload.phone = profileForm.phone;
+      }
+
+      if (nameActuallyChanged) {
+        updatePayload.last_name_change_at = new Date().toISOString();
       }
 
       const { error } = await aexonConnect.updateProfile(updatePayload);
@@ -606,7 +763,8 @@ export default function Settings({
         return;
       }
 
-      onUpdateUser(profileForm);
+      const newCooldown = nameActuallyChanged ? new Date().toISOString() : userProfile.lastNameChangeDate;
+      onUpdateUser({ ...profileForm, name: nameActuallyChanged ? profileForm.name : userProfile.name, lastNameChangeDate: newCooldown });
       setIsSaved(true);
       showToast("Profil berhasil disimpan.", "success");
       setTimeout(() => setIsSaved(false), 3000);
@@ -1064,6 +1222,12 @@ export default function Settings({
     icon: Type,
   });
 
+  visibleTabs.push({
+    id: "bantuan",
+    label: "Bantuan",
+    icon: HeadsetIcon,
+  });
+
   const FONT_BODY = "'Plus Jakarta Sans', sans-serif";
   const FONT_HEADING = "'Plus Jakarta Sans', sans-serif";
 
@@ -1265,6 +1429,16 @@ export default function Settings({
           >
             <tab.icon style={{ width: 16, height: 16 }} />
             {tab.label}
+            {tab.id === "bantuan" && supportUnread > 0 && (
+              <span style={{
+                minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#EF4444",
+                color: "#fff", fontSize: 11, fontWeight: 700, display: "inline-flex",
+                alignItems: "center", justifyContent: "center", padding: "0 5px",
+                lineHeight: 1, fontFamily: FONT_BODY,
+              }}>
+                {supportUnread > 99 ? "99+" : supportUnread}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -2904,6 +3078,415 @@ export default function Settings({
               </div>
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {/* ═══════════════ TAB: BANTUAN ═══════════════ */}
+      {activeTab === "bantuan" && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ display: "flex", flexDirection: "column", gap: 24 }}
+        >
+          {/* ── Bantuan: Form Kirim Tiket ── */}
+          {supportView === "form" && (
+            <div style={cardStyle}>
+              <div style={cardHeaderStyle}>
+                <button
+                  onClick={() => setSupportView("list")}
+                  style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
+                >
+                  <ArrowLeft style={{ width: 16, height: 16, color: "#fff" }} />
+                </button>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>Kirim Tiket Baru</span>
+              </div>
+              <div style={cardBodyStyle}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  {/* Subject */}
+                  <div>
+                    <label style={labelStyle}>Subject</label>
+                    <input
+                      value={supportSubject}
+                      onChange={(e) => setSupportSubject(e.target.value)}
+                      placeholder="Ringkasan masalah Anda"
+                      maxLength={120}
+                      style={inputBaseStyle}
+                      onFocus={handleInputFocus}
+                      onBlur={handleInputBlur}
+                    />
+                  </div>
+                  {/* Kategori */}
+                  <div>
+                    <label style={labelStyle}>Kategori</label>
+                    <div style={{ position: "relative" }}>
+                      <select
+                        value={supportCategory}
+                        onChange={(e) => setSupportCategory(e.target.value as SupportCategory)}
+                        style={{
+                          ...inputBaseStyle,
+                          appearance: "none",
+                          paddingRight: 36,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="bug">Bug / Masalah Teknis</option>
+                        <option value="fitur">Permintaan Fitur</option>
+                        <option value="akun">Akun & Login</option>
+                        <option value="pembayaran">Pembayaran & Langganan</option>
+                        <option value="lainnya">Lainnya</option>
+                      </select>
+                      <ChevronDown style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", width: 16, height: 16, color: "#94A3B8", pointerEvents: "none" }} />
+                    </div>
+                  </div>
+                  {/* Pesan */}
+                  <div>
+                    <label style={labelStyle}>Pesan</label>
+                    <textarea
+                      value={supportMessage}
+                      onChange={(e) => setSupportMessage(e.target.value)}
+                      placeholder="Jelaskan detail masalah atau permintaan Anda..."
+                      rows={5}
+                      style={{
+                        ...inputBaseStyle,
+                        resize: "vertical",
+                        minHeight: 120,
+                        lineHeight: 1.6,
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "#2563EB"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.08)"; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.boxShadow = "none"; }}
+                    />
+                  </div>
+                  {/* Screenshot */}
+                  <div>
+                    <label style={labelStyle}>Screenshot (opsional, maks 5 MB)</label>
+                    <input
+                      ref={supportFileRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleScreenshotSelect}
+                      style={{ display: "none" }}
+                    />
+                    {supportScreenshotPreview ? (
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                        <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: "1.5px solid #E2E8F0" }}>
+                          <img src={supportScreenshotPreview} alt="Preview" style={{ width: 120, height: 80, objectFit: "cover", display: "block" }} />
+                          <button
+                            onClick={() => { setSupportScreenshot(null); setSupportScreenshotPreview(null); if (supportFileRef.current) supportFileRef.current.value = ""; }}
+                            style={{
+                              position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 11,
+                              backgroundColor: "rgba(0,0,0,0.6)", border: "none", cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}
+                          >
+                            <X style={{ width: 12, height: 12, color: "#fff" }} />
+                          </button>
+                        </div>
+                        <span style={{ fontSize: 12, color: "#64748B", fontFamily: FONT_BODY, marginTop: 4 }}>{supportScreenshot?.name}</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => supportFileRef.current?.click()}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 8,
+                          padding: "10px 18px", borderRadius: 10, border: "1.5px dashed #CBD5E1",
+                          backgroundColor: "#F8FAFC", cursor: "pointer", fontSize: 13,
+                          color: "#64748B", fontFamily: FONT_BODY, transition: "all 150ms",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#0D9488"; e.currentTarget.style.color = "#0D9488"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#CBD5E1"; e.currentTarget.style.color = "#64748B"; }}
+                      >
+                        <ImageIcon style={{ width: 16, height: 16 }} />
+                        Lampirkan Screenshot
+                      </button>
+                    )}
+                  </div>
+                  {/* Submit */}
+                  <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                    <button
+                      onClick={() => setSupportView("list")}
+                      style={{
+                        padding: "11px 24px", borderRadius: 12, border: "1.5px solid #E2E8F0",
+                        backgroundColor: "#fff", fontSize: 14, fontWeight: 600, color: "#64748B",
+                        cursor: "pointer", fontFamily: FONT_BODY,
+                      }}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      onClick={handleSubmitTicket}
+                      disabled={supportSubmitting || !supportSubject.trim() || !supportMessage.trim()}
+                      style={{
+                        ...btnPrimaryStyle,
+                        opacity: supportSubmitting || !supportSubject.trim() || !supportMessage.trim() ? 0.5 : 1,
+                        cursor: supportSubmitting ? "wait" : "pointer",
+                      }}
+                    >
+                      {supportSubmitting ? (
+                        <><Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> Mengirim...</>
+                      ) : (
+                        <><Send style={{ width: 16, height: 16 }} /> Kirim Tiket</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Bantuan: Detail Tiket (Chat) ── */}
+          {supportView === "detail" && (
+            <div style={cardStyle}>
+              <div style={{ ...cardHeaderStyle, justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    onClick={() => { setSupportView("list"); setSupportDetail(null); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}
+                  >
+                    <ArrowLeft style={{ width: 16, height: 16, color: "#fff" }} />
+                  </button>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>
+                    {supportDetail?.subject || "Detail Tiket"}
+                  </span>
+                </div>
+                {supportDetail && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 8,
+                    backgroundColor: supportDetail.status === "new" ? "rgba(13,148,136,0.2)" :
+                      supportDetail.status === "in_progress" ? "rgba(245,158,11,0.2)" : "rgba(148,163,184,0.2)",
+                    color: supportDetail.status === "new" ? "#0D9488" :
+                      supportDetail.status === "in_progress" ? "#D97706" : "#64748B",
+                    fontFamily: FONT_BODY,
+                  }}>
+                    {supportDetail.status === "new" ? "Baru" : supportDetail.status === "in_progress" ? "Diproses" : "Selesai"}
+                  </span>
+                )}
+              </div>
+              <div style={{ ...cardBodyStyle, padding: 0 }}>
+                {supportDetailLoading ? (
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: 48 }}>
+                    <Loader2 className="animate-spin" style={{ width: 24, height: 24, color: "#94A3B8" }} />
+                  </div>
+                ) : supportDetail ? (
+                  <>
+                    {/* Ticket info bar */}
+                    <div style={{
+                      padding: "12px 20px", backgroundColor: "#F8FAFC", borderBottom: "1px solid #E8ECF1",
+                      display: "flex", flexWrap: "wrap", gap: 16, fontSize: 12, color: "#64748B", fontFamily: FONT_BODY,
+                    }}>
+                      <span>Kategori: <strong style={{ color: "#0C1E35" }}>
+                        {supportDetail.category === "bug" ? "Bug" : supportDetail.category === "fitur" ? "Fitur" :
+                         supportDetail.category === "akun" ? "Akun" : supportDetail.category === "pembayaran" ? "Pembayaran" : "Lainnya"}
+                      </strong></span>
+                      <span>Dibuat: <strong style={{ color: "#0C1E35" }}>{new Date(supportDetail.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</strong></span>
+                    </div>
+                    {/* Chat messages */}
+                    <div style={{ padding: 20, maxHeight: 420, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }} className="custom-scrollbar">
+                      {supportDetail.messages.map((msg) => {
+                        const isUser = msg.sender === "user";
+                        return (
+                          <div
+                            key={msg.id}
+                            style={{
+                              display: "flex",
+                              justifyContent: isUser ? "flex-end" : "flex-start",
+                            }}
+                          >
+                            <div style={{
+                              maxWidth: "75%",
+                              padding: "10px 16px",
+                              borderRadius: isUser ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                              backgroundColor: isUser ? "#0C1E35" : "#F1F5F9",
+                              color: isUser ? "#fff" : "#0C1E35",
+                              fontSize: 14,
+                              lineHeight: 1.6,
+                              fontFamily: FONT_BODY,
+                              wordBreak: "break-word",
+                            }}>
+                              <div style={{ marginBottom: 4 }}>{msg.message}</div>
+                              <div style={{
+                                fontSize: 10, textAlign: "right",
+                                color: isUser ? "rgba(255,255,255,0.5)" : "#94A3B8",
+                              }}>
+                                {new Date(msg.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div ref={supportChatEndRef} />
+                    </div>
+                    {/* Reply box */}
+                    {supportDetail.status !== "resolved" && (
+                      <div style={{
+                        padding: "14px 20px", borderTop: "1px solid #E8ECF1",
+                        display: "flex", alignItems: "flex-end", gap: 10,
+                      }}>
+                        <textarea
+                          value={supportReply}
+                          onChange={(e) => setSupportReply(e.target.value)}
+                          placeholder="Tulis balasan..."
+                          rows={2}
+                          style={{
+                            ...inputBaseStyle,
+                            resize: "none",
+                            minHeight: 44,
+                            flex: 1,
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSupportReply(); }
+                          }}
+                          onFocus={(e) => { e.currentTarget.style.borderColor = "#2563EB"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.08)"; }}
+                          onBlur={(e) => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.boxShadow = "none"; }}
+                        />
+                        <button
+                          onClick={handleSupportReply}
+                          disabled={supportReplying || !supportReply.trim()}
+                          style={{
+                            width: 44, height: 44, borderRadius: 12, border: "none",
+                            backgroundColor: supportReply.trim() ? "#0D9488" : "#E2E8F0",
+                            cursor: supportReply.trim() ? "pointer" : "default",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            transition: "all 150ms", flexShrink: 0,
+                          }}
+                        >
+                          {supportReplying ? (
+                            <Loader2 className="animate-spin" style={{ width: 18, height: 18, color: "#fff" }} />
+                          ) : (
+                            <Send style={{ width: 18, height: 18, color: supportReply.trim() ? "#fff" : "#94A3B8" }} />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                    {supportDetail.status === "resolved" && (
+                      <div style={{
+                        padding: "14px 20px", borderTop: "1px solid #E8ECF1", textAlign: "center",
+                        fontSize: 13, color: "#94A3B8", fontFamily: FONT_BODY,
+                      }}>
+                        <CheckCircle style={{ width: 14, height: 14, display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                        Tiket ini telah ditandai selesai.
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ padding: 48, textAlign: "center", color: "#94A3B8", fontSize: 14, fontFamily: FONT_BODY }}>
+                    Tiket tidak ditemukan.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Bantuan: List Tiket Saya ── */}
+          {supportView === "list" && (
+            <div style={cardStyle}>
+              <div style={{ ...cardHeaderStyle, justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <HeadsetIcon style={{ width: 14, height: 14, color: "#ffffff" }} />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>Tiket Saya</span>
+                </div>
+                <button
+                  onClick={() => setSupportView("form")}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "6px 14px", borderRadius: 8, border: "1.5px solid rgba(255,255,255,0.2)",
+                    backgroundColor: "rgba(255,255,255,0.1)", cursor: "pointer",
+                    fontSize: 12, fontWeight: 600, color: "#fff", fontFamily: FONT_BODY,
+                    transition: "all 150ms",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.2)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)"; }}
+                >
+                  <Plus style={{ width: 14, height: 14 }} />
+                  Tiket Baru
+                </button>
+              </div>
+              <div style={cardBodyStyle}>
+                {supportLoading ? (
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: 48 }}>
+                    <Loader2 className="animate-spin" style={{ width: 24, height: 24, color: "#94A3B8" }} />
+                  </div>
+                ) : supportTickets.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                    <HeadsetIcon style={{ width: 40, height: 40, color: "#CBD5E1", margin: "0 auto 12px" }} />
+                    <p style={{ fontSize: 15, fontWeight: 600, color: "#0C1E35", margin: "0 0 6px", fontFamily: FONT_HEADING }}>
+                      Belum ada tiket bantuan
+                    </p>
+                    <p style={{ fontSize: 13, color: "#94A3B8", margin: "0 0 20px", fontFamily: FONT_BODY }}>
+                      Ada kendala atau pertanyaan? Kirim tiket dan tim kami akan membantu.
+                    </p>
+                    <button
+                      onClick={() => setSupportView("form")}
+                      style={btnPrimaryStyle}
+                    >
+                      <Send style={{ width: 16, height: 16 }} />
+                      Kirim Tiket Pertama
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {supportTickets.map((ticket) => {
+                      const statusLabel = ticket.status === "new" ? "Baru" : ticket.status === "in_progress" ? "Diproses" : "Selesai";
+                      const statusBg = ticket.status === "new" ? "#ECFDF5" : ticket.status === "in_progress" ? "#FFFBEB" : "#F1F5F9";
+                      const statusColor = ticket.status === "new" ? "#0D9488" : ticket.status === "in_progress" ? "#D97706" : "#94A3B8";
+                      return (
+                        <button
+                          key={ticket.id}
+                          onClick={() => openTicketDetail(ticket.id)}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 14,
+                            padding: "14px 16px", borderRadius: 12,
+                            border: "1.5px solid #E8ECF1", backgroundColor: "#fff",
+                            cursor: "pointer", textAlign: "left", width: "100%",
+                            transition: "all 150ms", fontFamily: FONT_BODY,
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#0D9488"; e.currentTarget.style.backgroundColor = "#FAFFFE"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E8ECF1"; e.currentTarget.style.backgroundColor = "#fff"; }}
+                        >
+                          <div style={{
+                            width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                            backgroundColor: statusBg,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            <MessageCircle style={{ width: 18, height: 18, color: statusColor }} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                              <span style={{
+                                fontSize: 14, fontWeight: 600, color: "#0C1E35",
+                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
+                              }}>
+                                {ticket.subject}
+                              </span>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
+                                backgroundColor: statusBg, color: statusColor,
+                                flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.04em",
+                              }}>
+                                {statusLabel}
+                              </span>
+                              {ticket.unread && (
+                                <span style={{
+                                  width: 8, height: 8, borderRadius: 4,
+                                  backgroundColor: "#EF4444", flexShrink: 0,
+                                }} />
+                              )}
+                            </div>
+                            <div style={{ fontSize: 12, color: "#94A3B8" }}>
+                              {new Date(ticket.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                              {" · "}
+                              {ticket.category === "bug" ? "Bug" : ticket.category === "fitur" ? "Fitur" :
+                               ticket.category === "akun" ? "Akun" : ticket.category === "pembayaran" ? "Pembayaran" : "Lainnya"}
+                            </div>
+                          </div>
+                          <ChevronDown style={{ width: 16, height: 16, color: "#CBD5E1", transform: "rotate(-90deg)", flexShrink: 0 }} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 

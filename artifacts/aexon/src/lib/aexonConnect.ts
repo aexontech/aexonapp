@@ -315,6 +315,42 @@ export interface Plan {
   product_name: string;
 }
 
+// ─── Support Ticket Interfaces ──────────────────────────────────────────────
+
+export type SupportCategory = "bug" | "fitur" | "akun" | "pembayaran" | "lainnya";
+export type SupportPriority = "low" | "normal" | "high";
+export type TicketStatus = "new" | "in_progress" | "resolved";
+
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  message: string;
+  category: SupportCategory;
+  priority: SupportPriority;
+  status: TicketStatus;
+  attachment_url?: string | null;
+  created_at: string;
+  updated_at: string;
+  unread?: boolean;
+  last_reply_at?: string | null;
+}
+
+export interface SupportMessage {
+  id: string;
+  ticket_id: string;
+  message: string;
+  sender: "user" | "admin";
+  created_at: string;
+}
+
+export interface SupportTicketDetail extends SupportTicket {
+  messages: SupportMessage[];
+}
+
+export interface SupportUnreadCount {
+  unread_count: number;
+}
+
 export interface PromoValidation {
   code: string;
   discount_type: "percentage" | "fixed";
@@ -715,6 +751,95 @@ export const aexonConnect = {
       method: "POST", body: JSON.stringify({ doctor_id: doctorId }),
     });
     return { data, error };
+  },
+
+  // ── Support Tickets ─────────────────────────────────────────────
+
+  async createSupportTicket(payload: {
+    subject: string;
+    message: string;
+    category: SupportCategory;
+    priority: SupportPriority;
+    attachment_url?: string;
+  }): Promise<{ data: SupportTicket | null; error: string | null }> {
+    const { data, error } = await request<SupportTicket>("/support/ticket", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    return { data, error };
+  },
+
+  async getSupportTickets(params?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: SupportTicket[] | null; error: string | null }> {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", params.status);
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    const { data, error } = await request<SupportTicket[]>(
+      `/support/tickets${query ? `?${query}` : ""}`,
+    );
+    return { data, error };
+  },
+
+  async getSupportTicketDetail(
+    ticketId: string,
+  ): Promise<{ data: SupportTicketDetail | null; error: string | null }> {
+    const { data, error } = await request<SupportTicketDetail>(
+      `/support/ticket/${ticketId}`,
+    );
+    return { data, error };
+  },
+
+  async replySupportTicket(
+    ticketId: string,
+    message: string,
+  ): Promise<{ data: SupportMessage | null; error: string | null }> {
+    const { data, error } = await request<SupportMessage>(
+      `/support/ticket/${ticketId}/reply`,
+      { method: "POST", body: JSON.stringify({ message }) },
+    );
+    return { data, error };
+  },
+
+  async getSupportUnreadCount(): Promise<{
+    data: SupportUnreadCount | null;
+    error: string | null;
+  }> {
+    const { data, error } =
+      await request<SupportUnreadCount>("/support/unread-count");
+    return { data, error };
+  },
+
+  async uploadSupportAttachment(
+    file: File,
+  ): Promise<{ data: { url: string } | null; error: string | null }> {
+    const token = getStoredToken();
+    if (!AEXON_CONNECT_API_URL) {
+      return { data: null, error: "API belum dikonfigurasi." };
+    }
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(
+        `${AEXON_CONNECT_API_URL}/support/upload-attachment`,
+        {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        },
+      );
+      const body = await res.json();
+      if (!res.ok || body.success === false) {
+        return { data: null, error: body.error || "Gagal upload file." };
+      }
+      return { data: body.data ?? { url: body.url }, error: null };
+    } catch (err: any) {
+      return { data: null, error: err.message || "Gagal upload file." };
+    }
   },
 };
 

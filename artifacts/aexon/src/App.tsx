@@ -370,6 +370,7 @@ function AppContent() {
       return;
     }
 
+    if (menu === 'settings') setSettingsTab('keamanan');
     navigate(routeMap[menu] || '/dashboard');
   };
 
@@ -499,6 +500,7 @@ function AppContent() {
 
   const [hospitalSettingsList, setHospitalSettingsList] = useState<HospitalSettings[]>([]);
   const [settingsTab, setSettingsTab] = useState<string>('keamanan');
+  const [editReportPageConfig, setEditReportPageConfig] = useState<any[] | undefined>(undefined);
 
   // ── Login ─────────────────────────────────────────────────────────────────────
 
@@ -508,7 +510,8 @@ function AppContent() {
     fullName: string,
     plan: 'subscription' | 'enterprise' | 'trial' | null,
     trialDaysLeft: number | null,
-    enterpriseId?: string
+    enterpriseId?: string,
+    lastNameChangeDate?: string,
   ) => {
     const userId = email.replace(/[^a-zA-Z0-9]/g, '_');
 
@@ -522,6 +525,7 @@ function AppContent() {
       status: 'active',
       enterprise_id: enterpriseId ?? null,
       preferences: { fontSize: 17 },
+      lastNameChangeDate: lastNameChangeDate || undefined,
     });
 
     setSelectedPlan(plan);
@@ -831,8 +835,9 @@ function AppContent() {
                   setViewingSession(null);
                   navigate('/dashboard');
                 }}
-                onEditReport={(session) => {
+                onEditReport={(session, pageConfig) => {
                   setViewingSession(session);
+                  setEditReportPageConfig(pageConfig);
                   navigate('/session/report');
                 }}
                 onViewGallery={(session) => {
@@ -852,6 +857,7 @@ function AppContent() {
               <ReportGenerator
                 session={viewingSession}
                 onBack={() => {
+                  setEditReportPageConfig(undefined);
                   navigate('/patient-profile');
                 }}
                 hospitalSettingsList={hospitalSettingsList}
@@ -861,6 +867,7 @@ function AppContent() {
                   setViewingSession(updatedSession);
                   handleUpdateSession(updatedSession);
                 }}
+                initialPageConfig={editReportPageConfig}
               />
             ) : <RouteRedirect to="/dashboard" />}
           </Route>
@@ -933,6 +940,7 @@ function AppContent() {
               hospitalSettingsList={hospitalSettingsList}
               onNavigateToSubscription={selectedPlan !== 'enterprise' ? () => navigate('/subscription') : undefined}
               onNavigateToSettings={() => { setSettingsTab('kop-surat'); navigate('/settings'); }}
+              onNavigateToBantuan={() => { setSettingsTab('bantuan'); navigate('/settings'); }}
             />
           </Route>
 
