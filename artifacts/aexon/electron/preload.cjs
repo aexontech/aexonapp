@@ -28,3 +28,15 @@ contextBridge.exposeInMainWorld('aexonPlatform', {
   arch: process.arch,
   getAppVersion: () => ipcRenderer.invoke('app:get-version'),
 });
+
+contextBridge.exposeInMainWorld('aexonUpdater', {
+  check: () => ipcRenderer.invoke('updater:check'),
+  download: () => ipcRenderer.invoke('updater:download'),
+  install: () => ipcRenderer.invoke('updater:install'),
+  onChecking: (cb) => { ipcRenderer.on('updater:checking', cb); return () => ipcRenderer.removeListener('updater:checking', cb); },
+  onAvailable: (cb) => { ipcRenderer.on('updater:available', (_e, data) => cb(data)); return () => ipcRenderer.removeListener('updater:available', cb); },
+  onNotAvailable: (cb) => { ipcRenderer.on('updater:not-available', (_e, data) => cb(data)); return () => ipcRenderer.removeListener('updater:not-available', cb); },
+  onDownloadProgress: (cb) => { ipcRenderer.on('updater:download-progress', (_e, data) => cb(data)); return () => ipcRenderer.removeListener('updater:download-progress', cb); },
+  onDownloaded: (cb) => { ipcRenderer.on('updater:downloaded', (_e, data) => cb(data)); return () => ipcRenderer.removeListener('updater:downloaded', cb); },
+  onError: (cb) => { ipcRenderer.on('updater:error', (_e, data) => cb(data)); return () => ipcRenderer.removeListener('updater:error', cb); },
+});

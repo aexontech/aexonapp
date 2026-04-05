@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
   Plus,
@@ -12,6 +12,8 @@ import {
   Sparkles,
   Zap,
   Crown,
+  Users,
+  ChevronRight,
 } from 'lucide-react';
 import { Session, UserProfile } from '../types';
 
@@ -19,6 +21,7 @@ interface DashboardProps {
   sessions: Session[];
   onNewSession: () => void;
   onViewSession: (session: Session) => void;
+  onViewPatient?: (rmNumber: string) => void;
   onViewGallery: (session: Session) => void;
   onDeleteSession: (sessionId: string) => void;
   onSubscribe: () => void;
@@ -51,6 +54,7 @@ export default function Dashboard({
   sessions,
   onNewSession,
   onViewSession,
+  onViewPatient,
   onViewGallery,
   onDeleteSession,
   onSubscribe,
@@ -62,6 +66,28 @@ export default function Dashboard({
   subscriptionData,
 }: DashboardProps) {
   const [ctaHover, setCtaHover] = useState(false);
+
+  // Group sessions by patient RM number
+  const patientGroups = useMemo(() => {
+    const map = new Map<string, { rmNumber: string; name: string; sessions: Session[]; totalMedia: number }>();
+    for (const s of sessions) {
+      const rm = s.patient.rmNumber || s.id;
+      if (!map.has(rm)) {
+        map.set(rm, { rmNumber: rm, name: s.patient.name, sessions: [], totalMedia: 0 });
+      }
+      const group = map.get(rm)!;
+      group.sessions.push(s);
+      group.totalMedia += s.captures.length;
+      // Use the most recent name
+      if (s.date > group.sessions[0]?.date) {
+        group.name = s.patient.name;
+      }
+    }
+    // Sort by most recent session date
+    return Array.from(map.values()).sort((a, b) =>
+      new Date(b.sessions[0].date).getTime() - new Date(a.sessions[0].date).getTime()
+    );
+  }, [sessions]);
 
   const recentSessions = sessions.slice(0, 5);
 
@@ -337,7 +363,7 @@ export default function Dashboard({
 
       {/* Sesi Terbaru header + Sesi Baru button */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h3 style={{ fontSize: 18, color: '#0C1E35', fontWeight: 800 }}>Sesi Terbaru</h3>
+        <h3 style={{ fontSize: 18, color: '#0C1E35', fontWeight: 800 }}>Pasien Terbaru</h3>
         {hasActiveAccess ? (
           <button
             onClick={onNewSession}
@@ -371,7 +397,7 @@ export default function Dashboard({
         )}
       </div>
 
-      {/* Session list — recent 5 only */}
+      {/* Patient list — grouped by RM */}
       {sessions.length === 0 ? (
         <div style={{ backgroundColor: '#ffffff', borderRadius: 14, border: '1px solid #E2E8F0', padding: 56, textAlign: 'center' }}>
           <Stethoscope style={{ width: 40, height: 40, color: '#CBD5E1', margin: '0 auto 20px', display: 'block' }} />
@@ -403,64 +429,77 @@ export default function Dashboard({
       ) : (
         <div style={{ backgroundColor: '#ffffff', borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
           <div>
-            {recentSessions.map((session, idx) => (
+            {patientGroups.slice(0, 8).map((group, idx) => {
+              const latestSession = group.sessions[0];
+              const handleClick = () => {
+                if (onViewPatient && group.sessions.length > 1) {
+                  onViewPatient(group.rmNumber);
+                } else {
+                  onViewSession(latestSession);
+                }
+              };
+              return (
               <div
-                key={session.id}
-                onClick={() => onViewSession(session)}
+                key={group.rmNumber}
+                onClick={handleClick}
                 style={{
                   display: 'flex', alignItems: 'center', padding: '12px 20px', gap: 12,
-                  borderBottom: idx < recentSessions.length - 1 ? '1px solid #F8FAFC' : 'none',
+                  borderBottom: idx < Math.min(patientGroups.length, 8) - 1 ? '1px solid #F8FAFC' : 'none',
                   cursor: 'pointer', transition: 'background 120ms',
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = '#FAFBFC'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
               >
-                {/* Category bar */}
-                <div style={{ width: 3, height: 34, borderRadius: 2, backgroundColor: getCategoryColor(session.patient.category), flexShrink: 0 }} />
+                {/* Avatar */}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  background: 'linear-gradient(135deg, #0C1E35, #1e3a5c)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ color: '#fff', fontWeight: 800, fontSize: 12, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    {group.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </span>
+                </div>
 
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0C1E35' }}>{session.patient.name}</div>
-                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
-                    {session.patient.procedures_icd9?.[0] || session.patient.procedures?.[0] || 'Prosedur'}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                    {session.patient.diagnosis_icd10 && (
-                      <span style={{ padding: '1px 6px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontSize: 9, fontWeight: 700, borderRadius: 4 }}>
-                        {session.patient.diagnosis_icd10.split(' - ')[0]}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0C1E35' }}>{group.name}</span>
+                    {group.sessions.length > 1 && (
+                      <span style={{ padding: '1px 6px', backgroundColor: '#E6F7F5', color: '#0D9488', fontSize: 9, fontWeight: 700, borderRadius: 4 }}>
+                        {group.sessions.length} sesi
                       </span>
                     )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                     <span style={{ padding: '1px 6px', backgroundColor: '#F1F5F9', color: '#64748B', fontSize: 9, fontWeight: 700, borderRadius: 4 }}>
-                      {session.patient.category}
+                      RM: {group.rmNumber}
                     </span>
+                    {latestSession.patient.diagnosis_icd10 && (
+                      <span style={{ padding: '1px 6px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontSize: 9, fontWeight: 700, borderRadius: 4 }}>
+                        {latestSession.patient.diagnosis_icd10.split(' - ')[0]}
+                      </span>
+                    )}
                     <span style={{ fontSize: 10, color: '#B0B8C4' }}>
-                      {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {latestSession.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onViewSession(session); }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
-                      backgroundColor: '#0C1E35', color: '#ffffff', border: 'none', borderRadius: 6,
-                      fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'background 150ms',
-                      fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = '#1a3a5c'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = '#0C1E35'; }}
-                  >
-                    Laporan
-                  </button>
+                {/* Media count + action */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Camera style={{ width: 12, height: 12 }} /> {group.totalMedia}
+                  </span>
+                  <ChevronRight style={{ width: 16, height: 16, color: '#CBD5E1' }} />
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Lihat Semua footer */}
-          {sessions.length > 5 && (
+          {patientGroups.length > 8 && (
             <div
               onClick={onNavigateHistory}
               style={{
@@ -472,7 +511,7 @@ export default function Dashboard({
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#0C1E35'; (e.currentTarget as HTMLElement).style.backgroundColor = '#FAFBFC'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64748B'; (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
             >
-              Lihat Semua Riwayat ({sessions.length} sesi)
+              Lihat Semua Pasien ({patientGroups.length} pasien, {sessions.length} sesi)
             </div>
           )}
         </div>

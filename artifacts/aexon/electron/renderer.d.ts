@@ -46,10 +46,37 @@ interface AexonPlatform {
   getAppVersion(): Promise<string>;
 }
 
+interface UpdateInfo {
+  version: string;
+  releaseNotes?: string | { version: string; note: string }[];
+  releaseDate?: string;
+  files?: { name: string; size?: number }[];
+}
+
+interface DownloadProgress {
+  percent: number;
+  bytesPerSecond: number;
+  transferred: number;
+  total: number;
+}
+
+interface AexonUpdater {
+  check(): Promise<{ success: boolean; version?: string; error?: string }>;
+  download(): Promise<{ success: boolean; error?: string }>;
+  install(): Promise<void>;
+  onChecking(cb: () => void): () => void;
+  onAvailable(cb: (info: UpdateInfo) => void): () => void;
+  onNotAvailable(cb: (info: { version: string }) => void): () => void;
+  onDownloadProgress(cb: (progress: DownloadProgress) => void): () => void;
+  onDownloaded(cb: (info: { version: string }) => void): () => void;
+  onError(cb: (err: { message: string }) => void): () => void;
+}
+
 declare global {
   interface Window {
     aexonStorage?: AexonStorage;
     aexonPlatform?: AexonPlatform;
+    aexonUpdater?: AexonUpdater;
   }
 }
 

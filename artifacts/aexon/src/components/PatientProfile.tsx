@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Camera,
   Video,
@@ -20,6 +20,11 @@ import {
   Save,
   Plus,
   Minus,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  User,
+  Grid3X3,
 } from 'lucide-react';
 import { Session, Capture, PatientData } from '../types';
 import ImageEditor from './ImageEditor';
@@ -35,10 +40,11 @@ import {
   updateSessionMeta,
 } from '../lib/electronStorage';
 
-type TabId = 'media' | 'reports';
+type TabId = 'media' | 'reports' | 'timeline';
 
 interface PatientProfileProps {
   session: Session;
+  allSessions?: Session[];
   onBack: () => void;
   onEditReport: (session: Session, pageConfig?: any[]) => void;
   onViewGallery: (session: Session) => void;
@@ -46,12 +52,67 @@ interface PatientProfileProps {
 }
 
 export default function PatientProfile({
-  session,
+  session: initialSession,
+  allSessions: allSessionsProp,
   onBack,
   onEditReport,
   onViewGallery,
   onUpdateSession,
 }: PatientProfileProps) {
+  // Active session — can be switched via timeline
+  const [activeSessionId, setActiveSessionId] = useState(initialSession.id);
+
+  // All sessions for this patient (sorted newest first)
+  const patientSessions = useMemo(() => {
+    if (!allSessionsProp || allSessionsProp.length <= 1) return [initialSession];
+    return [...allSessionsProp].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [allSessionsProp, initialSession]);
+
+  const session = patientSessions.find(s => s.id === activeSessionId) || initialSession;
+
+  // Timeline fold state
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
+  const toggleSessionExpand = (id: string) => {
+    setExpandedSessionIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // "Lihat Semua Media" mode
+  const [showAllMedia, setShowAllMedia] = useState(false);
+  const [allMediaFilter, setAllMediaFilter] = useState<'all' | 'photos' | 'videos'>('all');
+
+  // Aggregate stats
+  const totalSessions = patientSessions.length;
+  const totalPhotos = patientSessions.reduce((acc, s) => acc + s.captures.filter(c => c.type === 'image' || !c.type).length, 0);
+  const totalVideos = patientSessions.reduce((acc, s) => acc + s.captures.filter(c => c.type === 'video').length, 0);
+  const totalMedia = totalPhotos + totalVideos;
+
+  // All media from all sessions (for "Lihat Semua Media")
+  const allMediaCaptures = useMemo(() => {
+    const all = patientSessions.flatMap(s =>
+      s.captures.map(c => ({ ...c, _sessionId: s.id, _sessionDate: s.date }))
+    );
+    all.sort((a, b) => new Date(b.timestamp || b._sessionDate).getTime() - new Date(a.timestamp || a._sessionDate).getTime());
+    if (allMediaFilter === 'photos') return all.filter(c => c.type === 'image' || !c.type);
+    if (allMediaFilter === 'videos') return all.filter(c => c.type === 'video');
+    return all;
+  }, [patientSessions, allMediaFilter]);
+
+  // Calculate patient age
+  const patientAge = useMemo(() => {
+    const dob = session.patient.dob;
+    if (!dob) return null;
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age >= 0 ? age : null;
+  }, [session.patient.dob]);
+
   const [activeTab, setActiveTab] = useState<TabId>('media');
   const [mediaFilter, setMediaFilter] = useState<'all' | 'photos' | 'videos'>('all');
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
@@ -347,6 +408,7 @@ export default function PatientProfile({
   };
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    ...(patientSessions.length > 1 ? [{ id: 'timeline' as TabId, label: `Timeline (${patientSessions.length})`, icon: <Clock style={{ width: 15, height: 15 }} /> }] : []),
     { id: 'media', label: 'Foto & Video', icon: <Camera style={{ width: 15, height: 15 }} /> },
     { id: 'reports', label: 'Laporan', icon: <FileText style={{ width: 15, height: 15 }} /> },
   ];
@@ -473,13 +535,13 @@ export default function PatientProfile({
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Calendar style={{ width: 14, height: 14, color: '#94A3B8' }} />
+                <User style={{ width: 14, height: 14, color: '#94A3B8' }} />
                 <div>
                   <p style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
-                    Tanggal Sesi
+                    Gender / Umur
                   </p>
                   <p style={{ fontSize: 13, color: '#0C1E35', fontWeight: 600, margin: 0 }}>
-                    {session.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {patient.gender || '-'}{patientAge !== null ? ` / ${patientAge} thn` : ''}
                   </p>
                 </div>
               </div>
@@ -528,49 +590,23 @@ export default function PatientProfile({
           </div>
 
           {/* Quick stats on the right */}
-          <div style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
-            <div
-              style={{
-                backgroundColor: '#F8FAFC',
-                borderRadius: 12,
-                padding: '14px 20px',
-                textAlign: 'center',
-                minWidth: 80,
-              }}
-            >
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#0C1E35', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
-                {photoCount}
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+            {[
+              { value: totalSessions, label: 'Sesi', color: '#0D9488' },
+              { value: totalPhotos, label: 'Foto', color: '#3B82F6' },
+              { value: totalVideos, label: 'Video', color: '#8B5CF6' },
+              { value: totalMedia, label: 'Total', color: '#0C1E35' },
+            ].map(stat => (
+              <div key={stat.label} style={{
+                backgroundColor: '#F8FAFC', borderRadius: 12,
+                padding: '14px 18px', textAlign: 'center', minWidth: 68,
+              }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: stat.color, fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
+                  {stat.value}
+                </div>
+                <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600, marginTop: 4 }}>{stat.label}</div>
               </div>
-              <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600, marginTop: 4 }}>Foto</div>
-            </div>
-            <div
-              style={{
-                backgroundColor: '#F8FAFC',
-                borderRadius: 12,
-                padding: '14px 20px',
-                textAlign: 'center',
-                minWidth: 80,
-              }}
-            >
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#0C1E35', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
-                {videoCount}
-              </div>
-              <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600, marginTop: 4 }}>Video</div>
-            </div>
-            <div
-              style={{
-                backgroundColor: '#F8FAFC',
-                borderRadius: 12,
-                padding: '14px 20px',
-                textAlign: 'center',
-                minWidth: 80,
-              }}
-            >
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#0C1E35', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1 }}>
-                {session.captures.length}
-              </div>
-              <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600, marginTop: 4 }}>Total</div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -921,7 +957,286 @@ export default function PatientProfile({
           </div>
           );
         })()}
+        {/* ═══════════════ TAB: TIMELINE ═══════════════ */}
+        {activeTab === 'timeline' && patientSessions.length > 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Lihat Semua Media button */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowAllMedia(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+                  backgroundColor: '#0C1E35', color: '#fff', border: 'none', borderRadius: 8,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+              >
+                <Grid3X3 style={{ width: 14, height: 14 }} />
+                Lihat Semua Media ({totalMedia})
+              </button>
+            </div>
+
+            {/* Timeline grouped by date */}
+            {(() => {
+              const grouped: { dateKey: string; dateLabel: string; sessions: Session[] }[] = [];
+              const dateMap = new Map<string, Session[]>();
+              for (const s of patientSessions) {
+                const d = new Date(s.date);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                if (!dateMap.has(key)) dateMap.set(key, []);
+                dateMap.get(key)!.push(s);
+              }
+              for (const [key, sess] of dateMap) {
+                const d = new Date(sess[0].date);
+                const label = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                grouped.push({ dateKey: key, dateLabel: label, sessions: sess });
+              }
+              return grouped.map(group => (
+                <div key={group.dateKey} style={{ backgroundColor: '#fff', borderRadius: 14, border: '1px solid #E8ECF1', overflow: 'hidden' }}>
+                  <div style={{
+                    padding: '10px 20px', backgroundColor: '#F8FAFC',
+                    borderBottom: '1px solid #E8ECF1',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <Calendar style={{ width: 14, height: 14, color: '#0D9488' }} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0C1E35', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                      {group.dateLabel}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>
+                      ({group.sessions.length} sesi)
+                    </span>
+                  </div>
+                  {group.sessions.map(s => {
+                    const isExpanded = expandedSessionIds.has(s.id);
+                    const photos = s.captures.filter(c => c.type === 'image' || !c.type);
+                    const videos = s.captures.filter(c => c.type === 'video');
+                    const hasReport = !!(s as any).savedReports?.length || !!s.clinicalNotes;
+                    const isActiveSession = s.id === activeSessionId;
+                    return (
+                      <div key={s.id}>
+                        <div
+                          onClick={() => toggleSessionExpand(s.id)}
+                          style={{
+                            padding: '14px 20px', cursor: 'pointer',
+                            borderBottom: '1px solid #F1F5F9',
+                            backgroundColor: isActiveSession ? '#F0FDFA' : 'transparent',
+                            transition: 'background-color 150ms',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          }}
+                          onMouseEnter={e => { if (!isActiveSession) e.currentTarget.style.backgroundColor = '#FAFBFC'; }}
+                          onMouseLeave={e => { if (!isActiveSession) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: '#0C1E35', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                                {s.patient.procedures_icd9?.[0] || s.patient.procedures?.[0] || 'Prosedur'}
+                              </span>
+                              <span style={{ padding: '1px 6px', backgroundColor: catStyle.bg, color: catStyle.color, fontSize: 9, fontWeight: 700, borderRadius: 4 }}>
+                                {s.patient.category}
+                              </span>
+                              {isActiveSession && (
+                                <span style={{ padding: '1px 6px', backgroundColor: '#E6F7F5', color: '#0D9488', fontSize: 9, fontWeight: 700, borderRadius: 4 }}>
+                                  Aktif
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6, fontSize: 11, color: '#94A3B8' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <Camera style={{ width: 11, height: 11 }} /> {photos.length} foto
+                              </span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <Video style={{ width: 11, height: 11 }} /> {videos.length} video
+                              </span>
+                              {hasReport && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#0D9488' }}>
+                                  <FileText style={{ width: 11, height: 11 }} /> Laporan
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                            {s.id !== activeSessionId && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setActiveSessionId(s.id); setActiveTab('media'); }}
+                                style={{
+                                  padding: '4px 10px', backgroundColor: '#0C1E35', color: '#fff',
+                                  border: 'none', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                                  cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                }}
+                              >
+                                Pilih
+                              </button>
+                            )}
+                            {isExpanded
+                              ? <ChevronUp style={{ width: 16, height: 16, color: '#94A3B8' }} />
+                              : <ChevronDown style={{ width: 16, height: 16, color: '#94A3B8' }} />
+                            }
+                          </div>
+                        </div>
+                        {/* Expanded: show capture gallery */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              style={{ overflow: 'hidden' }}
+                            >
+                              {s.captures.length === 0 ? (
+                                <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                                  <p style={{ fontSize: 12, color: '#CBD5E1' }}>Tidak ada media</p>
+                                </div>
+                              ) : (
+                                <div style={{ padding: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
+                                  {s.captures.map(cap => (
+                                    <div key={cap.id} style={{
+                                      width: '100%', aspectRatio: '1', borderRadius: 8,
+                                      backgroundColor: '#F1F5F9', overflow: 'hidden', position: 'relative',
+                                      cursor: 'pointer',
+                                    }}
+                                    onClick={(e) => { e.stopPropagation(); setPreviewCapture(cap); }}
+                                    >
+                                      {cap.type === 'video' ? (
+                                        (cap.thumbnail || videoThumbnails[cap.id]) ? (
+                                          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                            <img src={cap.thumbnail || videoThumbnails[cap.id]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                              <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <div style={{ width: 0, height: 0, borderLeft: '8px solid #fff', borderTop: '5px solid transparent', borderBottom: '5px solid transparent', marginLeft: 2 }} />
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #0f1623, #1a2a3f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Video style={{ width: 20, height: 20, color: 'rgba(255,255,255,0.4)' }} />
+                                          </div>
+                                        )
+                                      ) : (
+                                        <img src={cap.thumbnail || cap.dataUrl || cap.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
+              ));
+            })()}
+          </div>
+        )}
       </motion.div>
+
+      {/* ═══════════════ LIHAT SEMUA MEDIA OVERLAY ═══════════════ */}
+      {showAllMedia && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          backgroundColor: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(10px)',
+          display: 'flex', flexDirection: 'column', padding: 32,
+        }}>
+          <div style={{
+            flex: 1, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden',
+            display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '14px 20px', borderBottom: '1px solid #E8ECF1',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'linear-gradient(135deg, #0C1E35, #1a3a5c)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Grid3X3 style={{ width: 16, height: 16, color: '#0D9488' }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  Semua Media — {patient.name}
+                </span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+                  {allMediaCaptures.length} item
+                </span>
+              </div>
+              <button onClick={() => setShowAllMedia(false)} style={{
+                width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)',
+                border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <X style={{ width: 16, height: 16 }} />
+              </button>
+            </div>
+
+            {/* Filter */}
+            <div style={{ padding: '10px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', gap: 4 }}>
+              {([
+                { key: 'all' as const, label: 'Semua' },
+                { key: 'photos' as const, label: 'Foto' },
+                { key: 'videos' as const, label: 'Video' },
+              ]).map(f => {
+                const isActive = allMediaFilter === f.key;
+                return (
+                  <button key={f.key} onClick={() => setAllMediaFilter(f.key)} style={{
+                    padding: '6px 14px', fontSize: 12, fontWeight: isActive ? 700 : 500,
+                    border: 'none', borderRadius: 8, cursor: 'pointer',
+                    backgroundColor: isActive ? '#0C1E35' : '#F1F5F9',
+                    color: isActive ? '#fff' : '#64748B',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif", transition: 'all 150ms',
+                  }}>
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Grid */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: 16 }} className="custom-scrollbar">
+              {allMediaCaptures.length === 0 ? (
+                <div style={{ padding: '48px 0', textAlign: 'center' }}>
+                  <Camera style={{ width: 36, height: 36, color: '#E8ECF1', margin: '0 auto 10px', display: 'block' }} />
+                  <p style={{ fontSize: 13, color: '#94A3B8' }}>Tidak ada media</p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+                  {allMediaCaptures.map(cap => (
+                    <div key={`${cap._sessionId}-${cap.id}`}
+                      onClick={() => setPreviewCapture(cap)}
+                      style={{
+                        width: '100%', aspectRatio: '1', borderRadius: 10,
+                        backgroundColor: '#F1F5F9', overflow: 'hidden', cursor: 'pointer',
+                        position: 'relative',
+                      }}>
+                      {cap.type === 'video' ? (
+                        (cap.thumbnail || videoThumbnails[cap.id]) ? (
+                          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                            <img src={cap.thumbnail || videoThumbnails[cap.id]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 0, height: 0, borderLeft: '10px solid #fff', borderTop: '6px solid transparent', borderBottom: '6px solid transparent', marginLeft: 2 }} />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #0f1623, #1a2a3f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Video style={{ width: 24, height: 24, color: 'rgba(255,255,255,0.4)' }} />
+                          </div>
+                        )
+                      ) : (
+                        <img src={cap.thumbnail || cap.dataUrl || cap.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
+                      {/* Date badge */}
+                      <div style={{ position: 'absolute', bottom: 4, left: 4, padding: '2px 6px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 4 }}>
+                        <span style={{ fontSize: 8, color: '#fff', fontWeight: 600 }}>
+                          {new Date(cap._sessionDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Disk Space */}
       <div style={{ padding: '0 32px 24px' }}>

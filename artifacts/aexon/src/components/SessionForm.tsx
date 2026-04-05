@@ -1,15 +1,18 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Activity, ArrowRight, Stethoscope, ClipboardList, Building2, Plus, X } from 'lucide-react';
-import { PatientData, UserProfile } from '../types';
+import { User, Activity, ArrowRight, Stethoscope, ClipboardList, Building2, Plus, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { PatientData, UserProfile, Session } from '../types';
 import ICD10Autocomplete from './ICD10Autocomplete';
 import ICD9Autocomplete from './ICD9Autocomplete';
 import SessionFlowNav from './SessionFlowNav';
+import { lookupPatientByRM, type StoredPatient } from '../lib/storage';
+import { aexonConnect } from '../lib/aexonConnect';
 
 interface SessionFormProps {
   onSubmit: (data: PatientData) => void;
   onCancel: () => void;
   userProfile: UserProfile;
+  sessions?: Session[];
 }
 
 function calculateAge(dob: string): number | null {
@@ -24,10 +27,95 @@ function calculateAge(dob: string): number | null {
   return age >= 0 ? age : null;
 }
 
-export default function SessionForm({ onSubmit, onCancel, userProfile }: SessionFormProps) {
+export default function SessionForm({ onSubmit, onCancel, userProfile, sessions = [] }: SessionFormProps) {
   const sessionId = useMemo(() => Math.random().toString(36).substr(2, 9).toUpperCase(), []);
   const [validationError, setValidationError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // RM lookup state
+  const [rmLookupStatus, setRmLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not-found'>('idle');
+  const [rmFoundName, setRmFoundName] = useState<string>('');
+  const [rmSessionCount, setRmSessionCount] = useState<number>(0);
+  const lastLookedUpRM = useRef<string>('');
+
+  const handleRmBlur = useCallback(async (rmNumber: string) => {
+    const rm = rmNumber.trim();
+    if (!rm || rm === lastLookedUpRM.current) return;
+    lastLookedUpRM.current = rm;
+    setRmLookupStatus('loading');
+
+    // Count sessions with this RM from local data
+    const matchingSessions = sessions.filter(s => s.patient.rmNumber === rm);
+
+    // 1. Try IndexedDB first
+    try {
+      const local = await lookupPatientByRM(userProfile.id, rm);
+      if (local) {
+        setFormData(prev => ({
+          ...prev,
+          name: local.fullName || prev.name,
+          gender: (local.gender as PatientData['gender']) || prev.gender,
+          dob: local.dateOfBirth || prev.dob,
+          diagnosis: local.diagnosis || prev.diagnosis,
+          diagnosis_icd10: local.diagnosisIcd10 || prev.diagnosis_icd10,
+          differentialDiagnosis: local.differentialDiagnosis || prev.differentialDiagnosis,
+          differentialDiagnosis_icd10: local.differentialDiagnosisIcd10 || prev.differentialDiagnosis_icd10,
+          procedures_icd9: local.icd9Codes?.length ? local.icd9Codes : prev.procedures_icd9,
+          procedures: local.icd9Codes?.length ? local.icd9Codes : prev.procedures,
+        }));
+        setRmFoundName(local.fullName);
+        setRmSessionCount(matchingSessions.length);
+        setRmLookupStatus('found');
+        return;
+      }
+    } catch {}
+
+    // 2. Try Supabase
+    try {
+      const { data } = await aexonConnect.lookupPatientByRM(rm);
+      if (data) {
+        setFormData(prev => ({
+          ...prev,
+          name: data.full_name || prev.name,
+          gender: (data.gender as PatientData['gender']) || prev.gender,
+          dob: data.date_of_birth || prev.dob,
+          diagnosis: data.diagnosis || prev.diagnosis,
+          diagnosis_icd10: data.icd10_code || prev.diagnosis_icd10,
+          procedures_icd9: data.icd9_codes?.length ? data.icd9_codes : prev.procedures_icd9,
+          procedures: data.icd9_codes?.length ? data.icd9_codes : prev.procedures,
+        }));
+        setRmFoundName(data.full_name);
+        setRmSessionCount(matchingSessions.length);
+        setRmLookupStatus('found');
+        return;
+      }
+    } catch {}
+
+    // 3. Check local sessions as fallback
+    if (matchingSessions.length > 0) {
+      const latestSession = matchingSessions[0];
+      const p = latestSession.patient;
+      setFormData(prev => ({
+        ...prev,
+        name: p.name || prev.name,
+        gender: p.gender || prev.gender,
+        dob: p.dob || prev.dob,
+        diagnosis: p.diagnosis || prev.diagnosis,
+        diagnosis_icd10: p.diagnosis_icd10 || prev.diagnosis_icd10,
+        differentialDiagnosis: p.differentialDiagnosis || prev.differentialDiagnosis,
+        differentialDiagnosis_icd10: p.differentialDiagnosis_icd10 || prev.differentialDiagnosis_icd10,
+        procedures_icd9: p.procedures_icd9?.length ? [...p.procedures_icd9] : prev.procedures_icd9,
+        procedures: p.procedures?.length ? [...p.procedures] : prev.procedures,
+      }));
+      setRmFoundName(p.name);
+      setRmSessionCount(matchingSessions.length);
+      setRmLookupStatus('found');
+      return;
+    }
+
+    setRmLookupStatus('not-found');
+  }, [sessions, userProfile.id]);
+
   const [formData, setFormData] = useState<PatientData>({
     name: '',
     rmNumber: '',
@@ -258,17 +346,27 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
 
                 <div>
                   <label style={fieldLabelStyle}>No. Rekam Medis *</label>
-                  <input
-                    type="text"
-                    name="rmNumber"
-                    required
-                    value={formData.rmNumber}
-                    onChange={handleChange}
-                    style={inputStyle}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
-                    placeholder="RM-XXXXXX"
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      name="rmNumber"
+                      required
+                      value={formData.rmNumber}
+                      onChange={handleChange}
+                      style={inputStyle}
+                      onFocus={handleInputFocus}
+                      onBlur={(e) => {
+                        handleInputBlur(e);
+                        handleRmBlur(e.target.value);
+                      }}
+                      placeholder="RM-XXXXXX"
+                    />
+                    {rmLookupStatus === 'loading' && (
+                      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+                        <Loader2 className="animate-spin" style={{ width: 16, height: 16, color: '#94A3B8' }} />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -317,6 +415,34 @@ export default function SessionForm({ onSubmit, onCancel, userProfile }: Session
                 </div>
               </div>
             </div>
+
+            {/* RM Lookup Banner */}
+            <AnimatePresence>
+              {rmLookupStatus === 'found' && rmFoundName && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -10, height: 0 }}
+                  style={{
+                    backgroundColor: '#F0FDFA', border: '1.5px solid #99F6E4',
+                    borderRadius: 12, padding: '14px 20px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}
+                >
+                  <CheckCircle2 style={{ width: 20, height: 20, color: '#0D9488', flexShrink: 0 }} />
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0C1E35' }}>
+                      Pasien ditemukan: {rmFoundName}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#0D9488', marginTop: 2 }}>
+                      {rmSessionCount > 0
+                        ? `${rmSessionCount} sesi sebelumnya — data otomatis terisi, tetap dapat diedit`
+                        : 'Data otomatis terisi dari rekam medis, tetap dapat diedit'}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div style={sectionCardStyle}>
               <div style={sectionHeaderBarStyle}>

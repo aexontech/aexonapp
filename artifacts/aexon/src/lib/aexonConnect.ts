@@ -814,6 +814,47 @@ export const aexonConnect = {
     return { data, error };
   },
 
+  // ── Patients ─────────────────────────────────────────────────────────────
+
+  async lookupPatientByRM(
+    rmNumber: string,
+  ): Promise<{
+    data: {
+      id: string;
+      rm_number: string;
+      full_name: string;
+      gender: string;
+      date_of_birth: string;
+      diagnosis: string;
+      icd10_code: string;
+      icd9_codes: string[];
+      notes: string;
+    } | null;
+    error: string | null;
+  }> {
+    const { data, error } = await request<any>(
+      `/patients/lookup?rm_number=${encodeURIComponent(rmNumber)}`,
+    );
+    return { data, error };
+  },
+
+  async upsertPatient(patient: {
+    rm_number: string;
+    full_name: string;
+    gender: string;
+    date_of_birth: string;
+    diagnosis: string;
+    icd10_code: string;
+    icd9_codes: string[];
+    notes: string;
+  }): Promise<{ data: any; error: string | null }> {
+    const { data, error } = await request<any>("/patients/upsert", {
+      method: "POST",
+      body: JSON.stringify(patient),
+    });
+    return { data, error };
+  },
+
   async uploadSupportAttachment(
     file: File,
   ): Promise<{ data: { url: string } | null; error: string | null }> {

@@ -123,7 +123,7 @@ export default function Gallery({ session, userId, onBack, onUpdateSession, onVi
         sessionId: session.id,
         patientRM: session.patient.rmNumber,
         exportDate: new Date().toISOString(),
-        appVersion: '2.5.0',
+        appVersion: __APP_VERSION__,
         mediaCount: exportedMediaIds.length,
         mediaIds: exportedMediaIds,
       };

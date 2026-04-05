@@ -85,6 +85,7 @@ import {
   SupportMessage,
 } from "../lib/aexonConnect";
 import DiskSpaceIndicator from './DiskSpaceIndicator';
+import { LegalContent } from './EulaModal';
 
 async function getCroppedImg(
   imageSrc: string,
@@ -154,8 +155,8 @@ export default function Settings({
   initialTab,
 }: SettingsProps & { initialTab?: string }) {
   const { showToast } = useToast();
-  type SettingsTabId = "profil" | "keamanan" | "kop-surat" | "langganan" | "backup" | "tampilan" | "bantuan";
-  const validTabs: SettingsTabId[] = ["profil", "keamanan", "kop-surat", "langganan", "backup", "tampilan", "bantuan"];
+  type SettingsTabId = "profil" | "keamanan" | "kop-surat" | "langganan" | "backup" | "tampilan" | "bantuan" | "update";
+  const validTabs: SettingsTabId[] = ["profil", "keamanan", "kop-surat", "langganan", "backup", "tampilan", "bantuan", "update"];
   const [activeTab, setActiveTab] = useState<SettingsTabId>(
     validTabs.includes(initialTab as SettingsTabId) ? (initialTab as SettingsTabId) : "keamanan"
   );
@@ -222,11 +223,94 @@ export default function Settings({
   const logoInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showTosModal, setShowTosModal] = useState(false);
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
   const [billingLoading, setBillingLoading] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+
+  // ── Auto-Updater state ──
+  const isElectronApp = !!window.aexonPlatform?.isElectron;
+  const [appVersion, setAppVersion] = useState<string>("");
+  const [updateStatus, setUpdateStatus] = useState<
+    "idle" | "checking" | "available" | "up-to-date" | "downloading" | "downloaded" | "error"
+  >("idle");
+  const [updateInfo, setUpdateInfo] = useState<{
+    version?: string;
+    releaseNotes?: string;
+    totalSize?: number;
+    files?: { name: string; size?: number }[];
+  } | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<{
+    percent: number;
+    transferred: number;
+    total: number;
+    bytesPerSecond: number;
+  } | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
+  // Fetch app version + listen to updater events
+  useEffect(() => {
+    if (!isElectronApp) return;
+    window.aexonPlatform!.getAppVersion().then(v => setAppVersion(v));
+
+    const updater = window.aexonUpdater;
+    if (!updater) return;
+
+    const cleanups: (() => void)[] = [];
+    cleanups.push(updater.onChecking(() => {
+      setUpdateStatus("checking");
+      setUpdateError(null);
+    }));
+    cleanups.push(updater.onAvailable((info) => {
+      setUpdateStatus("available");
+      let notes = "";
+      if (typeof info.releaseNotes === "string") {
+        notes = info.releaseNotes;
+      } else if (Array.isArray(info.releaseNotes)) {
+        notes = info.releaseNotes.map(n => `**${n.version}**\n${n.note}`).join("\n\n");
+      }
+      const totalSize = info.files?.reduce((sum, f) => sum + (f.size || 0), 0) || 0;
+      setUpdateInfo({ version: info.version, releaseNotes: notes, totalSize, files: info.files });
+    }));
+    cleanups.push(updater.onNotAvailable(() => {
+      setUpdateStatus("up-to-date");
+    }));
+    cleanups.push(updater.onDownloadProgress((p) => {
+      setUpdateStatus("downloading");
+      setDownloadProgress({ percent: p.percent, transferred: p.transferred, total: p.total, bytesPerSecond: p.bytesPerSecond });
+    }));
+    cleanups.push(updater.onDownloaded(() => {
+      setUpdateStatus("downloaded");
+    }));
+    cleanups.push(updater.onError((err) => {
+      setUpdateStatus("error");
+      setUpdateError(err.message);
+    }));
+
+    return () => cleanups.forEach(fn => fn());
+  }, [isElectronApp]);
+
+  const handleCheckUpdate = async () => {
+    if (!window.aexonUpdater) return;
+    setUpdateStatus("checking");
+    setUpdateError(null);
+    setUpdateInfo(null);
+    setDownloadProgress(null);
+    await window.aexonUpdater.check();
+  };
+
+  const handleDownloadUpdate = async () => {
+    if (!window.aexonUpdater) return;
+    setUpdateStatus("downloading");
+    setDownloadProgress({ percent: 0, transferred: 0, total: 0, bytesPerSecond: 0 });
+    await window.aexonUpdater.download();
+  };
+
+  const handleInstallUpdate = () => {
+    window.aexonUpdater?.install();
+  };
 
   // ── Support / Bantuan state ──
   const [supportView, setSupportView] = useState<"list" | "form" | "detail">("list");
@@ -853,7 +937,7 @@ export default function Settings({
         {
           userId: userProfile.id,
           exportDate: new Date().toISOString(),
-          appVersion: "2.5.0",
+          appVersion: __APP_VERSION__,
           sessionCount: filteredSessions.length,
           note: "Foto dan video tidak termasuk backup, tersimpan lokal di perangkat",
         },
@@ -1228,6 +1312,12 @@ export default function Settings({
     icon: HeadsetIcon,
   });
 
+  visibleTabs.push({
+    id: "update",
+    label: "Update",
+    icon: Download,
+  });
+
   const FONT_BODY = "'Plus Jakarta Sans', sans-serif";
   const FONT_HEADING = "'Plus Jakarta Sans', sans-serif";
 
@@ -1438,6 +1528,18 @@ export default function Settings({
               }}>
                 {supportUnread > 99 ? "99+" : supportUnread}
               </span>
+            )}
+            {tab.id === "update" && updateStatus === "available" && (
+              <span style={{
+                width: 8, height: 8, borderRadius: 4, backgroundColor: "#0D9488",
+                display: "inline-block", flexShrink: 0,
+              }} />
+            )}
+            {tab.id === "update" && updateStatus === "downloaded" && (
+              <span style={{
+                width: 8, height: 8, borderRadius: 4, backgroundColor: "#10B981",
+                display: "inline-block", flexShrink: 0,
+              }} />
             )}
           </button>
         ))}
@@ -3490,6 +3592,281 @@ export default function Settings({
         </motion.div>
       )}
 
+      {/* ═══════════════ TAB: UPDATE APLIKASI ═══════════════ */}
+      {activeTab === "update" && !isElectronApp && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={cardStyle}>
+            <div style={{
+              padding: "14px 20px",
+              display: "flex", alignItems: "center", gap: 10,
+              background: "linear-gradient(135deg, #0C1E35, #1a3a5c)",
+              borderRadius: "16px 16px 0 0",
+            }}>
+              <Download style={{ width: 16, height: 16, color: "#0D9488" }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>Update Aplikasi</span>
+            </div>
+            <div style={{ padding: 24 }}>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, color: "#64748B", fontFamily: FONT_BODY, marginBottom: 4 }}>Versi saat ini</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#0C1E35", fontFamily: FONT_HEADING }}>
+                  v{__APP_VERSION__}
+                </div>
+              </div>
+              <div style={{
+                padding: 16, backgroundColor: "#F0F9FF", borderRadius: 12,
+                border: "1px solid #BAE6FD", display: "flex", alignItems: "flex-start", gap: 12,
+              }}>
+                <Info style={{ width: 20, height: 20, color: "#0284C7", flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0C4A6E", fontFamily: FONT_HEADING }}>
+                    Pembaruan otomatis tersedia saat menggunakan aplikasi desktop Aexon.
+                  </div>
+                  <div style={{ fontSize: 13, color: "#0369A1", fontFamily: FONT_BODY, marginTop: 6, lineHeight: 1.6 }}>
+                    Download aplikasi desktop untuk mendapatkan fitur auto-update, penyimpanan terenkripsi, dan performa terbaik.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === "update" && isElectronApp && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+          {/* Current version card */}
+          <div style={cardStyle}>
+            <div style={{
+              padding: "14px 20px",
+              borderBottom: "none",
+              display: "flex", alignItems: "center", gap: 10,
+              background: "linear-gradient(135deg, #0C1E35, #1a3a5c)",
+              borderRadius: "16px 16px 0 0",
+            }}>
+              <Download style={{ width: 16, height: 16, color: "#0D9488" }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>Update Aplikasi</span>
+            </div>
+            <div style={{ padding: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 13, color: "#64748B", fontFamily: FONT_BODY, marginBottom: 4 }}>Versi saat ini</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#0C1E35", fontFamily: FONT_HEADING }}>
+                    v{appVersion || "..."}
+                  </div>
+                </div>
+                <button
+                  onClick={handleCheckUpdate}
+                  disabled={updateStatus === "checking" || updateStatus === "downloading"}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "10px 20px",
+                    backgroundColor: updateStatus === "checking" ? "#94A3B8" : "#0D9488",
+                    color: "#fff",
+                    border: "none", borderRadius: 10,
+                    fontSize: 14, fontWeight: 600, cursor: updateStatus === "checking" ? "default" : "pointer",
+                    fontFamily: FONT_BODY,
+                    transition: "background-color 150ms",
+                    opacity: (updateStatus === "checking" || updateStatus === "downloading") ? 0.7 : 1,
+                  }}
+                >
+                  {updateStatus === "checking" ? (
+                    <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
+                  ) : (
+                    <RefreshCw style={{ width: 16, height: 16 }} />
+                  )}
+                  {updateStatus === "checking" ? "Memeriksa..." : "Cek Update"}
+                </button>
+              </div>
+
+              {/* Up to date */}
+              {updateStatus === "up-to-date" && (
+                <div style={{
+                  marginTop: 20, padding: 16, backgroundColor: "#F0FDF4", borderRadius: 12,
+                  border: "1px solid #BBF7D0", display: "flex", alignItems: "center", gap: 12,
+                }}>
+                  <CheckCircle style={{ width: 20, height: 20, color: "#16A34A", flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#15803D", fontFamily: FONT_HEADING }}>
+                      Aplikasi sudah terbaru
+                    </div>
+                    <div style={{ fontSize: 13, color: "#16A34A", fontFamily: FONT_BODY, marginTop: 2 }}>
+                      Anda menggunakan versi terbaru (v{appVersion}).
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error */}
+              {updateStatus === "error" && (
+                <div style={{
+                  marginTop: 20, padding: 16, backgroundColor: "#FEF2F2", borderRadius: 12,
+                  border: "1px solid #FECACA", display: "flex", alignItems: "center", gap: 12,
+                }}>
+                  <AlertCircle style={{ width: 20, height: 20, color: "#DC2626", flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#991B1B", fontFamily: FONT_HEADING }}>
+                      Gagal memeriksa update
+                    </div>
+                    <div style={{ fontSize: 13, color: "#DC2626", fontFamily: FONT_BODY, marginTop: 2 }}>
+                      {updateError || "Terjadi kesalahan. Coba lagi nanti."}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Update available card */}
+          {(updateStatus === "available" || updateStatus === "downloading" || updateStatus === "downloaded") && updateInfo && (
+            <div style={{
+              ...cardStyle,
+              border: "1.5px solid #0D9488",
+              boxShadow: "0 4px 24px rgba(13,148,136,0.12)",
+            }}>
+              <div style={{
+                padding: "14px 20px",
+                display: "flex", alignItems: "center", gap: 10,
+                background: "linear-gradient(135deg, #0D9488, #14B8A6)",
+                borderRadius: "14px 14px 0 0",
+              }}>
+                <Star style={{ width: 16, height: 16, color: "#fff" }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#ffffff", fontFamily: FONT_HEADING }}>
+                  Update Tersedia
+                </span>
+              </div>
+              <div style={{ padding: 24 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#0C1E35", fontFamily: FONT_HEADING }}>
+                      v{updateInfo.version}
+                    </div>
+                    {updateInfo.totalSize && updateInfo.totalSize > 0 && (
+                      <div style={{ fontSize: 13, color: "#64748B", fontFamily: FONT_BODY, marginTop: 2 }}>
+                        Ukuran: {(updateInfo.totalSize / (1024 * 1024)).toFixed(1)} MB
+                      </div>
+                    )}
+                  </div>
+                  <div style={{
+                    padding: "4px 12px", borderRadius: 20,
+                    backgroundColor: "#F0FDFA", color: "#0D9488",
+                    fontSize: 12, fontWeight: 700, fontFamily: FONT_BODY,
+                  }}>
+                    BARU
+                  </div>
+                </div>
+
+                {/* Release notes */}
+                {updateInfo.releaseNotes && (
+                  <div style={{
+                    padding: 16, backgroundColor: "#F8FAFC", borderRadius: 12,
+                    border: "1px solid #E8ECF1", marginBottom: 20,
+                    maxHeight: 200, overflowY: "auto",
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748B", fontFamily: FONT_BODY, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      Catatan Rilis
+                    </div>
+                    <div style={{
+                      fontSize: 13, color: "#334155", fontFamily: FONT_BODY,
+                      lineHeight: 1.7, whiteSpace: "pre-wrap",
+                    }}>
+                      {updateInfo.releaseNotes}
+                    </div>
+                  </div>
+                )}
+
+                {/* Download progress */}
+                {updateStatus === "downloading" && downloadProgress && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#0C1E35", fontFamily: FONT_BODY }}>
+                        Mengunduh...
+                      </span>
+                      <span style={{ fontSize: 13, color: "#64748B", fontFamily: FONT_BODY }}>
+                        {(downloadProgress.transferred / (1024 * 1024)).toFixed(1)}/{(downloadProgress.total / (1024 * 1024)).toFixed(1)} MB
+                      </span>
+                    </div>
+                    <div style={{
+                      width: "100%", height: 8, backgroundColor: "#E2E8F0",
+                      borderRadius: 4, overflow: "hidden",
+                    }}>
+                      <div style={{
+                        width: `${Math.min(downloadProgress.percent, 100)}%`,
+                        height: "100%",
+                        backgroundColor: "#0D9488",
+                        borderRadius: 4,
+                        transition: "width 300ms ease",
+                      }} />
+                    </div>
+                    <div style={{ fontSize: 12, color: "#94A3B8", fontFamily: FONT_BODY, marginTop: 6, textAlign: "right" }}>
+                      {Math.round(downloadProgress.percent)}%
+                      {downloadProgress.bytesPerSecond > 0 && ` • ${(downloadProgress.bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                {updateStatus === "available" && (
+                  <button
+                    onClick={handleDownloadUpdate}
+                    style={{
+                      width: "100%", padding: "12px 0",
+                      backgroundColor: "#0D9488", color: "#fff",
+                      border: "none", borderRadius: 10,
+                      fontSize: 15, fontWeight: 700, cursor: "pointer",
+                      fontFamily: FONT_BODY,
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      transition: "background-color 150ms",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = "#0F766E"}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = "#0D9488"}
+                  >
+                    <Download style={{ width: 18, height: 18 }} />
+                    Download & Install
+                  </button>
+                )}
+
+                {updateStatus === "downloading" && (
+                  <button disabled style={{
+                    width: "100%", padding: "12px 0",
+                    backgroundColor: "#94A3B8", color: "#fff",
+                    border: "none", borderRadius: 10,
+                    fontSize: 15, fontWeight: 700, cursor: "default",
+                    fontFamily: FONT_BODY, opacity: 0.7,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}>
+                    <Loader2 className="animate-spin" style={{ width: 18, height: 18 }} />
+                    Mengunduh...
+                  </button>
+                )}
+
+                {updateStatus === "downloaded" && (
+                  <button
+                    onClick={handleInstallUpdate}
+                    style={{
+                      width: "100%", padding: "12px 0",
+                      backgroundColor: "#0C1E35", color: "#fff",
+                      border: "none", borderRadius: 10,
+                      fontSize: 15, fontWeight: 700, cursor: "pointer",
+                      fontFamily: FONT_BODY,
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      boxShadow: "0 4px 20px rgba(12,30,53,0.25)",
+                      transition: "background-color 150ms",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = "#1a3a5c"}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = "#0C1E35"}
+                  >
+                    <RefreshCw style={{ width: 18, height: 18 }} />
+                    Restart untuk Update
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
       <ConfirmModal
         isOpen={showClearDataModal}
         onConfirm={handleClearLocalData}
@@ -4614,6 +4991,81 @@ export default function Settings({
           </motion.div>
         )}
       </AnimatePresence>
+
+          {/* ── Syarat & Ketentuan link (only on first tab) ── */}
+          {activeTab === "keamanan" && (
+            <div style={{
+              marginTop: 32, paddingTop: 20,
+              borderTop: "1px solid #E8ECF1",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <button
+                onClick={() => setShowTosModal(true)}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontSize: 12, color: "#94A3B8", fontFamily: FONT_BODY,
+                  textDecoration: "underline", textUnderlineOffset: 3,
+                  transition: "color 150ms",
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = "#0C1E35"}
+                onMouseLeave={(e) => e.currentTarget.style.color = "#94A3B8"}
+              >
+                Syarat & Ketentuan, Kebijakan Privasi, dan EULA
+              </button>
+            </div>
+          )}
+
+          {/* ── Syarat & Ketentuan modal ── */}
+          {showTosModal && (
+            <div
+              style={{
+                position: "fixed", inset: 0, zIndex: 120,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                backgroundColor: "rgba(15,23,42,0.7)", backdropFilter: "blur(10px)",
+                padding: 24,
+              }}
+              onClick={() => setShowTosModal(false)}
+            >
+              <div
+                style={{
+                  width: "100%", maxWidth: 700, maxHeight: "90vh",
+                  backgroundColor: "#fff", borderRadius: 16, overflow: "hidden",
+                  boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
+                  display: "flex", flexDirection: "column",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{
+                  padding: "16px 24px", borderBottom: "1px solid #E8ECF1",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  flexShrink: 0,
+                }}>
+                  <div>
+                    <h2 style={{ fontSize: 16, fontWeight: 800, color: "#0C1E35", margin: 0, fontFamily: FONT_HEADING }}>
+                      Syarat & Ketentuan
+                    </h2>
+                    <p style={{ fontSize: 11, color: "#94A3B8", margin: "2px 0 0", fontFamily: FONT_BODY }}>
+                      Versi 2.0 | April 2026
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowTosModal(false)}
+                    style={{
+                      width: 32, height: 32, borderRadius: 8,
+                      backgroundColor: "#F4F6F8", border: "none", color: "#64748B",
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    <X style={{ width: 16, height: 16 }} />
+                  </button>
+                </div>
+                <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", minHeight: 0 }} className="custom-scrollbar">
+                  <LegalContent />
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

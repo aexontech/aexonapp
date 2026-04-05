@@ -635,6 +635,37 @@ function AppContent() {
     setInitialCaptures([]);
     setPatientData(data);
     navigate('/session/active');
+
+    // Upsert patient to IndexedDB (and Supabase if online) — fire & forget
+    if (userProfile?.id && data.rmNumber) {
+      import('./lib/storage').then(({ upsertPatientLocal }) => {
+        upsertPatientLocal(userProfile!.id, {
+          rmNumber: data.rmNumber,
+          fullName: data.name,
+          gender: data.gender,
+          dateOfBirth: data.dob,
+          diagnosis: data.diagnosis,
+          diagnosisIcd10: data.diagnosis_icd10,
+          differentialDiagnosis: data.differentialDiagnosis,
+          differentialDiagnosisIcd10: data.differentialDiagnosis_icd10,
+          icd9Codes: data.procedures_icd9.filter(p => p.trim()),
+          notes: '',
+          updatedAt: new Date().toISOString(),
+        }).catch(() => {});
+      });
+      import('./lib/aexonConnect').then(({ aexonConnect: ac }) => {
+        ac.upsertPatient({
+          rm_number: data.rmNumber,
+          full_name: data.name,
+          gender: data.gender,
+          date_of_birth: data.dob,
+          diagnosis: data.diagnosis,
+          icd10_code: data.diagnosis_icd10,
+          icd9_codes: data.procedures_icd9.filter(p => p.trim()),
+          notes: '',
+        }).catch(() => {});
+      });
+    }
   };
 
   const handleEndSession = async (session: Session) => {
@@ -653,8 +684,24 @@ function AppContent() {
     navigate('/session/report');
   };
 
+  const [viewingPatientSessions, setViewingPatientSessions] = useState<Session[]>([]);
+
   const handleViewSession = (session: Session) => {
+    // Find all sessions for this patient by RM number
+    const rm = session.patient.rmNumber;
+    const patientSessions = rm ? sessions.filter(s => s.patient.rmNumber === rm) : [session];
+    setViewingPatientSessions(patientSessions);
     setViewingSession(session);
+    navigate('/patient-profile');
+  };
+
+  const handleViewPatient = (rmNumber: string) => {
+    const patientSessions = sessions.filter(s => s.patient.rmNumber === rmNumber);
+    if (patientSessions.length === 0) return;
+    // Sort newest first, set the latest as the active session
+    const sorted = [...patientSessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setViewingPatientSessions(sorted);
+    setViewingSession(sorted[0]);
     navigate('/patient-profile');
   };
 
@@ -691,6 +738,7 @@ function AppContent() {
     setPatientData(null);
     setSessions([]);
     setViewingSession(null);
+    setViewingPatientSessions([]);
     setUserProfile(null);
     setTrialDaysLeft(null);
     setInitialCaptures([]);
@@ -824,6 +872,7 @@ function AppContent() {
               onSubmit={handleStartSession}
               onCancel={() => navigate('/dashboard')}
               userProfile={userProfile}
+              sessions={sessions}
             />
           </Route>
 
@@ -831,8 +880,10 @@ function AppContent() {
             {viewingSession ? (
               <PatientProfile
                 session={viewingSession}
+                allSessions={viewingPatientSessions.length > 0 ? viewingPatientSessions : undefined}
                 onBack={() => {
                   setViewingSession(null);
+                  setViewingPatientSessions([]);
                   navigate('/dashboard');
                 }}
                 onEditReport={(session, pageConfig) => {
@@ -847,6 +898,10 @@ function AppContent() {
                 onUpdateSession={(updatedSession) => {
                   setViewingSession(updatedSession);
                   handleUpdateSession(updatedSession);
+                  // Also update in viewingPatientSessions
+                  setViewingPatientSessions(prev =>
+                    prev.map(s => s.id === updatedSession.id ? updatedSession : s)
+                  );
                 }}
               />
             ) : <RouteRedirect to="/dashboard" />}
@@ -994,6 +1049,7 @@ function AppContent() {
                 }
               }}
               onViewSession={handleViewSession}
+              onViewPatient={handleViewPatient}
               onViewGallery={handleViewGallery}
               onDeleteSession={handleDeleteSession}
               onSubscribe={() => navigate('/subscription/plans')}

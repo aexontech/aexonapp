@@ -485,30 +485,77 @@ app.whenReady().then(async () => {
   registerIpcHandlers(config);
   createWindow();
 
-  // Auto-updater: cek update setelah app siap
-  autoUpdater.autoDownload = true;
+  // Auto-updater: user-controlled download, auto-install on quit after download
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
+
+  const sendUpdateStatus = (channel: string, data?: any) => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(channel, data);
+    }
+  };
 
   autoUpdater.on('checking-for-update', () => {
     console.log('[AutoUpdater] Checking for update...');
+    sendUpdateStatus('updater:checking');
   });
   autoUpdater.on('update-available', (info) => {
     console.log('[AutoUpdater] Update available:', info.version);
+    sendUpdateStatus('updater:available', {
+      version: info.version,
+      releaseNotes: info.releaseNotes,
+      releaseDate: info.releaseDate,
+      files: info.files?.map(f => ({ name: f.url, size: f.size })),
+    });
   });
-  autoUpdater.on('update-not-available', () => {
+  autoUpdater.on('update-not-available', (info) => {
     console.log('[AutoUpdater] Already on latest version');
+    sendUpdateStatus('updater:not-available', { version: info.version });
   });
   autoUpdater.on('download-progress', (progress) => {
     console.log(`[AutoUpdater] Download: ${Math.round(progress.percent)}%`);
+    sendUpdateStatus('updater:download-progress', {
+      percent: progress.percent,
+      bytesPerSecond: progress.bytesPerSecond,
+      transferred: progress.transferred,
+      total: progress.total,
+    });
   });
   autoUpdater.on('update-downloaded', (info) => {
     console.log('[AutoUpdater] Update downloaded:', info.version, '— will install on quit');
+    sendUpdateStatus('updater:downloaded', { version: info.version });
   });
   autoUpdater.on('error', (err) => {
     console.error('[AutoUpdater] Error:', err.message);
+    sendUpdateStatus('updater:error', { message: err.message });
   });
 
-  autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+  // IPC handlers for renderer-controlled updates
+  ipcMain.handle('updater:check', async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      return { success: true, version: result?.updateInfo?.version };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('updater:download', async () => {
+    try {
+      await autoUpdater.downloadUpdate();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('updater:install', () => {
+    autoUpdater.quitAndInstall(false, true);
+  });
+
+  // Background check on startup (non-blocking, no download)
+  autoUpdater.checkForUpdates().catch((err) => {
     console.error('[AutoUpdater] checkForUpdates failed:', err.message);
   });
 

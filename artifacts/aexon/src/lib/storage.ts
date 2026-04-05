@@ -255,3 +255,56 @@ export async function getStorageUsage(): Promise<{ usedMB: number; usedFormatted
 export function getEncryptionKey(userId: string): string {
   return userId;
 }
+
+// ── Patient Registry (IndexedDB, offline-first) ───────────────────��
+
+export interface StoredPatient {
+  rmNumber: string;
+  fullName: string;
+  gender: 'Laki-laki' | 'Perempuan';
+  dateOfBirth: string;
+  diagnosis: string;
+  diagnosisIcd10: string;
+  differentialDiagnosis: string;
+  differentialDiagnosisIcd10: string;
+  icd9Codes: string[];
+  notes: string;
+  updatedAt: string;
+}
+
+function patientStorageKey(userId: string): string {
+  return `aexon_patients_${userId}`;
+}
+
+async function loadPatientMap(userId: string): Promise<Record<string, StoredPatient>> {
+  const raw = await idbGet(patientStorageKey(userId));
+  if (!raw) return {};
+  try {
+    const decrypted = await decryptData(raw, userId);
+    return JSON.parse(decrypted) as Record<string, StoredPatient>;
+  } catch {
+    try { return JSON.parse(raw) as Record<string, StoredPatient>; } catch { return {}; }
+  }
+}
+
+async function savePatientMap(userId: string, map: Record<string, StoredPatient>): Promise<void> {
+  const json = JSON.stringify(map);
+  const encrypted = await encryptData(json, userId);
+  await idbSet(patientStorageKey(userId), encrypted);
+}
+
+export async function upsertPatientLocal(userId: string, patient: StoredPatient): Promise<void> {
+  const map = await loadPatientMap(userId);
+  map[patient.rmNumber] = { ...patient, updatedAt: new Date().toISOString() };
+  await savePatientMap(userId, map);
+}
+
+export async function lookupPatientByRM(userId: string, rmNumber: string): Promise<StoredPatient | null> {
+  const map = await loadPatientMap(userId);
+  return map[rmNumber] || null;
+}
+
+export async function getAllPatients(userId: string): Promise<StoredPatient[]> {
+  const map = await loadPatientMap(userId);
+  return Object.values(map);
+}

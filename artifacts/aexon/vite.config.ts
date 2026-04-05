@@ -28,6 +28,11 @@ if (!basePath) {
 
 export default defineConfig({
   base: basePath,
+  define: {
+    __APP_VERSION__: JSON.stringify(
+      process.env.npm_package_version ?? "2.0.0",
+    ),
+  },
   plugins: [
     react(),
     tailwindcss(),
